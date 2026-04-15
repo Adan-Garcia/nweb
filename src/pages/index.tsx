@@ -130,7 +130,7 @@ export function IndexPage() {
               className="inline-flex items-center gap-2 font-semibold"
             >
               <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <GalleryVerticalEndIcon className="size-5" />
+                <GalleryVerticalEndIcon className="size-5 min-w-xl" />
               </div>
               <span>Cuervo Planner</span>
             </a>
@@ -191,8 +191,7 @@ export function IndexPage() {
             </p>
           </div>
         </div>
-      </div>
-      <Button
+     <Button
         variant="default"
         //min size 2 rem, max size 4 rem
         style={{
@@ -224,6 +223,8 @@ export function IndexPage() {
           ))}
         </div>
       ) : null}
+	  </div>
+      
     </main>
   );
 }
