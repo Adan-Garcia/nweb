@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button"
 
-import { GalleryVerticalEndIcon, MoonIcon, SunIcon } from "lucide-react"
+import { MoonIcon, SunIcon } from "lucide-react"
 import { useEffect, useState } from "react"
+import { BrandIcon } from "@/components/brand-icon"
 import "../App.css"
 
 export function UnloggedPage() {
@@ -41,7 +42,7 @@ export function UnloggedPage() {
 				<aside className="signup-brand">
 					<a href="/auth" className="brand-mark" aria-label="Cuervo Planner home">
 						<span className="brand-icon-wrap">
-							<GalleryVerticalEndIcon className="brand-icon" />
+							<BrandIcon className="brand-icon" />
 						</span>
 						<span className="brand-name">Cuervo Planner</span>
 					</a>
@@ -50,7 +51,7 @@ export function UnloggedPage() {
 						<p className="brand-eyebrow">Early Access</p>
 						<h1>Planning, Notes, and Sharing; One place</h1>
 						<p>
-							Create an account to keep your information encrypted and safe. Your data is stored locally on your device and never leaves it, for more information, see our{" "}<a href="#" className="brand-copy-link">
+							Create an account to keep your information encrypted and safe. Your data is stored locally on your device and never leaves it, for more information, see our{" "}<a href="/privacy" className="brand-copy-link">
                <b>privacy policy</b>
               </a>
               .

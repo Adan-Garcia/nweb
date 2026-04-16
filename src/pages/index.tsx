@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
 import {
-  GalleryVerticalEndIcon,
   MoonIcon,
   SunIcon,
   ShieldCheck,
   LockKeyhole,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { BrandIcon } from "@/components/brand-icon";
 import "../App.css";
 
 export function IndexPage() {
@@ -111,16 +111,22 @@ export function IndexPage() {
                     About
                   </a>
                   <a
-                    href="#"
+                    href="/documentation"
                     className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                   >
                     Documentation
                   </a>
                   <a
-                    href="#"
+                    href="/pricing"
                     className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                   >
                     Pricing
+                  </a>
+                  <a
+                    href="/privacy"
+                    className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                  >
+                    Privacy
                   </a>
                 </div>
               </details>
@@ -129,9 +135,7 @@ export function IndexPage() {
               href="#"
               className="inline-flex items-center gap-2 font-semibold"
             >
-              <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <GalleryVerticalEndIcon className="size-5 min-w-xl" />
-              </div>
+              <BrandIcon className="size-8" />
               <span>Cuervo Planner</span>
             </a>
           </div>
@@ -144,16 +148,22 @@ export function IndexPage() {
               About
             </a>
             <a
-              href="#"
+              href="/documentation"
               className="text-sm font-medium text-foreground hover:text-primary"
             >
               Documentation
             </a>
             <a
-              href="#"
+              href="/pricing"
               className="text-sm font-medium text-foreground hover:text-primary"
             >
               Pricing
+            </a>
+            <a
+              href="/privacy"
+              className="text-sm font-medium text-foreground hover:text-primary"
+            >
+              Privacy
             </a>
           </nav></div>
           {/* Right: Theme button & Mobile Nav */}
@@ -185,7 +195,7 @@ export function IndexPage() {
               in mind. Create an account to keep your information encrypted and
               safe. Your data is stored locally on your device and never leaves
               it, for more information, see our{" "}
-              <a href="#" className="text-primary hover:underline">
+              <a href="/privacy" className="text-primary hover:underline">
                 <b>privacy policy</b>
               </a>
             </p>

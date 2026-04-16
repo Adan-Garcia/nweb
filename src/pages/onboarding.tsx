@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-	GalleryVerticalEndIcon,
 	MoonIcon,
 	SunIcon,
 	CheckCircle2,
@@ -11,6 +10,7 @@ import {
 	ArrowRight,
 } from "lucide-react"
 import { useEffect, useState } from "react"
+import { BrandIcon } from "@/components/brand-icon"
 import "../App.css"
 
 export function OnboardingPage() {
@@ -70,9 +70,7 @@ export function OnboardingPage() {
 			<div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
 				<div className="mb-8 flex items-center justify-between">
 					<a href="#" className="inline-flex items-center gap-2 font-medium">
-						<div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-							<GalleryVerticalEndIcon className="size-5" />
-						</div>
+						<BrandIcon className="size-8" />
 						<span>Cuervo Planner</span>
 					</a>
 					<Button

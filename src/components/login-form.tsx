@@ -16,7 +16,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { GalleryVerticalEndIcon } from "lucide-react"
+import { BrandIcon } from "@/components/brand-icon"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -64,7 +64,7 @@ export function LoginForm({
           className="mx-auto inline-flex items-center gap-2 text-sm font-medium text-foreground"
         >
           <span className="inline-flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-            <GalleryVerticalEndIcon className="size-5" />
+            <BrandIcon className="size-5" />
           </span>
           Cuervo Planner
         </a>

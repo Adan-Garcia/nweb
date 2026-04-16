@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-	GalleryVerticalEndIcon,
 	MoonIcon,
 	SunIcon,
 	Plus,
@@ -13,6 +12,7 @@ import {
 	Bell,
 } from "lucide-react"
 import { useEffect, useState } from "react"
+import { BrandIcon } from "@/components/brand-icon"
 import "../App.css"
 
 export function DashBoardPage() {
@@ -64,9 +64,7 @@ export function DashBoardPage() {
 			<header className="border-b border-border bg-card/50 backdrop-blur-sm">
 				<div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
 					<a href="#" className="inline-flex items-center gap-2 font-semibold">
-						<div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-							<GalleryVerticalEndIcon className="size-5" />
-						</div>
+						<BrandIcon className="size-8" />
 						<span>Cuervo Planner</span>
 					</a>
 

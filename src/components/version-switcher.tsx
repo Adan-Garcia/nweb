@@ -13,7 +13,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { GalleryVerticalEndIcon, ChevronsUpDownIcon, CheckIcon } from "lucide-react"
+import { ChevronsUpDownIcon, CheckIcon } from "lucide-react"
+import { BrandIcon } from "@/components/brand-icon"
 
 export function VersionSwitcher({
   versions,
@@ -36,7 +37,7 @@ export function VersionSwitcher({
             }
           >
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-              <GalleryVerticalEndIcon className="size-4" />
+              <BrandIcon className="size-4" />
             </div>
             <div className="flex flex-col gap-0.5 leading-none">
               <span className="font-medium">Documentation</span>

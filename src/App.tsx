@@ -5,6 +5,9 @@ import { OnboardingPage } from "@/pages/onboarding"
 import { DashBoardPage } from "@/pages/dashboard"
 import { SignInPage } from "@/pages/signin"
 import {IndexPage} from "@/pages/index"
+import { DocumentationPage } from "@/pages/documentation"
+import { PricingPage } from "@/pages/pricing"
+import { PrivacyPage } from "@/pages/privacy"
 import "./App.css"
 
 export default function App() {
@@ -17,6 +20,9 @@ export default function App() {
 				<Route path="/auth/signin" element={<SignInPage />} />
 				<Route path="/auth/onboarding" element={<OnboardingPage />} />
 				<Route path="/dashboard" element={<DashBoardPage />} />
+				<Route path="/documentation" element={<DocumentationPage />} />
+				<Route path="/pricing" element={<PricingPage />} />
+				<Route path="/privacy" element={<PrivacyPage />} />
 				<Route path="*" element={<Navigate to="/" replace />} />
 			</Routes>
 		</BrowserRouter>

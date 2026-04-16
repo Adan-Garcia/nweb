@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button"
 import {
-  GalleryVerticalEndIcon,
   MoonIcon,
   SunIcon,
 } from "lucide-react"
 import { type ReactNode, useEffect, useState } from "react"
+import { BrandIcon } from "@/components/brand-icon"
 
 type AuthBenefit = {
   icon: ReactNode
@@ -90,7 +90,7 @@ export function AuthShell({
         <aside className={brandClassName}>
           <a href="/auth" className="brand-mark" aria-label="Cuervo Planner home">
             <span className="brand-icon-wrap">
-              <GalleryVerticalEndIcon className="brand-icon" />
+              <BrandIcon className="brand-icon" />
             </span>
             <span className="brand-name">Cuervo Planner</span>
           </a>
