@@ -11,28 +11,14 @@ import {
 	LogOut,
 	Bell,
 } from "lucide-react"
-import { useEffect, useState } from "react"
-import { BrandIcon } from "@/components/brand-icon"
+
+import { WorkspaceShell } from "@/components/workspace-shell"
+import { useThemeMode } from "@/hooks/use-theme-mode"
+
 import "../App.css"
 
 export function DashBoardPage() {
-	const [isDark, setIsDark] = useState(false)
-
-	useEffect(() => {
-		const savedTheme = window.localStorage.getItem("theme")
-		const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-		const shouldUseDark = savedTheme === "dark" || (!savedTheme && prefersDark)
-
-		setIsDark(shouldUseDark)
-		document.documentElement.classList.toggle("dark", shouldUseDark)
-	}, [])
-
-	const handleToggleTheme = () => {
-		const nextIsDark = !isDark
-		setIsDark(nextIsDark)
-		document.documentElement.classList.toggle("dark", nextIsDark)
-		window.localStorage.setItem("theme", nextIsDark ? "dark" : "light")
-	}
+	const { isDark, toggleTheme } = useThemeMode()
 
 	const projects = [
 		{
@@ -59,66 +45,19 @@ export function DashBoardPage() {
 	]
 
 	return (
-		<main className="min-h-screen w-full bg-background text-foreground">
-			{/* Header */}
-			<header className="border-b border-border bg-card/50 backdrop-blur-sm">
-				<div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-					<a href="#" className="inline-flex items-center gap-2 font-semibold">
-						<BrandIcon className="size-8" />
-						<span>Cuervo Planner</span>
-					</a>
-
-					<nav className="hidden items-center gap-8 md:flex">
-						<a href="#" className="text-sm font-medium text-foreground hover:text-primary">
-							Browse
-						</a>
-						<a href="#" className="text-sm font-medium text-foreground hover:text-primary">
-							Documentation
-						</a>
-						<a href="#" className="text-sm font-medium text-foreground hover:text-primary">
-							Community
-						</a>
-					</nav>
-
-					<div className="flex items-center gap-4">
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={handleToggleTheme}
-							aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
-						>
-							{isDark ? (
-								<SunIcon className="size-4" />
-							) : (
-								<MoonIcon className="size-4" />
-							)}
-						</Button>
-
-						<Button variant="ghost" size="icon">
-							<Bell className="size-4" />
-						</Button>
-
-						<Button variant="ghost" size="icon">
-							<Settings className="size-4" />
-						</Button>
-
-						<Button variant="outline" size="sm" type="button">
-							<LogOut className="mr-2 size-4" />
-							Sign Out
-						</Button>
-					</div>
-				</div>
-			</header>
-
-			{/* Main Content */}
-			<div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-				{/* Welcome Section */}
-				<div className="mb-12">
-					<div className="mb-8">
-						<h1 className="mb-2 text-4xl font-bold">Welcome back, Jordan!</h1>
-						<p className="text-lg text-muted-foreground">
-							Here's what's happening with your projects today.
-						</p>
+		<WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
+			<div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+				<div className="mb-10">
+					<div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+						<div>
+							<p className="mb-2 text-xs font-medium uppercase tracking-[0.28em] text-muted-foreground">
+								Workspace overview
+							</p>
+							<h1 className="mb-2 text-4xl font-bold">Dashboard</h1>
+							<p className="text-base text-muted-foreground">
+								Here's what's happening with your projects today.
+							</p>
+						</div>
 					</div>
 
 					<div className="grid gap-4 md:grid-cols-3">
@@ -157,9 +96,8 @@ export function DashBoardPage() {
 					</div>
 				</div>
 
-				{/* Projects Section */}
 				<div>
-					<div className="mb-6 flex items-center justify-between">
+					<div className="mb-6 flex items-center justify-between gap-4">
 						<div>
 							<h2 className="text-2xl font-bold">Your Projects</h2>
 							<p className="text-muted-foreground">Manage and collaborate on your projects</p>
@@ -174,12 +112,10 @@ export function DashBoardPage() {
 						{projects.map((project) => (
 							<Card key={project.id} className="transition-all hover:border-primary hover:shadow-md">
 								<CardHeader>
-									<div className="flex items-start justify-between">
+									<div className="flex items-start justify-between gap-4">
 										<div className="flex-1">
 											<CardTitle className="text-lg">{project.name}</CardTitle>
-											<CardDescription className="mt-1">
-												{project.description}
-											</CardDescription>
+											<CardDescription className="mt-1">{project.description}</CardDescription>
 										</div>
 										<Button variant="ghost" size="icon" className="h-6 w-6">
 											<MoreHorizontal className="size-4" />
@@ -206,6 +142,6 @@ export function DashBoardPage() {
 					</div>
 				</div>
 			</div>
-		</main>
+		</WorkspaceShell>
 	)
 }
