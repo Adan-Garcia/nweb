@@ -1,6 +1,15 @@
 import * as React from "react"
 import { Link, useLocation } from "react-router-dom"
-import { Bell, CalendarDays, LayoutDashboard, LogOut, MoonIcon, Settings, SunIcon } from "lucide-react"
+import {
+	Bell,
+	CalendarDays,
+	LayoutDashboard,
+	LogOut,
+	MoonIcon,
+	Notebook,
+	Settings,
+	SunIcon,
+} from "lucide-react"
 
 import { BrandIcon } from "@/components/brand-icon"
 import { Button } from "@/components/ui/button"
@@ -33,6 +42,11 @@ const navigationItems = [
 		url: "/calendar",
 		icon: CalendarDays,
 	},
+	{
+		title: "Notes",
+		url: "/notes",
+		icon: Notebook,
+	},
 ]
 
 type WorkspaceShellProps = {
@@ -43,7 +57,7 @@ type WorkspaceShellProps = {
 
 export function WorkspaceShell({ children, isDark, onToggleTheme }: WorkspaceShellProps) {
 	return (
-		<SidebarProvider>
+		<SidebarProvider >
 			<WorkspaceSidebar isDark={isDark} onToggleTheme={onToggleTheme} />
 			<SidebarInset>
 				<div className="min-h-svh bg-background text-foreground">

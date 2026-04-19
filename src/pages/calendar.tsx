@@ -16,10 +16,13 @@ import { CalendarGridCard } from "@/components/calendar/calendar-grid-card"
 import { EventOverlay } from "@/components/calendar/event-overlay"
 import { WorkspaceShell } from "@/components/workspace-shell"
 import { useThemeMode } from "@/hooks/use-theme-mode"
+import { loadCalendarEvents, saveCalendarEvents } from "@/lib/calendar-storage"
 
 export function CalendarPage() {
   const { isDark, toggleTheme } = useThemeMode()
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(INITIAL_EVENTS)
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() =>
+    loadCalendarEvents(INITIAL_EVENTS),
+  )
   const today = new Date()
   const todayMonthStart = new Date(today.getFullYear(), today.getMonth(), 1)
   const [currentMonth, setCurrentMonth] = useState(todayMonthStart)
@@ -246,6 +249,10 @@ export function CalendarPage() {
 
     setCalendarEvents((prev) => prev.filter((calendarEvent) => calendarEvent.id !== eventToDelete.id))
   }
+
+  useEffect(() => {
+    saveCalendarEvents(calendarEvents)
+  }, [calendarEvents])
 
   useEffect(() => {
     if (!isEventOverlayOpen) {

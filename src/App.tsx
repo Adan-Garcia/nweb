@@ -9,6 +9,7 @@ import { DocumentationPage } from "@/pages/documentation"
 import { PricingPage } from "@/pages/pricing"
 import { PrivacyPage } from "@/pages/privacy"
 import { CalendarPage } from "@/pages/calendar.tsx"
+import { NotesPage } from "@/pages/notes"
 import "./App.css"
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
 				<Route path="/pricing" element={<PricingPage />} />
 				<Route path="/privacy" element={<PrivacyPage />} />
 				<Route path="/calendar" element={<CalendarPage />} />
+				<Route path="/notes" element={<NotesPage />} />
 				<Route path="*" element={<Navigate to="/" replace />} />
 			</Routes>
 		</BrowserRouter>

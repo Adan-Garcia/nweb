@@ -76,7 +76,7 @@ export function CalendarEventListCard({
               }
             />
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onSelect={() => onOpenAddEvent(selectedDateKey)}>Add Event</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onOpenAddEvent(selectedDateKey)}>Add Event</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -159,8 +159,8 @@ export function CalendarEventListCard({
                     }
                   />
                   <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem onSelect={() => onOpenEditEvent(event)}>Edit</DropdownMenuItem>
-                    <DropdownMenuItem variant="destructive" onSelect={() => onDeleteEvent(event)}>
+                    <DropdownMenuItem onClick={() => onOpenEditEvent(event)}>Edit</DropdownMenuItem>
+                    <DropdownMenuItem variant="destructive" onClick={() => onDeleteEvent(event)}>
                       Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>

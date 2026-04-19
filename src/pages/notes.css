@@ -1,0 +1,255 @@
+.notes-mode-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.notes-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.notes-main-editor {
+  min-width: 0;
+}
+
+.notes-files-panel {
+  position: sticky;
+  top: 1rem;
+}
+
+.notes-files-card {
+  max-height: calc(100svh - 8rem);
+}
+
+.notes-files-content {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.notes-active-path {
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+
+.notes-location-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.notes-location-field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.notes-location-field-wide {
+  grid-column: span 2;
+}
+
+.notes-file-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.notes-file-list {
+  display: grid;
+  gap: 0.45rem;
+  max-height: min(46svh, 26rem);
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.notes-tree-group-block {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.notes-tree-group-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.9rem;
+  border-radius: 0.55rem;
+  border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  background: color-mix(in oklab, var(--background) 95%, transparent);
+  text-align: left;
+  padding-right: 0.55rem;
+}
+
+.notes-tree-group-row:hover {
+  border-color: color-mix(in oklab, var(--primary) 24%, var(--border));
+}
+
+.notes-tree-caret {
+  display: inline-flex;
+  width: 0.72rem;
+  color: var(--muted-foreground);
+  transition: transform 140ms ease;
+}
+
+.notes-tree-caret.is-open {
+  transform: rotate(90deg);
+}
+
+.notes-tree-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.notes-tree-count {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: var(--muted-foreground);
+}
+
+.notes-file-row {
+  display: grid;
+  gap: 0.12rem;
+  text-align: left;
+  border-radius: 0.7rem;
+  border: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
+  background: color-mix(in oklab, var(--background) 90%, transparent);
+  padding: 0.5rem 0.6rem;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.notes-file-row:hover {
+  border-color: color-mix(in oklab, var(--primary) 24%, var(--border));
+  background: color-mix(in oklab, var(--primary) 7%, var(--background));
+}
+
+.notes-file-row.is-active {
+  border-color: color-mix(in oklab, var(--primary) 48%, var(--border));
+  background: color-mix(in oklab, var(--primary) 12%, var(--background));
+}
+
+.notes-file-row-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.79rem;
+  font-weight: 600;
+}
+
+.notes-file-row-mode {
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--primary) 35%, var(--border));
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+  font-size: 0.63rem;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.38rem;
+}
+
+.notes-file-row-path,
+.notes-file-row-time,
+.notes-file-empty {
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+
+.notes-editor-shell {
+  min-height: calc(100svh - 16rem);
+  border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 12% 12%, color-mix(in oklab, var(--primary) 6%, transparent), transparent 44%),
+    radial-gradient(circle at 88% 18%, color-mix(in oklab, var(--muted-foreground) 8%, transparent), transparent 48%),
+    color-mix(in oklab, var(--card) 86%, var(--background));
+  padding: clamp(1rem, 3.2vw, 2.3rem);
+  text-align: left;
+}
+
+.notes-linear-editor {
+  min-height: calc(100svh - 22rem);
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--foreground);
+}
+
+.notes-linear-editor:focus-visible {
+  outline: none;
+}
+
+.notes-linear-editor p {
+  margin: 0 0 0.7rem;
+}
+
+.notes-linear-editor h1,
+.notes-linear-editor h2,
+.notes-linear-editor h3 {
+  margin: 0 0 0.7rem;
+  line-height: 1.25;
+}
+
+.notes-linear-editor ul,
+.notes-linear-editor ol {
+  margin: 0 0 0.85rem;
+  padding-left: 1.2rem;
+}
+
+.notes-canvas-shell {
+  min-height: calc(100svh - 18rem);
+  height: calc(100svh - 18rem);
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  border-radius: 1rem;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--card) 92%, var(--background));
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.notes-canvas-hint {
+  display: flex;
+  align-items: center;
+  min-height: 2.2rem;
+  padding: 0.35rem 0.85rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  color: var(--muted-foreground);
+}
+
+.notes-excalidraw-host {
+  min-height: 0;
+  height: 100%;
+}
+
+@media (max-width: 960px) {
+  .notes-workspace-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notes-files-panel {
+    position: static;
+  }
+
+  .notes-files-card {
+    max-height: none;
+  }
+
+  .notes-file-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notes-editor-shell {
+    min-height: calc(100svh - 15.5rem);
+    padding: 1rem;
+  }
+
+  .notes-linear-editor {
+    min-height: calc(100svh - 21rem);
+  }
+
+  .notes-canvas-shell {
+    min-height: calc(100svh - 16.6rem);
+    height: calc(100svh - 16.6rem);
+  }
+}
