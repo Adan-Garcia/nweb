@@ -115,7 +115,9 @@
   border: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
   background: color-mix(in oklab, var(--background) 90%, transparent);
   padding: 0.5rem 0.6rem;
-  transition: border-color 140ms ease, background-color 140ms ease;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
 }
 
 .notes-file-row:hover {
@@ -160,8 +162,16 @@
   border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
   border-radius: 1rem;
   background:
-    radial-gradient(circle at 12% 12%, color-mix(in oklab, var(--primary) 6%, transparent), transparent 44%),
-    radial-gradient(circle at 88% 18%, color-mix(in oklab, var(--muted-foreground) 8%, transparent), transparent 48%),
+    radial-gradient(
+      circle at 12% 12%,
+      color-mix(in oklab, var(--primary) 6%, transparent),
+      transparent 44%
+    ),
+    radial-gradient(
+      circle at 88% 18%,
+      color-mix(in oklab, var(--muted-foreground) 8%, transparent),
+      transparent 48%
+    ),
     color-mix(in oklab, var(--card) 86%, var(--background));
   padding: clamp(1rem, 3.2vw, 2.3rem);
   text-align: left;
@@ -203,18 +213,26 @@
   overflow: hidden;
   background: color-mix(in oklab, var(--card) 92%, var(--background));
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: 1fr;
 }
 
-.notes-canvas-hint {
-  display: flex;
-  align-items: center;
-  min-height: 2.2rem;
-  padding: 0.35rem 0.85rem;
-  border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
-  font-size: 0.78rem;
-  letter-spacing: 0.03em;
-  color: var(--muted-foreground);
+.notes-canvas-shell:fullscreen {
+  min-height: 100svh;
+  height: 100svh;
+  border-radius: 0;
+}
+
+.notes-canvas-shell .help-icon {
+  display: none !important;
+}
+
+.notes-canvas-shell .ExcalidrawLogo {
+  display: none !important;
+}
+
+.notes-canvas-shell .excalidraw a[href*="excalidraw.com"],
+.notes-canvas-shell .excalidraw a[href*="github.com/excalidraw"] {
+  display: none !important;
 }
 
 .notes-excalidraw-host {

@@ -1,151 +1,75 @@
 import { useEffect, useMemo, useState } from "react";
-
+import { House, Clock, Split, NotebookTabs, NotebookPen } from "lucide-react";
 import { WorkspaceShell } from "@/components/workspace-shell";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { useThemeMode } from "@/hooks/use-theme-mode";
+import { NotesCreateNoteDialog } from "@/components/notes/create-note-dialog";
+import { NotesCreateSegmentDialog } from "@/components/notes/create-segment-dialog";
 import { LinearNotesEditor } from "@/components/notes/linear-notes-editor";
+import {
+  buildSegmentOptions,
+  getEntryForLocation,
+  listSegmentOptions,
+  resolveCascadingLocation,
+  type LocationSegment,
+  type SegmentModalState,
+} from "@/components/notes/location-hierarchy";
+import { NotesLocationSegmentDropdown } from "@/components/notes/location-segment-dropdown";
 import { SpatialNotesEditor } from "@/components/notes/spatial-notes-editor";
 import { useNotesWorkspace } from "@/components/notes/use-notes-workspace";
 import type {
   NotesDocumentMode,
-  NotesDirectoryEntry,
   NotesHierarchyLocation,
 } from "@/components/notes/types";
 
 import "@excalidraw/excalidraw/index.css";
 import "./notes.css";
 
-function buildSegmentOptions(values: string[], activeValue: string) {
-  const nextValues = new Set(values.filter((value) => value.trim().length > 0));
-
-  if (activeValue.trim().length > 0) {
-    nextValues.add(activeValue);
-  }
-
-  return Array.from(nextValues).sort((left, right) => left.localeCompare(right));
-}
-
-function getEntryForLocation(
-  entries: NotesDirectoryEntry[],
-  location: NotesHierarchyLocation,
-) {
-  return (
-    entries.find(
-      (entry) =>
-        entry.wing === location.wing &&
-        entry.flight === location.flight &&
-        entry.branch === location.branch &&
-        entry.nest === location.nest &&
-        entry.feather === location.feather,
-    ) ?? null
-  );
-}
-
-type LocationSegment = keyof NotesHierarchyLocation;
-type SegmentModalState = {
+type SegmentConfig = {
+  prepend?: React.ReactNode;
   segment: LocationSegment;
   label: string;
+  currentLabel: string;
+  append?: string;
 };
 
-const locationSegments: LocationSegment[] = [
-  "wing",
-  "flight",
-  "branch",
-  "nest",
-  "feather",
+const segmentConfigs: SegmentConfig[] = [
+  {
+    prepend: <House className="w-4 h-4" />,
+    segment: "wing",
+    label: "Wing",
+    currentLabel: "Current Wing",
+    append: "/",
+  },
+  {
+    prepend: <Clock className="w-4 h-4" />,
+    segment: "flight",
+    label: "Flight",
+    currentLabel: "Current Flight",
+    append: "/",
+  },
+  {
+    prepend: <Split className="w-4 h-4" />,
+
+    segment: "branch",
+    label: "Branch",
+    currentLabel: "Current Branch",
+    append: "/",
+  },
+  {
+    prepend: <NotebookTabs className="w-4 h-4" />,
+    segment: "nest",
+    label: "Unit",
+    currentLabel: "Current Unit",
+    append: "/",
+  },
+  {
+    prepend: <NotebookPen className="w-4 h-4" />,
+    segment: "feather",
+    label: "Note",
+    currentLabel: "Current Note",
+  },
 ];
-
-function listSegmentOptions(
-  entries: NotesDirectoryEntry[],
-  location: NotesHierarchyLocation,
-  segment: LocationSegment,
-) {
-  const segmentValues = entries
-    .filter((entry) => {
-      if (segment === "wing") {
-        return true;
-      }
-
-      if (segment === "flight") {
-        return entry.wing === location.wing;
-      }
-
-      if (segment === "branch") {
-        return entry.wing === location.wing && entry.flight === location.flight;
-      }
-
-      if (segment === "nest") {
-        return (
-          entry.wing === location.wing &&
-          entry.flight === location.flight &&
-          entry.branch === location.branch
-        );
-      }
-
-      return (
-        entry.wing === location.wing &&
-        entry.flight === location.flight &&
-        entry.branch === location.branch &&
-        entry.nest === location.nest
-      );
-    })
-    .map((entry) => entry[segment]);
-
-  const uniqueValues = new Set(
-    segmentValues.filter((value) => value.trim().length > 0),
-  );
-
-  return Array.from(uniqueValues).sort((left, right) => left.localeCompare(right));
-}
-
-function resolveCascadingLocation(
-  entries: NotesDirectoryEntry[],
-  current: NotesHierarchyLocation,
-  segment: LocationSegment,
-  nextValue: string,
-) {
-  const nextLocation = {
-    ...current,
-    [segment]: nextValue,
-  };
-
-  const changedSegmentIndex = locationSegments.indexOf(segment);
-
-  for (let segmentIndex = changedSegmentIndex + 1; segmentIndex < locationSegments.length; segmentIndex += 1) {
-    const childSegment = locationSegments[segmentIndex];
-    const childOptions = listSegmentOptions(entries, nextLocation, childSegment);
-
-    if (!childOptions.length) {
-      continue;
-    }
-
-    if (!childOptions.includes(nextLocation[childSegment])) {
-      nextLocation[childSegment] = childOptions[0];
-    }
-  }
-
-  return nextLocation;
-}
 
 export function NotesPage() {
   const { isDark, toggleTheme } = useThemeMode();
@@ -158,11 +82,13 @@ export function NotesPage() {
     linearContent,
     setLinearContent,
     isStorageReady,
+    lastSavedAt,
     spatialInitialData,
+    isSpatialEditorReloading,
+    spatialEditorReloadKey,
     spatialHostRef,
     createOrOpenDocumentAtLocation,
     openDocumentById,
-    saveActiveDocumentNow,
     handleSpatialChange,
     handleSpatialPaste,
   } = useNotesWorkspace();
@@ -188,43 +114,29 @@ export function NotesPage() {
     setNewNoteMode(mode);
   }, [isCreateModalOpen, mode]);
 
-  const wingOptions = useMemo(() => {
-    return buildSegmentOptions(
-      listSegmentOptions(directoryEntries, draftLocation, "wing"),
-      draftLocation.wing,
-    );
-  }, [directoryEntries, draftLocation]);
-
-  const flightOptions = useMemo(() => {
-    return buildSegmentOptions(
-      listSegmentOptions(directoryEntries, draftLocation, "flight"),
-      draftLocation.flight,
-    );
-  }, [directoryEntries, draftLocation]);
-
-  const branchOptions = useMemo(() => {
-    return buildSegmentOptions(
-      listSegmentOptions(directoryEntries, draftLocation, "branch"),
-      draftLocation.branch,
-    );
-  }, [directoryEntries, draftLocation]);
-
-  const nestOptions = useMemo(() => {
-    return buildSegmentOptions(
-      listSegmentOptions(directoryEntries, draftLocation, "nest"),
-      draftLocation.nest,
-    );
-  }, [directoryEntries, draftLocation]);
-
-  const featherOptions = useMemo(() => {
-    return buildSegmentOptions(
-      listSegmentOptions(directoryEntries, draftLocation, "feather"),
-      draftLocation.feather,
-    );
-  }, [directoryEntries, draftLocation]);
-
-  const selectedEntry = useMemo(() => {
-    return getEntryForLocation(directoryEntries, draftLocation);
+  const segmentOptions = useMemo<Record<LocationSegment, string[]>>(() => {
+    return {
+      wing: buildSegmentOptions(
+        listSegmentOptions(directoryEntries, draftLocation, "wing"),
+        draftLocation.wing,
+      ),
+      flight: buildSegmentOptions(
+        listSegmentOptions(directoryEntries, draftLocation, "flight"),
+        draftLocation.flight,
+      ),
+      branch: buildSegmentOptions(
+        listSegmentOptions(directoryEntries, draftLocation, "branch"),
+        draftLocation.branch,
+      ),
+      nest: buildSegmentOptions(
+        listSegmentOptions(directoryEntries, draftLocation, "nest"),
+        draftLocation.nest,
+      ),
+      feather: buildSegmentOptions(
+        listSegmentOptions(directoryEntries, draftLocation, "feather"),
+        draftLocation.feather,
+      ),
+    };
   }, [directoryEntries, draftLocation]);
 
   const selectedLocationSummary = useMemo(() => {
@@ -243,6 +155,22 @@ export function NotesPage() {
     draftLocation.feather,
   ]);
 
+  const autoSaveLabel = useMemo(() => {
+    if (!isStorageReady || !activeDocumentId) {
+      return "Autosave unavailable";
+    }
+
+    if (isHydratingDocument) {
+      return "Autosave paused while loading";
+    }
+
+    if (!lastSavedAt) {
+      return "Autosave enabled";
+    }
+
+    return `Autosaved at ${new Date(lastSavedAt).toLocaleTimeString()}`;
+  }, [activeDocumentId, isHydratingDocument, isStorageReady, lastSavedAt]);
+
   const handleCreateNote = async () => {
     setIsCreatingNote(true);
 
@@ -255,9 +183,31 @@ export function NotesPage() {
   };
 
   const applySegmentUpdate = (segment: LocationSegment, value: string) => {
-    setDraftLocation((current) => {
-      return resolveCascadingLocation(directoryEntries, current, segment, value);
-    });
+    const nextLocation = resolveCascadingLocation(
+      directoryEntries,
+      draftLocation,
+      segment,
+      value,
+    );
+
+    setDraftLocation(nextLocation);
+
+    if (segment !== "feather") {
+      return;
+    }
+
+    const existingEntry = getEntryForLocation(directoryEntries, nextLocation);
+
+    if (existingEntry) {
+      if (existingEntry.id !== activeDocumentId) {
+        void openDocumentById(existingEntry.id);
+      }
+
+      return;
+    }
+
+    setNewNoteMode(mode);
+    setIsCreateModalOpen(true);
   };
 
   const openSegmentModal = (
@@ -315,322 +265,78 @@ export function NotesPage() {
     setIsCreateModalOpen(true);
   };
 
-  const isSelectionActive = Boolean(selectedEntry && selectedEntry.id === activeDocumentId);
-
-  const primaryActionLabel = selectedEntry
-    ? isSelectionActive
-      ? "Selected Note Open"
-      : "Open Selected Note"
-    : "Create Note";
-
-  const handlePrimarySelectionAction = () => {
-    if (selectedEntry) {
-      if (!isSelectionActive) {
-        void openDocumentById(selectedEntry.id);
-      }
-
-      return;
-    }
-
-    setIsCreateModalOpen(true);
-  };
-
   return (
     <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
       <div className="mx-auto max-w-8xl px-4 py-6 sm:px-6 lg:px-8">
         <Card className="mb-4">
           <CardContent className="flex flex-row flex-wrap items-center justify-start gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" />}>
-                {draftLocation.wing}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Current Wing</DropdownMenuLabel>
-                  {wingOptions.map((wing) => (
-                    <DropdownMenuItem
-                      key={wing}
-                      onClick={() => {
-                        applySegmentUpdate("wing", wing);
-                      }}
-                    >
-                      {wing}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      openSegmentModal("wing", "Wing", draftLocation.wing);
-                    }}
-                  >
-                    Add Wing...
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" />}>
-                {draftLocation.flight}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Current Flight</DropdownMenuLabel>
-                  {flightOptions.map((flight) => (
-                    <DropdownMenuItem
-                      key={flight}
-                      onClick={() => {
-                        applySegmentUpdate("flight", flight);
-                      }}
-                    >
-                      {flight}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      openSegmentModal("flight", "Flight", draftLocation.flight);
-                    }}
-                  >
-                    Add Flight...
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" />}>
-                {draftLocation.branch}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Current Branch</DropdownMenuLabel>
-                  {branchOptions.map((branch) => (
-                    <DropdownMenuItem
-                      key={branch}
-                      onClick={() => {
-                        applySegmentUpdate("branch", branch);
-                      }}
-                    >
-                      {branch}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      openSegmentModal("branch", "Branch", draftLocation.branch);
-                    }}
-                  >
-                    Add Branch...
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" />}>
-                {draftLocation.nest}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Current Unit</DropdownMenuLabel>
-                  {nestOptions.map((nest) => (
-                    <DropdownMenuItem
-                      key={nest}
-                      onClick={() => {
-                        applySegmentUpdate("nest", nest);
-                      }}
-                    >
-                      {nest}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      openSegmentModal("nest", "Unit", draftLocation.nest);
-                    }}
-                  >
-                    Add Unit...
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" />}>
-                {draftLocation.feather}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Current Note</DropdownMenuLabel>
-                  {featherOptions.map((feather) => (
-                    <DropdownMenuItem
-                      key={feather}
-                      onClick={() => {
-                        applySegmentUpdate("feather", feather);
-                      }}
-                    >
-                      {feather}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      openSegmentModal("feather", "Note", draftLocation.feather);
-                    }}
-                  >
-                    Add Note...
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Button
-              onClick={handlePrimarySelectionAction}
-              disabled={!isStorageReady || isHydratingDocument || isCreatingNote || isSelectionActive}
-            >
-              {primaryActionLabel}
-            </Button>
-
-            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Note</DialogTitle>
-                  <DialogDescription>
-                    Pick the note type. The editor will switch to the selected mode
-                    as soon as the note opens.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4 px-5 py-4">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      Selected Path
-                    </p>
-                    <p className="mt-1 rounded-md border bg-muted/40 px-2 py-1 text-sm">
-                      {selectedLocationSummary}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      Note Type
-                    </p>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <Button
-                        variant={newNoteMode === "linear" ? "default" : "outline"}
-                        onClick={() => {
-                          setNewNoteMode("linear");
-                        }}
-                        aria-pressed={newNoteMode === "linear"}
-                      >
-                        Linear Note
-                      </Button>
-                      <Button
-                        variant={newNoteMode === "spatial" ? "default" : "outline"}
-                        onClick={() => {
-                          setNewNoteMode("spatial");
-                        }}
-                        aria-pressed={newNoteMode === "spatial"}
-                      >
-                        Spatial Note
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <DialogFooter>
-                  <DialogClose
-                    render={<Button variant="outline" />}
-                    disabled={isCreatingNote}
-                  >
-                    Cancel
-                  </DialogClose>
-                  <Button
-                    onClick={() => {
-                      void handleCreateNote();
-                    }}
-                    disabled={!isStorageReady || isHydratingDocument || isCreatingNote}
-                  >
-                    {isCreatingNote ? "Creating..." : "Create and Open Note"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-              <Dialog
-                open={Boolean(segmentModalState)}
-                onOpenChange={(isOpen) => {
-                  if (!isOpen) {
-                    closeSegmentModal();
-                  }
+            {segmentConfigs.map((config) => (
+              <NotesLocationSegmentDropdown
+                prepend={config.prepend}
+                key={config.segment}
+                triggerLabel={draftLocation[config.segment]}
+                currentLabel={config.currentLabel}
+                addLabel={config.label}
+                options={segmentOptions[config.segment]}
+                append={config.append}
+                onSelect={(value) => {
+                  applySegmentUpdate(config.segment, value);
                 }}
-              >
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>
-                      Add {segmentModalState?.label ?? "Value"}
-                    </DialogTitle>
-                    <DialogDescription>
-                      Enter a value to use in this part of your note hierarchy.
-                    </DialogDescription>
-                  </DialogHeader>
+                onAdd={() => {
+                  openSegmentModal(
+                    config.segment,
+                    config.label,
+                    draftLocation[config.segment],
+                  );
+                }}
+              />
+            ))}
 
-                  <div className="px-5 py-4">
-                    <Input
-                      autoFocus
-                      value={segmentDraftValue}
-                      onChange={(event) => {
-                        setSegmentDraftValue(event.currentTarget.value);
-                      }}
-                      placeholder={`Enter ${(
-                        segmentModalState?.label ?? "value"
-                      ).toLowerCase()}`}
-                    />
-                  </div>
+            <p className="text-xs text-muted-foreground">{autoSaveLabel}</p>
 
-                  <DialogFooter>
-                    <DialogClose render={<Button variant="outline" />}>
-                      Cancel
-                    </DialogClose>
-                    <Button
-                      onClick={handleCreateSegment}
-                      disabled={!segmentDraftValue.trim().length}
-                    >
-                      Add {segmentModalState?.label ?? "Value"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-            <Button
-              variant="outline"
-              onClick={() => {
-                void saveActiveDocumentNow();
+            <NotesCreateNoteDialog
+              isOpen={isCreateModalOpen}
+              onOpenChange={(isOpen) => {
+                setIsCreateModalOpen(isOpen);
               }}
-              disabled={!isStorageReady || isHydratingDocument}
-            >
-              Save Active Note
-            </Button>
+              selectedLocationSummary={selectedLocationSummary}
+              newNoteMode={newNoteMode}
+              onModeChange={(nextMode) => {
+                setNewNoteMode(nextMode);
+              }}
+              onCreate={() => {
+                void handleCreateNote();
+              }}
+              isCreatingNote={isCreatingNote}
+              isStorageReady={isStorageReady}
+              isHydratingDocument={isHydratingDocument}
+            />
 
-            <p className="w-full text-xs text-muted-foreground">
-              {selectedEntry
-                ? isSelectionActive
-                  ? "This note is already open."
-                  : "This path already exists. Opening will switch to that saved note."
-                : "No saved note exists at this path yet. Create one to start editing."}
-            </p>
+            <NotesCreateSegmentDialog
+              segmentModalState={segmentModalState}
+              segmentDraftValue={segmentDraftValue}
+              onSegmentDraftValueChange={(value) => {
+                setSegmentDraftValue(value);
+              }}
+              onCreateSegment={handleCreateSegment}
+              onClose={closeSegmentModal}
+            />
           </CardContent>
         </Card>
 
-        
-
         <div className="notes-main-editor">
           {mode === "linear" ? (
-            <LinearNotesEditor value={linearContent} onChange={setLinearContent} />
+            <LinearNotesEditor
+              value={linearContent}
+              onChange={setLinearContent}
+            />
+          ) : isSpatialEditorReloading ? (
+            <div className="flex min-h-105 items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
+              Reloading spatial note...
+            </div>
           ) : (
             <SpatialNotesEditor
-              key={activeDocumentId ?? "notes-empty"}
+              key={`${activeDocumentId ?? "notes-empty"}-${spatialEditorReloadKey}`}
               isDark={isDark}
               hostRef={spatialHostRef}
               initialData={spatialInitialData}

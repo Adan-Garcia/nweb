@@ -1,40 +1,50 @@
-import { Clock3, MoreHorizontal, Plus, Search } from "lucide-react"
+import {
+  Clock3,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   EVENT_COLORS,
   formatHumanDate,
   type CalendarEvent,
-} from "@/components/calendar/calendar-shared"
-import { StatusSlider } from "@/components/calendar/status-slider"
+} from "@/components/calendar/calendar-shared";
+import { StatusSlider } from "@/components/calendar/status-slider";
 
 type CalendarEventListCardProps = {
-  selectedDateKey: string | null
-  viewMode: "month" | "week"
-  weekLabel: string
-  monthLabel: string
-  eventTab: "active" | "completed"
-  onEventTabChange: (tab: "active" | "completed") => void
-  onClearDayFilter: () => void
-  searchTerm: string
-  onSearchTermChange: (value: string) => void
-  selectedClassFilter: string
-  onSelectedClassFilterChange: (value: string) => void
-  eventClasses: string[]
-  filteredEvents: CalendarEvent[]
-  onOpenAddEvent: (defaultDate?: string | null) => void
-  onOpenEditEvent: (event: CalendarEvent) => void
-  onDeleteEvent: (event: CalendarEvent) => void
-  onSetEventStatus: (eventId: number, nextStatus: CalendarEvent["status"]) => void
-}
+  selectedDateKey: string | null;
+  viewMode: "month" | "week";
+  weekLabel: string;
+  monthLabel: string;
+  eventTab: "active" | "completed";
+  onEventTabChange: (tab: "active" | "completed") => void;
+  onClearDayFilter: () => void;
+  searchTerm: string;
+  onSearchTermChange: (value: string) => void;
+  selectedClassFilter: string;
+  onSelectedClassFilterChange: (value: string) => void;
+  eventClasses: string[];
+  filteredEvents: CalendarEvent[];
+  onOpenAddEvent: (defaultDate?: string | null) => void;
+  onOpenEditEvent: (event: CalendarEvent) => void;
+  onDeleteEvent: (event: CalendarEvent) => void;
+  onSetEventStatus: (
+    eventId: number,
+    nextStatus: CalendarEvent["status"],
+  ) => void;
+};
 
 export function CalendarEventListCard({
   selectedDateKey,
@@ -76,14 +86,20 @@ export function CalendarEventListCard({
               }
             />
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={() => onOpenAddEvent(selectedDateKey)}>Add Event</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onOpenAddEvent(selectedDateKey)}>
+                Add Event
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2">
-          <Button size="sm" variant={eventTab === "active" ? "default" : "outline"} onClick={() => onEventTabChange("active")}>
+          <Button
+            size="sm"
+            variant={eventTab === "active" ? "default" : "outline"}
+            onClick={() => onEventTabChange("active")}
+          >
             Active
           </Button>
           <Button
@@ -113,7 +129,9 @@ export function CalendarEventListCard({
           </div>
           <select
             value={selectedClassFilter}
-            onChange={(event) => onSelectedClassFilterChange(event.target.value)}
+            onChange={(event) =>
+              onSelectedClassFilterChange(event.target.value)
+            }
             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
             aria-label="Filter events by class"
           >
@@ -131,16 +149,41 @@ export function CalendarEventListCard({
             <div
               key={event.id}
               className={`rounded-lg border border-border p-3 transition-opacity duration-300 ${
-                event.status === "complete" ? "opacity-60" : "opacity-90 hover:opacity-100"
+                event.status === "complete"
+                  ? "opacity-60"
+                  : "opacity-90 hover:opacity-100"
               }`}
             >
-              <div className="mb-2 flex items-start justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
+              <div className="mb-2 flex items-start justify-between gap-2 flex-col">
+                <div className="flex flex-row items-center min-w-full justify-between">
                   <StatusSlider
                     status={event.status}
-                    onChangeStatus={(nextStatus) => onSetEventStatus(event.id, nextStatus)}
+                    onChangeStatus={(nextStatus) =>
+                      onSetEventStatus(event.id, nextStatus)
+                    }
                     eventTitle={event.title}
                   />
+
+                  <div>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => onOpenEditEvent(event)}
+                      aria-label={`Edit ${event.title}`}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => onDeleteEvent(event)}
+                      aria-label={`Delete ${event.title}`}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-row gap-2 items-center justify-center">
                   <span
                     className={`inline-block size-2.5 rounded-full ${EVENT_COLORS[event.color] ?? "bg-slate-400"}`}
                   />
@@ -150,23 +193,9 @@ export function CalendarEventListCard({
                     {event.title}
                   </p>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button variant="ghost" size="icon-sm" aria-label={`Open actions for ${event.title}`}>
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    }
-                  />
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem onClick={() => onOpenEditEvent(event)}>Edit</DropdownMenuItem>
-                    <DropdownMenuItem variant="destructive" onClick={() => onDeleteEvent(event)}>
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
-              <div className="space-y-1 text-sm text-muted-foreground">
+
+              <div className="space-y-1 text-sm text-muted-foreground flex flex-row justify-between">
                 <p className="flex items-center gap-2">
                   <Clock3 className="size-3.5" />
                   {new Date(event.date).toLocaleDateString("en-US", {
@@ -189,5 +218,5 @@ export function CalendarEventListCard({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
