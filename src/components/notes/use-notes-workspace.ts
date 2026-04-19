@@ -701,7 +701,10 @@ export function useNotesWorkspace() {
           );
           setActiveCreatedMode(createdEntry?.createdMode ?? targetMode);
           setMode(createdEntry?.createdMode ?? targetMode);
-          await hydrateDocument(documentId, createdEntry?.createdMode ?? targetMode);
+          await hydrateDocument(
+            documentId,
+            createdEntry?.createdMode ?? targetMode,
+          );
         },
       );
     },
