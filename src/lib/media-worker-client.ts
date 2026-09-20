@@ -148,7 +148,7 @@ export class MediaWorkerClient {
     this.worker =
       typeof Worker === "undefined"
         ? null
-        : new Worker(new URL("../workers/mediaWorker.ts", import.meta.url), {
+        : new Worker(new URL("../workers/media-worker.ts", import.meta.url), {
             type: "module",
           });
 

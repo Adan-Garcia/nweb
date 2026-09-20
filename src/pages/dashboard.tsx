@@ -69,7 +69,7 @@ function toLocationLabel(entry: NotesDirectoryEntry) {
   return [entry.branch, entry.nest, entry.feather].join(" / ");
 }
 
-export function DashBoardPage() {
+export function DashboardPage() {
   const { isDark, toggleTheme } = useThemeMode();
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() =>
     loadCalendarEvents(INITIAL_EVENTS),

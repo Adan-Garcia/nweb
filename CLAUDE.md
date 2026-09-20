@@ -30,7 +30,7 @@ This document defines the architectural, stylistic, and operational rules for th
     *   `as const`.
     *   `JSON.parse(raw) as unknown` immediately followed by narrowing or a Zod parse.
     *   Branded/opaque third-party types (e.g. Excalidraw `BinaryFileData["id"]`), confined to a single adapter module.
-    *   Forbidden: `as unknown as T` (one legacy instance in `workers/mediaWorker.ts`), and `unknown` used to bypass a type error.
+    *   Forbidden: `as unknown as T` (one legacy instance in `workers/media-worker.ts`), and `unknown` used to bypass a type error.
 *   **NO monolithic components.** `[REQUIRED]` A component file over **150 lines** must be split into single-responsibility sub-components. Hooks and `lib/` modules over **300 lines** must be split by responsibility.
 *   **NO inline side-effects.** `[ENFORCED]` All side effects live in `useEffect` (or event handlers) with complete dependency arrays. `react-hooks/exhaustive-deps` is never silenced with `eslint-disable`; the React Compiler-derived rules in `eslint-plugin-react-hooks` v7 are fixed, not disabled.
 *   **NO prop drilling.** `[REQUIRED]` If a prop crosses more than 2 component levels, use composition (`children`), Context, or a Zustand store.
@@ -214,12 +214,11 @@ A change is done only when:
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
 1.  **No test toolchain.** Install Vitest, RTL, MSW, `fake-indexeddb`; add a `test` script.
-5.  **Oversized files** (limits: components 150, hooks/lib 300): `notes/use-notes-workspace.ts` 954, `notes/notes-file-viewer.tsx` 475, `pages/calendar.tsx` 402, `lib/media-worker-client.ts` 399, `lib/notes-storage.ts` 387, `pages/notes.tsx` 351, `pages/dashboard.tsx` 349, `notes/spatial-notes-editor.tsx` 313, `pages/index.tsx` 235, `workers/mediaWorker.ts` 225, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `pages/privacy.tsx` 169, `pages/pricing.tsx` 163, `pages/documentation.tsx` 158, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
+5.  **Oversized files** (limits: components 150, hooks/lib 300): `notes/use-notes-workspace.ts` 954, `notes/notes-file-viewer.tsx` 475, `pages/calendar.tsx` 402, `lib/media-worker-client.ts` 399, `lib/notes-storage.ts` 387, `pages/notes.tsx` 351, `pages/dashboard.tsx` 349, `notes/spatial-notes-editor.tsx` 313, `pages/index.tsx` 235, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `pages/privacy.tsx` 169, `pages/pricing.tsx` 163, `pages/documentation.tsx` 158, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
 7.  **No formatter** (mixed tabs/spaces, quotes, semicolons). Adopt Prettier + `.editorconfig` and reformat in one dedicated commit.
 8.  **ESLint is not type-aware** (`recommended`, not `recommendedTypeChecked`); no import-order, `max-lines`, or `no-console` rules.
 9.  **No route-level code splitting** (`App.tsx` eagerly imports Excalidraw/pdf.js pages).
 10. **Hand-rolled storage validation:** `lib/calendar-storage.ts` validates stored events with a manual type guard (`isCalendarEvent`) that re-lists the colour and status literals already defined in `calendar-shared.ts`, instead of reusing a Zod schema. It also imports `CalendarEvent` from `components/calendar/calendar-shared`, an upward dependency from `lib/` (§2.1); move the shared type down into `lib/`.
 11. **Zustand installed but unused.**
-12. **Naming/import stragglers:** `workers/mediaWorker.ts` (camelCase; should be `media-worker.ts`); `App.tsx` imports `@/pages/calendar.tsx` with an extension; `DashBoardPage` casing.
 13. **`README.md` is the unmodified Vite template.** Replace with real project docs.
 14. **Legacy plain CSS:** `App.css` (391 lines) and `pages/notes.css` (273 lines) should migrate to Tailwind utilities over time.

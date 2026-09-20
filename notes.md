@@ -14,7 +14,7 @@
 ## 🚀 2. The Media Processing Pipeline
 *Handling massive student files (lectures, textbooks, whiteboard photos) without freezing the React UI.*
 - [x] **Web Worker Setup**
-  - [x] Create a dedicated Web Worker (`mediaWorker.ts`) to handle all heavy file processing off the main React thread.
+  - [x] Create a dedicated Web Worker (`media-worker.ts`) to handle all heavy file processing off the main React thread.
 - [x] **Image Optimization (WebP)**
   - [x] Intercept clipboard `onPaste` and `onDrop` events in Excalidraw.
   - [x] Pass dropped image `File` objects to the Web Worker to draw onto an `OffscreenCanvas` and convert to `image/webp` to reduce local storage size.
