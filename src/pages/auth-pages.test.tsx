@@ -52,6 +52,18 @@ describe("the forms on the auth pages", () => {
     expect(screen.getByLabelText("Confirm Password")).toBeInTheDocument();
   });
 
+  it("sign up talks about signing up, not signing in", () => {
+    render(<SignupPage />);
+    expect(screen.getByRole("region", { name: "Sign up form" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Sign in form" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).not.toHaveTextContent(/sign in|pick up/i);
+  });
+
+  it("sign in still says it is the sign in form", () => {
+    render(<SignInPage />);
+    expect(screen.getByRole("region", { name: "Sign in form" })).toBeInTheDocument();
+  });
+
   it("the unlogged page links to the privacy policy and offers signup", () => {
     render(<UnloggedPage />);
     expect(screen.getByRole("link", { name: "privacy policy" })).toHaveAttribute(
