@@ -50,3 +50,22 @@ export function restoreSceneFiles(
 
   return restoredFiles;
 }
+
+/** A fresh id for a file added to the scene. */
+export function newSceneFileId(): BinaryFileData["id"] {
+  return crypto.randomUUID() as BinaryFileData["id"];
+}
+
+/** A rendered PNG page as a file Excalidraw can hold. */
+export function createPngSceneFile(
+  id: BinaryFileData["id"],
+  dataUrl: string,
+  created: number,
+): BinaryFileData {
+  return {
+    id,
+    mimeType: "image/png",
+    dataURL: dataUrl as BinaryFileData["dataURL"],
+    created,
+  };
+}
