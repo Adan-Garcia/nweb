@@ -86,6 +86,6 @@ export async function renderPdfPagesToPng(pdfFile: File) {
 
     return renderedPages;
   } finally {
-    await pdf.destroy();
+    await loadingTask.destroy();
   }
 }

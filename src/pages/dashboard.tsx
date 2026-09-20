@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  ArrowRight,
   BookOpenText,
   CalendarClock,
   CalendarDays,
@@ -33,11 +32,6 @@ import {
 } from "@/lib/notes-storage";
 
 import "../App.css";
-
-function startOfTodayDate() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
 
 function dateKeyToDate(dateKey: string) {
   return new Date(`${dateKey}T00:00:00`);
@@ -109,9 +103,12 @@ export function DashBoardPage() {
   }, []);
 
   const todayKey = formatDateKey(new Date());
-  const todayStart = startOfTodayDate();
-  const upcomingWindowEnd = new Date(todayStart);
-  upcomingWindowEnd.setDate(todayStart.getDate() + 7);
+  const todayStart = useMemo(() => dateKeyToDate(todayKey), [todayKey]);
+  const upcomingWindowEnd = useMemo(() => {
+    const windowEnd = new Date(todayStart);
+    windowEnd.setDate(todayStart.getDate() + 7);
+    return windowEnd;
+  }, [todayStart]);
 
   const dueToday = useMemo(() => {
     return calendarEvents.filter((event) => event.date === todayKey);
@@ -288,6 +285,7 @@ export function DashBoardPage() {
               <Button
                 variant="outline"
                 className="w-full"
+                nativeButton={false}
                 render={<a href="/calendar" />}
               >
                 <CalendarDays className="size-4" />
@@ -336,6 +334,7 @@ export function DashBoardPage() {
               <Button
                 variant="outline"
                 className="w-full"
+                nativeButton={false}
                 render={<a href="/notes" />}
               >
                 <CircleCheck className="size-4" />

@@ -267,7 +267,7 @@ export function CalendarPage() {
   };
 
   const deleteEvent = (eventToDelete: CalendarEvent) => {
-    const shouldDelete = window.confirm(`Delete \"${eventToDelete.title}\"?`);
+    const shouldDelete = window.confirm(`Delete "${eventToDelete.title}"?`);
     if (!shouldDelete) {
       return;
     }

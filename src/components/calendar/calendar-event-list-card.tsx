@@ -1,6 +1,5 @@
 import {
   Clock3,
-  MoreHorizontal,
   Plus,
   Search,
   Pencil,

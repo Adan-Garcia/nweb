@@ -9,29 +9,14 @@ import {
 	Sparkles,
 	ArrowRight,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useThemeMode } from "@/hooks/use-theme-mode"
 import { BrandIcon } from "@/components/brand-icon"
 import "../App.css"
 
 export function OnboardingPage() {
-	const [isDark, setIsDark] = useState(false)
+	const { isDark, toggleTheme: handleToggleTheme } = useThemeMode()
 	const [currentStep, setCurrentStep] = useState(0)
-
-	useEffect(() => {
-		const savedTheme = window.localStorage.getItem("theme")
-		const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-		const shouldUseDark = savedTheme === "dark" || (!savedTheme && prefersDark)
-
-		setIsDark(shouldUseDark)
-		document.documentElement.classList.toggle("dark", shouldUseDark)
-	}, [])
-
-	const handleToggleTheme = () => {
-		const nextIsDark = !isDark
-		setIsDark(nextIsDark)
-		document.documentElement.classList.toggle("dark", nextIsDark)
-		window.localStorage.setItem("theme", nextIsDark ? "dark" : "light")
-	}
 
 	const onboardingSteps = [
 		{

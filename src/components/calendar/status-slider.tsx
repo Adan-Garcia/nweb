@@ -49,11 +49,17 @@ export function StatusSlider({
     onChangeStatus(nextStatus);
   };
 
-  useEffect(() => {
+  const [syncedStatus, setSyncedStatus] = useState(status);
+  const [syncedIsSliding, setSyncedIsSliding] = useState(isSliding);
+
+  if (syncedStatus !== status || syncedIsSliding !== isSliding) {
+    setSyncedStatus(status);
+    setSyncedIsSliding(isSliding);
+
     if (!isSliding) {
       setOptimisticStatus(status);
     }
-  }, [status, isSliding]);
+  }
 
   useEffect(() => {
     return () => {

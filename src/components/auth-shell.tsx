@@ -3,7 +3,8 @@ import {
   MoonIcon,
   SunIcon,
 } from "lucide-react"
-import { type ReactNode, useEffect, useState } from "react"
+import type { ReactNode } from "react"
+import { useThemeMode } from "@/hooks/use-theme-mode"
 import { BrandIcon } from "@/components/brand-icon"
 
 type AuthBenefit = {
@@ -51,23 +52,7 @@ export function AuthShell({
   benefitCopyClassName,
   brandFooter,
 }: AuthShellProps) {
-  const [isDark, setIsDark] = useState(false)
-
-  useEffect(() => {
-    const savedTheme = window.localStorage.getItem("theme")
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    const shouldUseDark = savedTheme === "dark" || (!savedTheme && prefersDark)
-
-    setIsDark(shouldUseDark)
-    document.documentElement.classList.toggle("dark", shouldUseDark)
-  }, [])
-
-  const handleToggleTheme = () => {
-    const nextIsDark = !isDark
-    setIsDark(nextIsDark)
-    document.documentElement.classList.toggle("dark", nextIsDark)
-    window.localStorage.setItem("theme", nextIsDark ? "dark" : "light")
-  }
+  const { isDark, toggleTheme: handleToggleTheme } = useThemeMode()
 
   return (
     <main className={pageClassName}>
