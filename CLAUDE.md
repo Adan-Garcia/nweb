@@ -73,7 +73,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   Default to local `useState` / `useReducer`. Prefer **derived state** over duplicated state.
 *   **Shared mutable, non-rendering state** (timers, "latest value" mirrors, in-flight request ids) lives in one session hook that returns a stable bundle of refs (`notes/use-notes-session.ts`), which sibling hooks receive as a parameter. React Compiler's `react-hooks/immutability` rule only allows mutating a ref that arrived as an argument if it is a local whose name ends in `Ref`, so destructure at the top of the hook (`const { pendingEditRef } = refs`) and list those locals in dependency arrays.
 *   **Derive, don't sync.** If a value can be computed from existing state, compute it; do not copy it into state from an effect (`react-hooks/set-state-in-effect` fails the build once the file is analysable).
-*   Shared UI state: composition or Context first. Zustand (installed, currently unused) only when state must be shared across unrelated trees; stores live in `src/stores/use-<name>-store.ts`. Keep global state minimal.
+*   Shared UI state: composition or Context first. Zustand (installed on purpose for this, currently unused; do not remove it) only when state must be shared across unrelated trees; stores live in `src/stores/use-<name>-store.ts`. Keep global state minimal.
 
 ### 2.5 Routing
 *   All routes are declared in `src/App.tsx`. Pages are named exports; `export default` is reserved for `App`. `[REQUIRED]` (`grep -rln "export default" src` → only `App.tsx`.)
@@ -222,6 +222,4 @@ Pre-existing; not blockers for unrelated work (§0). Highest value first.
 5.  **Dead shadcn scaffolding.** `app-sidebar.tsx` (+ `app-sidebar-data.ts`), `version-switcher.tsx`, `search-form.tsx`, `team-switcher.tsx`, `nav-main.tsx`, `nav-projects.tsx` and `nav-user.tsx` are generated sample blocks that nothing imports (the real navigation is `workspace-shell.tsx`). Delete them, or wire them up; do not let them accrete.
 7.  **No formatter** (mixed tabs/spaces, quotes, semicolons). Adopt Prettier + `.editorconfig` and reformat in one dedicated commit.
 8.  **No import-order lint rule.** The group order in §3 is not enforced; it needs `eslint-plugin-import` (or similar), which is a new dependency.
-11. **Zustand installed but unused.**
-13. **`README.md` is the unmodified Vite template.** Replace with real project docs.
 14. **Legacy plain CSS:** `App.css` (391 lines) and `pages/notes.css` (273 lines) should migrate to Tailwind utilities over time.
