@@ -18,8 +18,8 @@ import { Input } from "@/components/ui/input";
 import {
   EVENT_COLORS,
   formatHumanDate,
-  type CalendarEvent,
 } from "@/components/calendar/calendar-shared";
+import type { CalendarEvent } from "@/lib/calendar-event";
 import { StatusSlider } from "@/components/calendar/status-slider";
 
 type CalendarEventListCardProps = {

@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EVENT_COLORS, formatDateKey, weekDays } from "@/components/calendar/calendar-shared"
-import type { CalendarEvent } from "@/components/calendar/calendar-shared"
+import type { CalendarEvent } from "@/lib/calendar-event"
 
 type CalendarGridCardProps = {
   viewMode: "month" | "week"

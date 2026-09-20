@@ -13,8 +13,8 @@ import {
   INITIAL_EVENTS,
   formatDateKey,
   formatHumanDate,
-  type CalendarEvent,
 } from "@/components/calendar/calendar-shared";
+import type { CalendarEvent } from "@/lib/calendar-event";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { Button } from "@/components/ui/button";
 import {

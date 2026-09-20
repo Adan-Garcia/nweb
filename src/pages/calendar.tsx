@@ -3,14 +3,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import {
-  EVENT_COLOR_OPTIONS,
   eventFormSchema,
   formatDateKey,
   INITIAL_EVENTS,
   startOfWeek,
-  type CalendarEvent,
   type EventFormValues,
 } from "@/components/calendar/calendar-shared";
+import { EVENT_COLOR_OPTIONS, type CalendarEvent } from "@/lib/calendar-event";
 import { CalendarEventListCard } from "@/components/calendar/calendar-event-list-card";
 import { CalendarGridCard } from "@/components/calendar/calendar-grid-card";
 import { EventOverlay } from "@/components/calendar/event-overlay";

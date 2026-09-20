@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-import {
-  STATUS_META,
-  statusOrder,
-  type CalendarEvent,
-} from "@/components/calendar/calendar-shared";
+import { STATUS_META, statusOrder } from "@/components/calendar/calendar-shared";
+import type { CalendarEvent } from "@/lib/calendar-event";
 
 const COMPLETE_COMMIT_DELAY_MS = 150;
 

@@ -1,26 +1,13 @@
 import { z } from "zod";
 
-export const EVENT_COLOR_OPTIONS = [
-  "Math",
-  "History",
-  "Physics",
-  "GroupWork",
-  "Chemistry",
-] as const;
+import {
+  EVENT_COLOR_OPTIONS,
+  EVENT_STATUS_OPTIONS,
+  type CalendarEvent,
+  type EventColor,
+} from "@/lib/calendar-event";
 
-export type CalendarEvent = {
-  id: number;
-  title: string;
-  date: string;
-  time: string;
-  color: (typeof EVENT_COLOR_OPTIONS)[number];
-  status: "incomplete" | "inprogress" | "complete";
-};
-
-export const EVENT_COLORS: Record<
-  (typeof EVENT_COLOR_OPTIONS)[number],
-  string
-> = {
+export const EVENT_COLORS: Record<EventColor, string> = {
   Math: "bg-emerald-500",
   History: "bg-rose-500",
   Physics: "bg-sky-500",
@@ -73,11 +60,7 @@ export const INITIAL_EVENTS: CalendarEvent[] = [
 
 export const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export const statusOrder: CalendarEvent["status"][] = [
-  "incomplete",
-  "inprogress",
-  "complete",
-];
+export const statusOrder: CalendarEvent["status"][] = [...EVENT_STATUS_OPTIONS];
 
 export const eventFormSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
@@ -89,7 +72,7 @@ export const eventFormSchema = z.object({
     }),
   time: z.string().trim().min(1, "Time is required"),
   color: z.enum(EVENT_COLOR_OPTIONS),
-  status: z.enum(["incomplete", "inprogress", "complete"]),
+  status: z.enum(EVENT_STATUS_OPTIONS),
 });
 
 export type EventFormValues = z.infer<typeof eventFormSchema>;

@@ -55,7 +55,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | Workers | `src/workers/` | Web Worker entry points. No DOM, no React. | `lib/` types only |
 
 *   **Feature-specific hooks are co-located** in their feature folder (e.g. `components/notes/use-notes-workspace.ts`). Move a hook to `src/hooks/` only when a second feature needs it.
-*   Check: `grep -rnE 'from "@/(pages|components)' src/lib src/hooks` and `grep -rn 'from "@/pages' src/components`. The only known hit is the legacy upward type import in `lib/calendar-storage.ts` (§13); anything else is a new violation.
+*   Check: `grep -rnE 'from "@/(pages|components)' src/lib src/hooks` and `grep -rn 'from "@/pages' src/components`. Both must return nothing.
 
 ### 2.2 Presentational vs. logic
 *   **Presentational components** are pure functions: props in, JSX out, local UI state only (toggle, hover, open/close).
@@ -65,7 +65,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 ### 2.3 Data access and persistence
 *   Components **never** touch `indexedDB`, `localStorage`, `Worker`, or `fetch` directly. `[REQUIRED]` Go through a `lib/*-storage.ts` module or a `lib/*-client.ts` worker client. (Legacy exception: `hooks/use-theme-mode.ts` reads `localStorage`.)
 *   **IndexedDB schema changes** must bump `NOTES_DB_VERSION` (or the relevant version constant) and add a migration in the `upgrade` callback. Never edit a shipped store shape in place. `[REQUIRED]`
-*   **Data read from storage is untrusted.** Validate with a Zod schema before use; do not trust a `Partial<T>` cast. `[TARGET]` for existing readers (`calendar-storage.ts`); `[REQUIRED]` for new ones.
+*   **Data read from storage is untrusted.** Validate with a Zod schema before use; do not trust a cast. `[REQUIRED]` Define the schema once in `lib/` and infer the type from it (`lib/calendar-event.ts` → `CalendarEvent`; `lib/calendar-storage.ts` parses with it).
 *   **Workers** are constructed via `new Worker(new URL("../workers/x.ts", import.meta.url), { type: "module" })` inside a `lib/*-client.ts` file, so Vite bundles them. Move CPU-heavy work (image optimization, compression, PDF processing) off the main thread.
 *   **If a network backend is introduced:** all requests go through a dedicated service module (e.g. `src/lib/api/`), responses are Zod-validated, and components consume them through hooks or a data-fetching library. TanStack Query is **not** installed; adding it needs approval.
 
@@ -218,7 +218,6 @@ Pre-existing; not blockers for unrelated work (§0). Highest value first.
 7.  **No formatter** (mixed tabs/spaces, quotes, semicolons). Adopt Prettier + `.editorconfig` and reformat in one dedicated commit.
 8.  **ESLint is not type-aware** (`recommended`, not `recommendedTypeChecked`); no import-order, `max-lines`, or `no-console` rules.
 9.  **No route-level code splitting** (`App.tsx` eagerly imports Excalidraw/pdf.js pages).
-10. **Hand-rolled storage validation:** `lib/calendar-storage.ts` validates stored events with a manual type guard (`isCalendarEvent`) that re-lists the colour and status literals already defined in `calendar-shared.ts`, instead of reusing a Zod schema. It also imports `CalendarEvent` from `components/calendar/calendar-shared`, an upward dependency from `lib/` (§2.1); move the shared type down into `lib/`.
 11. **Zustand installed but unused.**
 13. **`README.md` is the unmodified Vite template.** Replace with real project docs.
 14. **Legacy plain CSS:** `App.css` (391 lines) and `pages/notes.css` (273 lines) should migrate to Tailwind utilities over time.
