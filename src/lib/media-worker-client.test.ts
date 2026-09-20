@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MediaWorkerClient, createMediaWorkerClient } from "./media-worker-client";
+import { createMediaWorkerClient, MediaWorkerClient } from "./media-worker-client";
 import type { WorkerRequest, WorkerResponse } from "./media-worker-protocol";
 
 class FakeWorker {

@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { ChevronRight, FolderOpen } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";

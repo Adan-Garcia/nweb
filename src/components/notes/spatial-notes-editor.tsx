@@ -1,13 +1,13 @@
+import { useRef } from "react";
 import { Excalidraw, MainMenu } from "@excalidraw/excalidraw";
 import type { ExcalidrawProps } from "@excalidraw/excalidraw/types";
-import { useRef } from "react";
 import type { RefObject } from "react";
 
 import {
+  isPdfEmbeddableUrl,
   MAX_PEN_WIDTH,
   MIN_PEN_WIDTH,
   PEN_WIDTH_STEP,
-  isPdfEmbeddableUrl,
 } from "@/components/notes/spatial-notes-editor-utils";
 import { SpatialNotesToolbar } from "@/components/notes/spatial-notes-toolbar";
 import type { NotesSpatialInitialData } from "@/components/notes/types";

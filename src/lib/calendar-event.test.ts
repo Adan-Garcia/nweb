@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EVENT_COLOR_OPTIONS, EVENT_STATUS_OPTIONS, calendarEventSchema } from "./calendar-event";
+import { calendarEventSchema, EVENT_COLOR_OPTIONS, EVENT_STATUS_OPTIONS } from "./calendar-event";
 
 const validEvent = {
   id: 1,

@@ -1,8 +1,9 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { StatusSlider } from "./status-slider";
 import type { CalendarEvent } from "@/lib/calendar-event";
+
+import { StatusSlider } from "./status-slider";
 
 afterEach(() => vi.useRealTimers());
 

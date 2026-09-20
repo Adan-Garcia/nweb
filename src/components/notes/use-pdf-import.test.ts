@@ -1,8 +1,8 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ChangeEvent } from "react";
-
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import type { ChangeEvent } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import type { RenderedPdfPage } from "./spatial-notes-pdf";
 
 const renderPdfPagesToPng = vi.fn<(file: File) => Promise<RenderedPdfPage[] | null>>();

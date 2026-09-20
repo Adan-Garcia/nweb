@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { NotesDirectoryEntry, NotesHierarchyLocation } from "@/components/notes/types";
+
 import { NotesFileViewer } from "./notes-file-viewer";
 
 function entry(

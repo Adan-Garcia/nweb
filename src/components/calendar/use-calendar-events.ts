@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { INITIAL_EVENTS, type EventFormValues } from "@/components/calendar/calendar-shared";
+import { type EventFormValues, INITIAL_EVENTS } from "@/components/calendar/calendar-shared";
 import { nextEventId } from "@/components/calendar/calendar-views";
 import type { CalendarEvent } from "@/lib/calendar-event";
 import { loadCalendarEvents, saveCalendarEvents } from "@/lib/calendar-storage";

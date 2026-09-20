@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { CalendarEvent } from "@/lib/calendar-event";
+
+import { formatDateKey } from "./calendar-shared";
 import {
   buildMonthCells,
   buildWeekDates,
@@ -14,7 +16,6 @@ import {
   startOfDay,
   startOfMonth,
 } from "./calendar-views";
-import { formatDateKey } from "./calendar-shared";
 
 // Mid-month dates keep these tests independent of the machine's timezone.
 function event(overrides: Partial<CalendarEvent> & Pick<CalendarEvent, "id">): CalendarEvent {

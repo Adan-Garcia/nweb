@@ -1,13 +1,13 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { NotesLocationForm } from "@/components/notes/notes-location-form";
-import { NotesTreeView } from "@/components/notes/notes-tree-view";
 import { formatPath } from "@/components/notes/notes-tree";
+import { NotesTreeView } from "@/components/notes/notes-tree-view";
 import type {
   NotesDirectoryEntry,
   NotesDocumentMode,
   NotesHierarchyLocation,
 } from "@/components/notes/types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 type NotesFileViewerProps = {
   entries: NotesDirectoryEntry[];

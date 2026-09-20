@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { listNotesDirectoryEntries, upsertNotesDirectoryEntry } from "./notes-directory-storage";
 import {
   loadNotesDocument,
   saveLinearDocumentPayload,
   saveSpatialDocumentPayload,
 } from "./notes-document-storage";
-import { listNotesDirectoryEntries, upsertNotesDirectoryEntry } from "./notes-directory-storage";
 import type { PersistedSceneFile } from "./notes-model";
 
 // jsdom's Blob is cloned into a plain object by fake-indexeddb's structuredClone,

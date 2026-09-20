@@ -1,11 +1,12 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
+import { describe, expect, it, vi } from "vitest";
 
 import type { CalendarEvent } from "@/lib/calendar-event";
-import { buildWeekDates, groupEventsByDate } from "./calendar-views";
+
 import { CalendarGridCard } from "./calendar-grid-card";
+import { buildWeekDates, groupEventsByDate } from "./calendar-views";
 
 const event = (
   id: number,

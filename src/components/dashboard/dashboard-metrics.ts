@@ -1,6 +1,6 @@
+import { dateKeyToDate, formatDateKey } from "@/components/calendar/calendar-shared";
 import type { CalendarEvent } from "@/lib/calendar-event";
 import type { NotesDirectoryEntry } from "@/lib/notes-model";
-import { dateKeyToDate, formatDateKey } from "@/components/calendar/calendar-shared";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

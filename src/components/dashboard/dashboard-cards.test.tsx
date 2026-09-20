@@ -1,9 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
 import { CalendarClock } from "lucide-react";
+import { describe, expect, it } from "vitest";
 
 import type { CalendarEvent } from "@/lib/calendar-event";
 import type { NotesDirectoryEntry } from "@/lib/notes-model";
+
 import { DashboardStatCard } from "./dashboard-stat-card";
 import { NextPriorityCard } from "./next-priority-card";
 import { RecentNotesCard } from "./recent-notes-card";

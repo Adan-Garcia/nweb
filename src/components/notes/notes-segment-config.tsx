@@ -1,5 +1,5 @@
+import { Clock, House, NotebookPen, NotebookTabs, Split } from "lucide-react";
 import type { ReactNode } from "react";
-import { House, Clock, Split, NotebookTabs, NotebookPen } from "lucide-react";
 
 import type { LocationSegment } from "@/components/notes/location-hierarchy";
 

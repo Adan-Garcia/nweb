@@ -1,9 +1,9 @@
+import type { BinaryFileData } from "@excalidraw/excalidraw/types";
 import { describe, expect, it } from "vitest";
 
-import type { BinaryFileData } from "@excalidraw/excalidraw/types";
 import { newSceneFileId } from "./excalidraw-adapter";
-import { describePdfInsert, layoutPdfPages } from "./spatial-notes-pdf-layout";
 import type { RenderedPdfPage } from "./spatial-notes-pdf";
+import { describePdfInsert, layoutPdfPages } from "./spatial-notes-pdf-layout";
 
 function page(pageNumber: number, totalPages: number, width = 500, height = 700): RenderedPdfPage {
   return { dataUrl: `data:image/png;base64,p${pageNumber}`, width, height, pageNumber, totalPages };

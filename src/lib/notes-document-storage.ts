@@ -2,8 +2,8 @@ import { blobToDataUrl } from "./blob-utils";
 import { getNotesDb } from "./notes-db";
 import { touchNotesDirectoryEntry } from "./notes-directory-storage";
 import {
-  DEFAULT_NOTES_DOCUMENT_ID,
   buildEmptyDocument,
+  DEFAULT_NOTES_DOCUMENT_ID,
   type LoadedNotesDocument,
   type LoadedSceneFile,
   type NotesDocumentMode,

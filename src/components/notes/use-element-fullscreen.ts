@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type RefObject } from "react";
+import { type RefObject, useCallback, useEffect, useState } from "react";
 
 /** Fullscreen state for one element, plus a toggle. */
 export function useElementFullscreen(elementRef: RefObject<HTMLElement | null>) {

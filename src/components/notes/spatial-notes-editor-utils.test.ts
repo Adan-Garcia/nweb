@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_PEN_WIDTH,
-  MAX_PEN_WIDTH,
-  MIN_PEN_WIDTH,
   clampPenWidth,
+  DEFAULT_PEN_WIDTH,
   fitWithinBounds,
   isPdfEmbeddableUrl,
+  MAX_PEN_WIDTH,
+  MIN_PEN_WIDTH,
   parsePdfPageSelection,
 } from "./spatial-notes-editor-utils";
 

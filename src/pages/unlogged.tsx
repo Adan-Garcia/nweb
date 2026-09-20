@@ -1,8 +1,9 @@
-import { Button } from "@/components/ui/button";
-
 import { MoonIcon, SunIcon } from "lucide-react";
-import { useThemeMode } from "@/hooks/use-theme-mode";
+
 import { BrandIcon } from "@/components/brand-icon";
+import { Button } from "@/components/ui/button";
+import { useThemeMode } from "@/hooks/use-theme-mode";
+
 import "../App.css";
 
 export function UnloggedPage() {

@@ -1,8 +1,9 @@
-import { Button } from "@/components/ui/button";
 import { MoonIcon, SunIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { useThemeMode } from "@/hooks/use-theme-mode";
+
 import { BrandIcon } from "@/components/brand-icon";
+import { Button } from "@/components/ui/button";
+import { useThemeMode } from "@/hooks/use-theme-mode";
 
 type AuthBenefit = {
   icon: ReactNode;

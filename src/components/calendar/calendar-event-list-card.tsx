@@ -1,5 +1,9 @@
 import { Plus } from "lucide-react";
 
+import { CalendarEventFilters } from "@/components/calendar/calendar-event-filters";
+import { CalendarEventListItem } from "@/components/calendar/calendar-event-list-item";
+import { formatHumanDate } from "@/components/calendar/calendar-shared";
+import type { CalendarViewMode, EventTab } from "@/components/calendar/calendar-views";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -8,10 +12,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CalendarEventFilters } from "@/components/calendar/calendar-event-filters";
-import { CalendarEventListItem } from "@/components/calendar/calendar-event-list-item";
-import { formatHumanDate } from "@/components/calendar/calendar-shared";
-import type { CalendarViewMode, EventTab } from "@/components/calendar/calendar-views";
 import type { CalendarEvent } from "@/lib/calendar-event";
 
 type CalendarEventListCardProps = {

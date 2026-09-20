@@ -1,3 +1,4 @@
+import type { NotesDocumentMode } from "@/components/notes/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,8 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-import type { NotesDocumentMode } from "@/components/notes/types";
 
 type NotesCreateNoteDialogProps = {
   isOpen: boolean;

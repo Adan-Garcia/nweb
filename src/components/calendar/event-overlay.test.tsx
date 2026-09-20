@@ -1,10 +1,11 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { describe, expect, it, vi } from "vitest";
 import { useForm } from "react-hook-form";
+import { describe, expect, it, vi } from "vitest";
 
 import { EVENT_COLOR_OPTIONS } from "@/lib/calendar-event";
+
 import { eventFormSchema, type EventFormValues } from "./calendar-shared";
 import { EventOverlay } from "./event-overlay";
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { CalendarEvent } from "@/lib/calendar-event";
 import type { NotesDirectoryEntry } from "@/lib/notes-model";
+
 import { computeDashboardMetrics, formatLastUpdated, toLocationLabel } from "./dashboard-metrics";
 
 // Thursday, local time. Local-time constructors keep this timezone-independent.

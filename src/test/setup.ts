@@ -1,9 +1,10 @@
-import "@testing-library/jest-dom/vitest";
-import "fake-indexeddb/auto";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
 
 import { server } from "./server";
+
+import "@testing-library/jest-dom/vitest";
+import "fake-indexeddb/auto";
 
 // Any network request without a handler fails the test. `data:` and `blob:` URLs are
 // in-memory (fetch() is used to turn them into Blobs), so they are exempt.

@@ -1,8 +1,8 @@
 import { Search } from "lucide-react";
 
+import type { EventTab } from "@/components/calendar/calendar-views";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { EventTab } from "@/components/calendar/calendar-views";
 
 type CalendarEventFiltersProps = {
   eventTab: EventTab;

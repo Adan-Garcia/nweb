@@ -1,3 +1,4 @@
+import type { SegmentModalState } from "@/components/notes/location-hierarchy";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,8 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-
-import type { SegmentModalState } from "@/components/notes/location-hierarchy";
 
 type NotesCreateSegmentDialogProps = {
   segmentModalState: SegmentModalState | null;

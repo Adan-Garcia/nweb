@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { NotesDirectoryEntry, NotesHierarchyLocation } from "@/components/notes/types";
+
 import { useNotesLocationPicker } from "./use-notes-location-picker";
 
 function entry(location: NotesHierarchyLocation): NotesDirectoryEntry {

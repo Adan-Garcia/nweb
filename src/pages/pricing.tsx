@@ -1,10 +1,10 @@
-import { Sparkles, ShieldCheck } from "lucide-react";
+import { ShieldCheck, Sparkles } from "lucide-react";
 
 import { MarketingCallout } from "@/components/marketing/marketing-callout";
 import { MarketingEyebrow } from "@/components/marketing/marketing-eyebrow";
 import { MarketingPage } from "@/components/marketing/marketing-page";
-import { PRICING_TIERS } from "@/components/marketing/pricing-tiers";
 import { PricingTierCard } from "@/components/marketing/pricing-tier-card";
+import { PRICING_TIERS } from "@/components/marketing/pricing-tiers";
 
 export function PricingPage() {
   return (

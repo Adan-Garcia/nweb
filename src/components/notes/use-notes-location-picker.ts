@@ -4,8 +4,8 @@ import {
   buildSegmentOptions,
   getEntryForLocation,
   listSegmentOptions,
-  resolveCascadingLocation,
   type LocationSegment,
+  resolveCascadingLocation,
   type SegmentModalState,
 } from "@/components/notes/location-hierarchy";
 import type {

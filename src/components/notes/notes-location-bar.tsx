@@ -1,9 +1,9 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { NotesCreateNoteDialog } from "@/components/notes/create-note-dialog";
 import { NotesCreateSegmentDialog } from "@/components/notes/create-segment-dialog";
 import { NotesLocationSegmentDropdown } from "@/components/notes/location-segment-dropdown";
 import { SEGMENT_CONFIGS } from "@/components/notes/notes-segment-config";
 import type { NotesLocationPicker } from "@/components/notes/use-notes-location-picker";
+import { Card, CardContent } from "@/components/ui/card";
 
 type NotesLocationBarProps = {
   picker: NotesLocationPicker;

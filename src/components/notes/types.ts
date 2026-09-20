@@ -1,7 +1,8 @@
 import type { ExcalidrawInitialDataState, ExcalidrawProps } from "@excalidraw/excalidraw/types";
+
 import type {
-  NotesDocumentMode,
   NotesDirectoryEntry,
+  NotesDocumentMode,
   NotesHierarchyLocation,
 } from "@/lib/notes-model";
 
@@ -19,4 +20,4 @@ export type SpatialSnapshot = {
 
 export type NotesSpatialInitialData = ExcalidrawInitialDataState | null;
 
-export type { NotesHierarchyLocation, NotesDirectoryEntry, NotesDocumentMode };
+export type { NotesDirectoryEntry, NotesDocumentMode, NotesHierarchyLocation };

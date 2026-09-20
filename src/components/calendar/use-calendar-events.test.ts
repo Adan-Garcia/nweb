@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { INITIAL_EVENTS, type EventFormValues } from "./calendar-shared";
+import { type EventFormValues, INITIAL_EVENTS } from "./calendar-shared";
 import { useCalendarEvents } from "./use-calendar-events";
 
 const STORAGE_KEY = "cuervo-calendar-events-v1";

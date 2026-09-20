@@ -1,5 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
 import { Bell, LogOut, MoonIcon, Settings, SunIcon } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
 import { BrandIcon } from "@/components/brand-icon";
 import { Button } from "@/components/ui/button";

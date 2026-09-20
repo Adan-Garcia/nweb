@@ -5,12 +5,14 @@ import { useForm } from "react-hook-form";
 import {
   dateKeyToDate,
   eventFormSchema,
-  formatDateKey,
   type EventFormValues,
+  formatDateKey,
 } from "@/components/calendar/calendar-shared";
 import {
   buildMonthCells,
   buildWeekDates,
+  type CalendarViewMode,
+  type EventTab,
   filterVisibleEvents,
   formatMonthLabel,
   formatWeekLabel,
@@ -19,11 +21,9 @@ import {
   scopeEventsToView,
   startOfDay,
   startOfMonth,
-  type CalendarViewMode,
-  type EventTab,
 } from "@/components/calendar/calendar-views";
 import { useCalendarEvents } from "@/components/calendar/use-calendar-events";
-import { EVENT_COLOR_OPTIONS, type CalendarEvent } from "@/lib/calendar-event";
+import { type CalendarEvent, EVENT_COLOR_OPTIONS } from "@/lib/calendar-event";
 
 const DEFAULT_EVENT_TIME = "9:00 AM";
 

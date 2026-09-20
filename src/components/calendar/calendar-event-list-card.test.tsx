@@ -1,9 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
+import { describe, expect, it, vi } from "vitest";
 
 import type { CalendarEvent } from "@/lib/calendar-event";
+
 import { CalendarEventListCard } from "./calendar-event-list-card";
 
 const quiz: CalendarEvent = {

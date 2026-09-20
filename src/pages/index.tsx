@@ -1,7 +1,8 @@
-import { Button } from "@/components/ui/button";
 import { LandingBenefits } from "@/components/marketing/landing-benefits";
 import { LandingHeader } from "@/components/marketing/landing-header";
+import { Button } from "@/components/ui/button";
 import { useThemeMode } from "@/hooks/use-theme-mode";
+
 import "../App.css";
 
 export function IndexPage() {

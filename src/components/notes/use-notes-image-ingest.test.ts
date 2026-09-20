@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { MediaWorkerClient } from "@/lib/media-worker-client";
+
 import type { NotesMode } from "./types";
 import { useNotesImageIngest } from "./use-notes-image-ingest";
 

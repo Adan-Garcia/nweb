@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { NotesDirectoryEntry } from "@/components/notes/types";
+
 import { buildTree, formatPath, getActivePathKeys } from "./notes-tree";
 
 function entry(

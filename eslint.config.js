@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 
@@ -23,9 +24,19 @@ export default defineConfig([
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    plugins: {
+      "simple-import-sort": simpleImportSort,
+    },
     rules: {
       // CLAUDE.md section 3: no stray logging (the tracer in lib/notes-trace.ts is exempt below).
       "no-console": "error",
+      // CLAUDE.md section 3: packages, then `@/`, then relative, then side-effect (CSS) imports.
+      // Side-effect imports come last and keep their written order: CSS order is the cascade.
+      "simple-import-sort/imports": [
+        "error",
+        { groups: [["^react$", "^@?\\w"], ["^@/"], ["^\\."], ["^\\u0000"]] },
+      ],
+      "simple-import-sort/exports": "error",
     },
   },
   {
@@ -42,6 +53,14 @@ export default defineConfig([
     ignores: ["src/**/*.test.ts"],
     rules: {
       "max-lines": ["error", { max: 300, skipBlankLines: false, skipComments: false }],
+    },
+  },
+  {
+    // The global stylesheet (Tailwind + theme) must load before any page stylesheet, and the
+    // entry point is where that is decided, so its imports keep their written order.
+    files: ["src/main.tsx"],
+    rules: {
+      "simple-import-sort/imports": "off",
     },
   },
   {

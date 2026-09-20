@@ -1,4 +1,4 @@
-import { ShieldCheck, Workflow, Wrench, type LucideIcon } from "lucide-react";
+import { type LucideIcon, ShieldCheck, Workflow, Wrench } from "lucide-react";
 
 export type HierarchyLevel = {
   name: string;

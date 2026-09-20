@@ -1,10 +1,10 @@
-import { WorkspaceShell } from "@/components/workspace-shell";
-import { useThemeMode } from "@/hooks/use-theme-mode";
 import { getAutoSaveLabel } from "@/components/notes/notes-autosave-label";
 import { NotesEditorArea } from "@/components/notes/notes-editor-area";
 import { NotesLocationBar } from "@/components/notes/notes-location-bar";
 import { useNotesLocationPicker } from "@/components/notes/use-notes-location-picker";
 import { useNotesWorkspace } from "@/components/notes/use-notes-workspace";
+import { WorkspaceShell } from "@/components/workspace-shell";
+import { useThemeMode } from "@/hooks/use-theme-mode";
 
 import "@excalidraw/excalidraw/index.css";
 import "./notes.css";

@@ -1,4 +1,4 @@
-import { Database, KeyRound, ShieldCheck, Users, type LucideIcon } from "lucide-react";
+import { Database, KeyRound, type LucideIcon, ShieldCheck, Users } from "lucide-react";
 
 export type PolicySection = {
   title: string;

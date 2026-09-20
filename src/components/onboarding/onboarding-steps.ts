@@ -1,4 +1,4 @@
-import { CheckCircle2, Sparkles, Users, Zap, type LucideIcon } from "lucide-react";
+import { CheckCircle2, type LucideIcon, Sparkles, Users, Zap } from "lucide-react";
 
 export type OnboardingStep = {
   id: string;

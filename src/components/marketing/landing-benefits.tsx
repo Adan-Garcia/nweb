@@ -1,4 +1,4 @@
-import { LockKeyhole, ShieldCheck, type LucideIcon } from "lucide-react";
+import { LockKeyhole, type LucideIcon, ShieldCheck } from "lucide-react";
 
 type Benefit = {
   icon: LucideIcon;

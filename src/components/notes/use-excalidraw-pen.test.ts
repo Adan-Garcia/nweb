@@ -1,7 +1,7 @@
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { MAX_PEN_WIDTH, MIN_PEN_WIDTH } from "./spatial-notes-editor-utils";
 import { useExcalidrawPen } from "./use-excalidraw-pen";
 

@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import {
+  type CalendarEvent,
   EVENT_COLOR_OPTIONS,
   EVENT_STATUS_OPTIONS,
-  type CalendarEvent,
   type EventColor,
 } from "@/lib/calendar-event";
 

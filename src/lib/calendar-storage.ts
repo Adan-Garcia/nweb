@@ -1,4 +1,4 @@
-import { calendarEventSchema, type CalendarEvent } from "./calendar-event";
+import { type CalendarEvent, calendarEventSchema } from "./calendar-event";
 
 const CALENDAR_STORAGE_KEY = "cuervo-calendar-events-v1";
 

@@ -1,8 +1,8 @@
 import { Clock3, Pencil, Trash2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { EVENT_COLORS, formatShortDate } from "@/components/calendar/calendar-shared";
 import { StatusSlider } from "@/components/calendar/status-slider";
+import { Button } from "@/components/ui/button";
 import type { CalendarEvent } from "@/lib/calendar-event";
 
 type CalendarEventListItemProps = {

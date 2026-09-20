@@ -98,7 +98,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   **Imports:**
     *   Cross-directory imports use the `@/` alias. Never `../..`. Same-directory siblings use `./`.
     *   No file extensions in import specifiers.
-    *   Group order: external packages, then `@/…`, then `./…`, then side-effect/style imports. `[TARGET]` (needs an import-order lint rule)
+    *   Group order, `[ENFORCED]` by `simple-import-sort` (`npm run lint -- --fix` reorders): packages (`react` first), then `@/…`, then `./…`, then side-effect/style imports. Side-effect imports come last and keep their written order, because CSS order is the cascade. `src/main.tsx` is exempt: the global stylesheet (`./index.css`) must load before `App`, and therefore before any page stylesheet.
 *   **Exports:** named exports only, except `App.tsx`.
 *   **Comments:** explain *why*, not *what*. No commented-out code. TODOs need an owner or issue: `// TODO(name): …`.
 *   **Logging:** no `console.*` in committed code except the sanctioned `lib/notes-trace.ts` tracer. `[ENFORCED]` by `no-console`.
@@ -220,5 +220,4 @@ A change is done only when:
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
 1.  **Untested UI.** Coverage is ~90% lines, but no test exercises `notes/spatial-notes-pdf.ts` (pdf.js rendering), `notes/linear-notes-editor.tsx` (TipTap), `notes/spatial-notes-editor.tsx` / `spatial-notes-toolbar.tsx` (Excalidraw), or `main.tsx`; `use-notes-hydration.ts` and `use-notes-flush.ts` have untested error branches. These were smoke-tested by hand in a browser (notes, calendar, dashboard, marketing and onboarding pages), which is not repeatable.
-3.  **No import-order lint rule.** The group order in §3 is not enforced; it needs `eslint-plugin-import` (or similar), which is a new dependency.
-4.  **Legacy plain CSS:** `App.css` (391 lines) and `pages/notes.css` (273 lines) should migrate to Tailwind utilities over time.
+2.  **Legacy plain CSS:** `App.css` (391 lines) and `pages/notes.css` (273 lines) should migrate to Tailwind utilities over time.

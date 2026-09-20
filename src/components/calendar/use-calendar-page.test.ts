@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { CalendarEvent } from "@/lib/calendar-event";
+
 import { formatDateKey } from "./calendar-shared";
 import { useCalendarPage } from "./use-calendar-page";
 

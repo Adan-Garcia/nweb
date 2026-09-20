@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ONBOARDING_STEPS } from "@/components/onboarding/onboarding-steps";
+
 import { OnboardingPage } from "./onboarding";
 
 beforeEach(() => {

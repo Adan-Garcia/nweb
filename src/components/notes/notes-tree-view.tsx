@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 
 import { NotesNoteButton } from "@/components/notes/notes-note-button";
-import { NotesTreeGroup } from "@/components/notes/notes-tree-group";
 import { buildTree, getActivePathKeys } from "@/components/notes/notes-tree";
+import { NotesTreeGroup } from "@/components/notes/notes-tree-group";
 import type { NotesDirectoryEntry, NotesHierarchyLocation } from "@/components/notes/types";
 
 type NotesTreeViewProps = {

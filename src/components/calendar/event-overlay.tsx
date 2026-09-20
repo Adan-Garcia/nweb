@@ -1,10 +1,10 @@
 import type { FieldErrors, UseFormHandleSubmit, UseFormRegister } from "react-hook-form";
 
+import type { EventFormValues } from "@/components/calendar/calendar-shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import type { EventFormValues } from "@/components/calendar/calendar-shared";
 
 type EventOverlayProps = {
   isOpen: boolean;

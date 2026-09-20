@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type { NotesDirectoryEntry, NotesHierarchyLocation } from "@/components/notes/types";
+
 import {
-  FALLBACK_LOCATION,
   buildSegmentOptions,
+  FALLBACK_LOCATION,
   getEntryForLocation,
   listSegmentOptions,
   normalizeLocation,
