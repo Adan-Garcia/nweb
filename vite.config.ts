@@ -19,11 +19,23 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       provider: "v8",
-      include: ["src/hooks/**", "src/lib/**"],
-      exclude: ["src/**/*.test.{ts,tsx}", "src/test/**"],
-      // CLAUDE.md §4: hooks require 100% logic coverage.
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/test/**",
+        "src/components/ui/**", // shadcn-generated
+        "src/main.tsx",
+      ],
+      // CLAUDE.md section 4. Set just below what is measured, so coverage can only go up.
       thresholds: {
+        lines: 85,
+        statements: 85,
+        functions: 80,
+        branches: 80,
+        // Hooks require 100% logic coverage.
         "src/hooks/**": { lines: 100, functions: 100, branches: 100, statements: 100 },
+        "src/lib/**": { lines: 92, functions: 92, branches: 85, statements: 92 },
+        "src/workers/**": { lines: 95, functions: 95, branches: 85, statements: 95 },
       },
     },
   },

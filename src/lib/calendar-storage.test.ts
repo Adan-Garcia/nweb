@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CalendarEvent } from "./calendar-event";
 import { loadCalendarEvents, saveCalendarEvents } from "./calendar-storage";
@@ -50,5 +50,16 @@ describe("loadCalendarEvents", () => {
   it("round-trips events written by saveCalendarEvents", () => {
     saveCalendarEvents([stored]);
     expect(loadCalendarEvents(fallback)).toEqual([stored]);
+  });
+});
+
+describe("without a window (server rendering)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("loads the fallback and does not try to save", () => {
+    vi.stubGlobal("window", undefined);
+
+    expect(loadCalendarEvents(fallback)).toBe(fallback);
+    expect(() => saveCalendarEvents([stored])).not.toThrow();
   });
 });

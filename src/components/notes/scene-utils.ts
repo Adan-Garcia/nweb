@@ -1,12 +1,13 @@
 import type { PersistedSceneFile } from "@/lib/notes-model";
-import type { SceneElements, SceneFiles } from "@/components/notes/types";
+import type { SceneFiles } from "@/components/notes/types";
 import { notesTrace, notesTraceError } from "@/lib/notes-trace";
 
 export function isImageFile(file: File): boolean {
   return file.type.startsWith("image/");
 }
 
-export function collectReferencedFileIds(elements: SceneElements): Set<string> {
+/** Accepts any elements; only their optional `fileId` is read. */
+export function collectReferencedFileIds(elements: readonly object[]): Set<string> {
   const fileIds = new Set<string>();
 
   for (const element of elements) {

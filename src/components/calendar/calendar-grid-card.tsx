@@ -76,7 +76,7 @@ export function CalendarGridCard({
         </div>
 
         <div className="grid min-h-120 grid-cols-7 auto-rows-fr gap-2">
-          {visibleDates.map((date, index) => {
+          {visibleDates.map((date) => {
             const dateKey = formatDateKey(date);
             const dayEvents = eventsByDate.get(dateKey) ?? [];
             const isToday = date.toDateString() === today.toDateString();
@@ -85,7 +85,7 @@ export function CalendarGridCard({
 
             return (
               <button
-                key={`${dateKey}-${index}`}
+                key={dateKey}
                 type="button"
                 onClick={() => onSelectDate(date)}
                 className={`rounded-lg border p-2 text-left transition-all duration-300 opacity-90 hover:opacity-100 ${
