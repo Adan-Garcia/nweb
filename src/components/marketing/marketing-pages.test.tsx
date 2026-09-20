@@ -73,7 +73,7 @@ describe("PricingPage", () => {
     expect(screen.getByText("$4 / month")).toBeInTheDocument();
     expect(screen.getByText("Flock Teams")).toBeInTheDocument();
     expect(screen.getByText("$12 / month")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Comming Soon" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Coming Soon" })).toHaveLength(2);
   });
 
   it("marks only the beta tier as most popular", () => {

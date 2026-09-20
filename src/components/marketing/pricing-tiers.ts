@@ -32,7 +32,7 @@ export const PRICING_TIERS: PricingTier[] = [
       "Increased storage limits for notes and file attachments",
       "Faster support response times",
     ],
-    action: "Comming Soon",
+    action: "Coming Soon",
   },
   {
     name: "Flock Teams",
@@ -44,6 +44,6 @@ export const PRICING_TIERS: PricingTier[] = [
       "Frequent Cloud backups",
       "Faster support response times",
     ],
-    action: "Comming Soon",
+    action: "Coming Soon",
   },
 ];

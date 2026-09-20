@@ -224,4 +224,3 @@ Pre-existing; not blockers for unrelated work (§0). Highest value first.
 3.  **No import-order lint rule.** The group order in §3 is not enforced; it needs `eslint-plugin-import` (or similar), which is a new dependency.
 4.  **Legacy plain CSS:** `App.css` (391 lines) and `pages/notes.css` (273 lines) should migrate to Tailwind utilities over time.
 5.  **Sign-up page shows sign-in copy.** `pages/signup.tsx` was copied from `signin.tsx`: its headline ("Pick up right where your notes and projects left off."), description ("Sign in to resume..."), benefit list and `formAriaLabel` ("Sign in form") all describe signing in, around the signup form. Needs the intended sign-up copy.
-6.  **Copy typo.** The pricing page's two paid tiers say "Comming Soon" (`components/marketing/pricing-tiers.ts`).
