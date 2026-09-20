@@ -135,7 +135,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   **XSS / code execution:** no `dangerouslySetInnerHTML`, `eval`, or `new Function`. Rich text goes through TipTap's schema. `[REQUIRED]` (`grep -rnE 'dangerouslySetInnerHTML|\beval\(|new Function' src` → nothing.)
 *   **Secrets:** never commit secrets. Anything in `import.meta.env.VITE_*` is public in the bundle; do not put credentials there.
 *   **Vite assets:** import static assets (images, SVGs) through Vite's module system; do not reference `public/` paths directly from components.
-*   **Bundle weight:** heavy dependencies (`@excalidraw/excalidraw`, `pdfjs-dist`, TipTap) must be loaded per route via `React.lazy`. `[TARGET]` (`App.tsx` currently imports every page eagerly.)
+*   **Bundle weight:** every route except the landing page is loaded on demand through `lazyPage()` in `App.tsx`, which kept the entry chunk at ~230 kB instead of ~2.1 MB. New pages must be added the same way; do not import a page eagerly into `App.tsx`. `[REQUIRED]`
 *   **Untrusted files:** user-supplied PDFs/images are untrusted input; process them in the worker where possible.
 
 ## 6. Common Commands
@@ -222,7 +222,6 @@ Pre-existing; not blockers for unrelated work (§0). Highest value first.
 5.  **Dead shadcn scaffolding.** `app-sidebar.tsx` (+ `app-sidebar-data.ts`), `version-switcher.tsx`, `search-form.tsx`, `team-switcher.tsx`, `nav-main.tsx`, `nav-projects.tsx` and `nav-user.tsx` are generated sample blocks that nothing imports (the real navigation is `workspace-shell.tsx`). Delete them, or wire them up; do not let them accrete.
 7.  **No formatter** (mixed tabs/spaces, quotes, semicolons). Adopt Prettier + `.editorconfig` and reformat in one dedicated commit.
 8.  **No import-order lint rule.** The group order in §3 is not enforced; it needs `eslint-plugin-import` (or similar), which is a new dependency.
-9.  **No route-level code splitting** (`App.tsx` eagerly imports Excalidraw/pdf.js pages).
 11. **Zustand installed but unused.**
 13. **`README.md` is the unmodified Vite template.** Replace with real project docs.
 14. **Legacy plain CSS:** `App.css` (391 lines) and `pages/notes.css` (273 lines) should migrate to Tailwind utilities over time.
