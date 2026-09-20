@@ -1,7 +1,38 @@
+import {
+  createDefaultNotesLocation,
+  sanitizeLocationSegment,
+} from "@/components/notes/constants";
 import type {
   NotesDirectoryEntry,
   NotesHierarchyLocation,
 } from "@/components/notes/types";
+
+export const FALLBACK_LOCATION = createDefaultNotesLocation();
+
+export function toLocation(entry: NotesDirectoryEntry): NotesHierarchyLocation {
+  return {
+    wing: entry.wing,
+    flight: entry.flight,
+    branch: entry.branch,
+    nest: entry.nest,
+    feather: entry.feather,
+  };
+}
+
+export function normalizeLocation(
+  location: NotesHierarchyLocation,
+): NotesHierarchyLocation {
+  return {
+    wing: sanitizeLocationSegment(location.wing) || FALLBACK_LOCATION.wing,
+    flight:
+      sanitizeLocationSegment(location.flight) || FALLBACK_LOCATION.flight,
+    branch:
+      sanitizeLocationSegment(location.branch) || FALLBACK_LOCATION.branch,
+    nest: sanitizeLocationSegment(location.nest) || FALLBACK_LOCATION.nest,
+    feather:
+      sanitizeLocationSegment(location.feather) || FALLBACK_LOCATION.feather,
+  };
+}
 
 export type LocationSegment = keyof NotesHierarchyLocation;
 

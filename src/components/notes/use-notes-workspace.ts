@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getSceneVersion, serializeAsJSON } from "@excalidraw/excalidraw";
 import type {
-  BinaryFileData,
   ExcalidrawInitialDataState,
   ExcalidrawProps,
 } from "@excalidraw/excalidraw/types";
@@ -22,15 +21,23 @@ import {
 import { DEFAULT_NOTES_DOCUMENT_ID } from "@/lib/notes-model";
 import {
   buildNotesDocumentId,
-  createDefaultNotesLocation,
   defaultLinearContent,
-  sanitizeLocationSegment,
 } from "@/components/notes/constants";
+import {
+  parseStoredScene,
+  restoreSceneFiles,
+} from "@/components/notes/excalidraw-adapter";
+import {
+  FALLBACK_LOCATION,
+  normalizeLocation,
+  toLocation,
+} from "@/components/notes/location-hierarchy";
 import {
   collectReferencedFileIds,
   convertSceneFilesForStorage,
-  isImageFile,
 } from "@/components/notes/scene-utils";
+import { useDocumentSwitchQueue } from "@/components/notes/use-document-switch-queue";
+import { useNotesImageIngest } from "@/components/notes/use-notes-image-ingest";
 import type {
   NotesDirectoryEntry,
   NotesDocumentMode,
@@ -41,35 +48,6 @@ import type {
 } from "@/components/notes/types";
 
 type HandleSpatialChange = NonNullable<ExcalidrawProps["onChange"]>;
-type HandleSpatialPaste = NonNullable<ExcalidrawProps["onPaste"]>;
-
-const FALLBACK_LOCATION = createDefaultNotesLocation();
-
-function toLocation(entry: NotesDirectoryEntry): NotesHierarchyLocation {
-  return {
-    wing: entry.wing,
-    flight: entry.flight,
-    branch: entry.branch,
-    nest: entry.nest,
-    feather: entry.feather,
-  };
-}
-
-function normalizeLocation(
-  location: NotesHierarchyLocation,
-): NotesHierarchyLocation {
-  return {
-    wing: sanitizeLocationSegment(location.wing) || FALLBACK_LOCATION.wing,
-    flight:
-      sanitizeLocationSegment(location.flight) || FALLBACK_LOCATION.flight,
-    branch:
-      sanitizeLocationSegment(location.branch) || FALLBACK_LOCATION.branch,
-    nest: sanitizeLocationSegment(location.nest) || FALLBACK_LOCATION.nest,
-    feather:
-      sanitizeLocationSegment(location.feather) || FALLBACK_LOCATION.feather,
-  };
-}
-
 export function useNotesWorkspace() {
   const mediaWorker = useMemo(() => createMediaWorkerClient(), []);
 
@@ -81,7 +59,6 @@ export function useNotesWorkspace() {
   const [isStorageReady, setIsStorageReady] = useState(false);
   const [isHydratingDocument, setIsHydratingDocument] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
-  const [optimizedAssetCount, setOptimizedAssetCount] = useState(0);
   const [spatialInitialData, setSpatialInitialData] =
     useState<NotesSpatialInitialData>(null);
   const [isSpatialEditorReloading, setIsSpatialEditorReloading] =
@@ -106,46 +83,13 @@ export function useNotesWorkspace() {
   const pendingSpatialSceneVersionRef = useRef<number | null>(null);
   const activeObjectUrlsRef = useRef<string[]>([]);
   const loadRequestRef = useRef(0);
-  const documentSwitchQueueRef = useRef<Promise<void>>(Promise.resolve());
 
-  const runInDocumentSwitchQueue = useCallback(
-    async (
-      context: "openDocumentById" | "createOrOpenDocumentAtLocation",
-      operation: () => Promise<void>,
-    ) => {
-      const previousOperation = documentSwitchQueueRef.current;
-      let releaseCurrentOperation: () => void = () => {};
-
-      const currentOperation = new Promise<void>((resolve) => {
-        releaseCurrentOperation = resolve;
-      });
-
-      documentSwitchQueueRef.current = previousOperation.then(
-        () => currentOperation,
-      );
-
-      notesTrace("notes-workspace", "document-switch:queued", {
-        context,
-      });
-
-      await previousOperation;
-
-      notesTrace("notes-workspace", "document-switch:running", {
-        context,
-      });
-
-      try {
-        await operation();
-      } finally {
-        releaseCurrentOperation();
-
-        notesTrace("notes-workspace", "document-switch:complete", {
-          context,
-        });
-      }
-    },
-    [],
-  );
+  const runInDocumentSwitchQueue = useDocumentSwitchQueue();
+  const { optimizedAssetCount, handleSpatialPaste } = useNotesImageIngest({
+    mediaWorker,
+    spatialHostRef,
+    mode,
+  });
 
   const refreshDirectoryEntries = useCallback(async () => {
     const entries = await listNotesDirectoryEntries();
@@ -157,26 +101,6 @@ export function useNotesWorkspace() {
   const optimizeImageBlob = useCallback(
     async (blob: Blob) => {
       return await mediaWorker.optimizeImageBlob(blob);
-    },
-    [mediaWorker],
-  );
-
-  const processIncomingImageFiles = useCallback(
-    async (files: File[]) => {
-      const imageFiles = files.filter(isImageFile);
-      if (!imageFiles.length) {
-        return;
-      }
-
-      const optimizedFiles = await Promise.all(
-        imageFiles.map(async (file) => {
-          return await mediaWorker.optimizeImageFile(file);
-        }),
-      );
-
-      setOptimizedAssetCount(
-        (currentCount) => currentCount + optimizedFiles.length,
-      );
     },
     [mediaWorker],
   );
@@ -350,22 +274,6 @@ export function useNotesWorkspace() {
     [scheduleSpatialPersist],
   );
 
-  const handleSpatialPaste = useCallback<HandleSpatialPaste>(
-    (_clipboardData, event) => {
-      if (!event?.clipboardData) {
-        return false;
-      }
-
-      const files = Array.from(event.clipboardData.files);
-      if (files.length) {
-        void processIncomingImageFiles(files);
-      }
-
-      return false;
-    },
-    [processIncomingImageFiles],
-  );
-
   const recycleSpatialEditor = useCallback(async () => {
     setIsSpatialEditorReloading(true);
     setSpatialInitialData(null);
@@ -455,21 +363,8 @@ export function useNotesWorkspace() {
             return;
           }
 
-          const parsedScene = JSON.parse(decompressedScene) as {
-            elements?: Parameters<HandleSpatialChange>[0];
-            appState?: Partial<Parameters<HandleSpatialChange>[1]>;
-          };
-
-          const restoredFiles: Parameters<HandleSpatialChange>[2] = {};
-
-          for (const loadedFile of Object.values(loadedDocument.sceneFiles)) {
-            restoredFiles[loadedFile.id] = {
-              id: loadedFile.id as BinaryFileData["id"],
-              mimeType: loadedFile.mimeType as BinaryFileData["mimeType"],
-              dataURL: loadedFile.dataUrl as BinaryFileData["dataURL"],
-              created: loadedFile.created,
-            } as BinaryFileData;
-          }
+          const parsedScene = parseStoredScene(decompressedScene);
+          const restoredFiles = restoreSceneFiles(loadedDocument.sceneFiles);
 
           notesTrace(
             "notes-workspace",
@@ -489,12 +384,12 @@ export function useNotesWorkspace() {
           activeObjectUrlsRef.current = loadedDocument.objectUrls;
 
           setSpatialInitialData({
-            elements: parsedScene.elements ?? [],
-            appState: parsedScene.appState ?? {},
+            elements: parsedScene.elements,
+            appState: parsedScene.appState,
             files: restoredFiles,
           } satisfies ExcalidrawInitialDataState);
           latestSpatialSceneVersionRef.current = getSceneVersion(
-            parsedScene.elements ?? [],
+            parsedScene.elements,
           );
         } else {
           revokeObjectUrls(activeObjectUrlsRef.current);
@@ -532,6 +427,75 @@ export function useNotesWorkspace() {
     [mediaWorker, recycleSpatialEditor],
   );
 
+  const persistActiveDocumentBeforeSwitch = useCallback(
+    async (
+      context: "openDocumentById" | "createOrOpenDocumentAtLocation",
+      toDocumentId: string,
+    ) => {
+      if (
+        !isStorageReady ||
+        !activeDocumentId ||
+        activeDocumentId === toDocumentId
+      ) {
+        return;
+      }
+
+      const snapshotForSwitch = latestSpatialSnapshotRef.current;
+      const snapshotVersionForSwitch = pendingSpatialSceneVersionRef.current;
+
+      if (pendingLinearEditAtRef.current !== null) {
+        try {
+          await persistLinearContent(
+            latestLinearContentRef.current,
+            activeDocumentId,
+            activeCreatedMode,
+          );
+        } catch (error) {
+          notesTraceError(
+            "notes-workspace",
+            `${context}:preswitch-linear-save-failed`,
+            error,
+            {
+              fromDocumentId: activeDocumentId,
+              toDocumentId,
+            },
+          );
+        }
+
+        pendingLinearEditAtRef.current = null;
+        setPendingLinearEditAt(null);
+      }
+
+      if (snapshotForSwitch && snapshotVersionForSwitch !== null) {
+        try {
+          await persistSpatialSnapshot(
+            activeDocumentId,
+            activeCreatedMode,
+            snapshotForSwitch,
+            snapshotVersionForSwitch,
+          );
+        } catch (error) {
+          notesTraceError(
+            "notes-workspace",
+            `${context}:preswitch-spatial-save-failed`,
+            error,
+            {
+              fromDocumentId: activeDocumentId,
+              toDocumentId,
+            },
+          );
+        }
+      }
+    },
+    [
+      activeCreatedMode,
+      activeDocumentId,
+      isStorageReady,
+      persistLinearContent,
+      persistSpatialSnapshot,
+    ],
+  );
+
   const openDocumentById = useCallback(
     async (documentId: string) => {
       if (!documentId) {
@@ -539,59 +503,7 @@ export function useNotesWorkspace() {
       }
 
       await runInDocumentSwitchQueue("openDocumentById", async () => {
-        if (
-          isStorageReady &&
-          activeDocumentId &&
-          activeDocumentId !== documentId
-        ) {
-          const snapshotForSwitch = latestSpatialSnapshotRef.current;
-          const snapshotVersionForSwitch =
-            pendingSpatialSceneVersionRef.current;
-
-          if (pendingLinearEditAtRef.current !== null) {
-            try {
-              await persistLinearContent(
-                latestLinearContentRef.current,
-                activeDocumentId,
-                activeCreatedMode,
-              );
-            } catch (error) {
-              notesTraceError(
-                "notes-workspace",
-                "openDocumentById:preswitch-linear-save-failed",
-                error,
-                {
-                  fromDocumentId: activeDocumentId,
-                  toDocumentId: documentId,
-                },
-              );
-            }
-
-            pendingLinearEditAtRef.current = null;
-            setPendingLinearEditAt(null);
-          }
-
-          if (snapshotForSwitch && snapshotVersionForSwitch !== null) {
-            try {
-              await persistSpatialSnapshot(
-                activeDocumentId,
-                activeCreatedMode,
-                snapshotForSwitch,
-                snapshotVersionForSwitch,
-              );
-            } catch (error) {
-              notesTraceError(
-                "notes-workspace",
-                "openDocumentById:preswitch-spatial-save-failed",
-                error,
-                {
-                  fromDocumentId: activeDocumentId,
-                  toDocumentId: documentId,
-                },
-              );
-            }
-          }
-        }
+        await persistActiveDocumentBeforeSwitch("openDocumentById", documentId);
 
         const entry = directoryEntries.find(
           (candidate) => candidate.id === documentId,
@@ -608,13 +520,9 @@ export function useNotesWorkspace() {
       });
     },
     [
-      activeDocumentId,
       directoryEntries,
       hydrateDocument,
-      isStorageReady,
-      activeCreatedMode,
-      persistLinearContent,
-      persistSpatialSnapshot,
+      persistActiveDocumentBeforeSwitch,
       runInDocumentSwitchQueue,
     ],
   );
@@ -631,59 +539,10 @@ export function useNotesWorkspace() {
       await runInDocumentSwitchQueue(
         "createOrOpenDocumentAtLocation",
         async () => {
-          if (
-            isStorageReady &&
-            activeDocumentId &&
-            activeDocumentId !== documentId
-          ) {
-            const snapshotForSwitch = latestSpatialSnapshotRef.current;
-            const snapshotVersionForSwitch =
-              pendingSpatialSceneVersionRef.current;
-
-            if (pendingLinearEditAtRef.current !== null) {
-              try {
-                await persistLinearContent(
-                  latestLinearContentRef.current,
-                  activeDocumentId,
-                  activeCreatedMode,
-                );
-              } catch (error) {
-                notesTraceError(
-                  "notes-workspace",
-                  "createOrOpenDocumentAtLocation:preswitch-linear-save-failed",
-                  error,
-                  {
-                    fromDocumentId: activeDocumentId,
-                    toDocumentId: documentId,
-                  },
-                );
-              }
-
-              pendingLinearEditAtRef.current = null;
-              setPendingLinearEditAt(null);
-            }
-
-            if (snapshotForSwitch && snapshotVersionForSwitch !== null) {
-              try {
-                await persistSpatialSnapshot(
-                  activeDocumentId,
-                  activeCreatedMode,
-                  snapshotForSwitch,
-                  snapshotVersionForSwitch,
-                );
-              } catch (error) {
-                notesTraceError(
-                  "notes-workspace",
-                  "createOrOpenDocumentAtLocation:preswitch-spatial-save-failed",
-                  error,
-                  {
-                    fromDocumentId: activeDocumentId,
-                    toDocumentId: documentId,
-                  },
-                );
-              }
-            }
-          }
+          await persistActiveDocumentBeforeSwitch(
+            "createOrOpenDocumentAtLocation",
+            documentId,
+          );
 
           await upsertNotesDirectoryEntry({
             id: documentId,
@@ -710,13 +569,9 @@ export function useNotesWorkspace() {
       );
     },
     [
-      activeDocumentId,
-      activeCreatedMode,
       hydrateDocument,
-      isStorageReady,
       mode,
-      persistLinearContent,
-      persistSpatialSnapshot,
+      persistActiveDocumentBeforeSwitch,
       refreshDirectoryEntries,
       runInDocumentSwitchQueue,
     ],
@@ -884,30 +739,6 @@ export function useNotesWorkspace() {
     pendingLinearEditAt,
     persistLinearContent,
   ]);
-
-  useEffect(() => {
-    if (mode !== "spatial") {
-      return;
-    }
-
-    const hostElement = spatialHostRef.current;
-    if (!hostElement) {
-      return;
-    }
-
-    const handleDrop = (event: DragEvent) => {
-      const files = Array.from(event.dataTransfer?.files ?? []);
-      if (files.length) {
-        void processIncomingImageFiles(files);
-      }
-    };
-
-    hostElement.addEventListener("drop", handleDrop, true);
-
-    return () => {
-      hostElement.removeEventListener("drop", handleDrop, true);
-    };
-  }, [mode, processIncomingImageFiles]);
 
   useEffect(() => {
     return () => {

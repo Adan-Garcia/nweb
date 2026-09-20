@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest"
 
 import type { NotesDirectoryEntry, NotesHierarchyLocation } from "@/components/notes/types"
 import {
+  FALLBACK_LOCATION,
   buildSegmentOptions,
   getEntryForLocation,
   listSegmentOptions,
+  normalizeLocation,
   resolveCascadingLocation,
+  toLocation,
 } from "./location-hierarchy"
 
 function entry(wing: string, flight: string, branch: string, nest: string, feather: string): NotesDirectoryEntry {
@@ -98,5 +101,41 @@ describe("resolveCascadingLocation", () => {
     const before = { ...location }
     resolveCascadingLocation(entries, location, "wing", "Work")
     expect(location).toEqual(before)
+  })
+})
+
+describe("toLocation", () => {
+  it("keeps only the five hierarchy segments of a directory entry", () => {
+    expect(toLocation(entries[0])).toEqual(location)
+  })
+})
+
+describe("normalizeLocation", () => {
+  it("trims and collapses whitespace in every segment", () => {
+    expect(
+      normalizeLocation({
+        wing: "  My   Wing ",
+        flight: "Fall\t2026",
+        branch: " Math ",
+        nest: "Unit  1",
+        feather: "  Notes A  ",
+      }),
+    ).toEqual({
+      wing: "My Wing",
+      flight: "Fall 2026",
+      branch: "Math",
+      nest: "Unit 1",
+      feather: "Notes A",
+    })
+  })
+
+  it("falls back to the default value for blank segments", () => {
+    expect(normalizeLocation({ wing: "", flight: "  ", branch: "", nest: "\n", feather: "" })).toEqual(
+      FALLBACK_LOCATION,
+    )
+  })
+
+  it("only replaces the blank segments", () => {
+    expect(normalizeLocation({ ...location, nest: "" })).toEqual({ ...location, nest: FALLBACK_LOCATION.nest })
   })
 })
