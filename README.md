@@ -22,11 +22,12 @@ npm run dev        # http://localhost:5173
 | `npm run dev` | Start the Vite dev server. |
 | `npm run typecheck` | Type-check every project (`tsc -b`). |
 | `npm run lint` | ESLint, type-aware. |
+| `npm run format` | Format with Prettier (`format:check` verifies without writing). |
 | `npm run test` | Run the test suite once. `test:watch` and `test:coverage` are also available. |
 | `npm run build` | Type-check and produce a production build in `dist/`. |
 | `npm run preview` | Serve the production build locally. |
 
-Before opening a change, run `npm run typecheck && npm run lint && npm run test && npm run build`.
+Before opening a change, run `npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build`. To make `git blame` skip the one-off formatting commit, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 
 ## Project layout
 
