@@ -1,7 +1,10 @@
 import { Clock3, Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { EVENT_COLORS } from "@/components/calendar/calendar-shared";
+import {
+  EVENT_COLORS,
+  formatShortDate,
+} from "@/components/calendar/calendar-shared";
 import { StatusSlider } from "@/components/calendar/status-slider";
 import type { CalendarEvent } from "@/lib/calendar-event";
 
@@ -69,11 +72,7 @@ export function CalendarEventListItem({
       <div className="space-y-1 text-sm text-muted-foreground flex flex-row justify-between">
         <p className="flex items-center gap-2">
           <Clock3 className="size-3.5" />
-          {new Date(event.date).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          })}{" "}
-          at {event.time}
+          {formatShortDate(event.date)} at {event.time}
         </p>
 
         <p className="flex items-center gap-2">Class: {event.color}</p>

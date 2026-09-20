@@ -108,8 +108,20 @@ export function startOfWeek(date: Date) {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
 
+/** Local midnight of a `YYYY-MM-DD` key (unlike `new Date(key)`, which is UTC). */
+export function dateKeyToDate(dateKey: string) {
+  return new Date(`${dateKey}T00:00:00`);
+}
+
+export function formatShortDate(dateKey: string) {
+  return dateKeyToDate(dateKey).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function formatHumanDate(dateKey: string) {
-  const date = new Date(`${dateKey}T00:00:00`);
+  const date = dateKeyToDate(dateKey);
   return date.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",

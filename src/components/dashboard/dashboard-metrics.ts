@@ -1,13 +1,8 @@
 import type { CalendarEvent } from "@/lib/calendar-event";
 import type { NotesDirectoryEntry } from "@/lib/notes-model";
-import { formatDateKey } from "@/components/calendar/calendar-shared";
+import { dateKeyToDate, formatDateKey } from "@/components/calendar/calendar-shared";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** Local midnight of a `YYYY-MM-DD` key (unlike `new Date(key)`, which is UTC). */
-export function dateKeyToDate(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00`);
-}
 
 export function formatLastUpdated(timestamp: number, now = Date.now()) {
   const deltaMs = now - timestamp;

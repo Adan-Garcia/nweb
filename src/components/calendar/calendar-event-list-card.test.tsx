@@ -107,6 +107,11 @@ describe("CalendarEventListCard: events", () => {
     expect(screen.getByText("Class: History")).toBeInTheDocument()
   })
 
+  it("labels an event on the 1st of a month with that day, not the day before", () => {
+    setup({ filteredEvents: [{ ...quiz, date: "2026-04-01" }] })
+    expect(screen.getByText(/Apr 1 at 9:00 AM/)).toBeInTheDocument()
+  })
+
   it("edits and deletes the event whose buttons were clicked", async () => {
     const user = userEvent.setup()
     const { onOpenEditEvent, onDeleteEvent } = setup()

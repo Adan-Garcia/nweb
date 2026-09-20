@@ -1,4 +1,8 @@
-import { formatDateKey, startOfWeek } from "@/components/calendar/calendar-shared";
+import {
+  dateKeyToDate,
+  formatDateKey,
+  startOfWeek,
+} from "@/components/calendar/calendar-shared";
 import type { CalendarEvent } from "@/lib/calendar-event";
 
 export type CalendarViewMode = "month" | "week";
@@ -94,7 +98,7 @@ export function scopeEventsToView({
   }
 
   return events.filter((event) => {
-    const eventDate = new Date(event.date);
+    const eventDate = dateKeyToDate(event.date);
     return (
       eventDate.getMonth() === currentMonth.getMonth() &&
       eventDate.getFullYear() === currentMonth.getFullYear()

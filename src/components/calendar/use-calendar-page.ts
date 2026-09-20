@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import {
+  dateKeyToDate,
   eventFormSchema,
   formatDateKey,
   type EventFormValues,
@@ -152,7 +153,7 @@ export function useCalendarPage() {
     const saved = saveEvent(values, editingEventId);
 
     setSelectedDateKey(saved.date);
-    focusDate(new Date(`${saved.date}T00:00:00`));
+    focusDate(dateKeyToDate(saved.date));
     closeEventOverlay();
   };
 

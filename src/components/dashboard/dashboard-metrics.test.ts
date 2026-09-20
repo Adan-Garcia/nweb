@@ -4,7 +4,6 @@ import type { CalendarEvent } from "@/lib/calendar-event"
 import type { NotesDirectoryEntry } from "@/lib/notes-model"
 import {
   computeDashboardMetrics,
-  dateKeyToDate,
   formatLastUpdated,
   toLocationLabel,
 } from "./dashboard-metrics"
@@ -31,13 +30,6 @@ function note(id: string, updatedAt: number): NotesDirectoryEntry {
 }
 
 const empty = { calendarEvents: [], notesEntries: [], now }
-
-describe("dateKeyToDate", () => {
-  it("is local midnight of the given day", () => {
-    const date = dateKeyToDate("2026-04-16")
-    expect([date.getFullYear(), date.getMonth(), date.getDate(), date.getHours()]).toEqual([2026, 3, 16, 0])
-  })
-})
 
 describe("formatLastUpdated", () => {
   const at = (offsetMs: number) => formatLastUpdated(now.getTime() - offsetMs, now.getTime())

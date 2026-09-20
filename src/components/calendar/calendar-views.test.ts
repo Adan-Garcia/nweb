@@ -112,6 +112,17 @@ describe("scopeEventsToView", () => {
     expect(scoped.map((item) => item.id)).toEqual([1])
   })
 
+  it("puts an event on the 1st, and one on the last day, in their own month", () => {
+    const edges = [event({ id: 1, date: "2026-04-01" }), event({ id: 2, date: "2026-04-30" }), event({ id: 3, date: "2026-03-31" })]
+    const scoped = scopeEventsToView({
+      events: edges,
+      viewMode: "month",
+      currentMonth: new Date(2026, 3, 1),
+      weekDates: buildWeekDates(new Date(2026, 3, 16)),
+    })
+    expect(scoped.map((item) => item.id)).toEqual([1, 2])
+  })
+
   it("keeps only events in the visible week", () => {
     const scoped = scopeEventsToView({
       events: [event({ id: 1, date: "2026-04-14" }), event({ id: 2, date: "2026-04-25" })],

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  dateKeyToDate,
   eventFormSchema,
   formatDateKey,
   formatHumanDate,
+  formatShortDate,
   startOfWeek,
   statusOrder,
 } from "./calendar-shared"
@@ -33,6 +35,20 @@ describe("startOfWeek", () => {
 describe("formatHumanDate", () => {
   it("renders a readable en-US date from a date key", () => {
     expect(formatHumanDate("2026-04-16")).toBe("Thu, Apr 16, 2026")
+  })
+})
+
+describe("dateKeyToDate", () => {
+  it("is local midnight of the given day (not UTC, which shifts the day west of UTC)", () => {
+    const date = dateKeyToDate("2026-04-01")
+    expect([date.getFullYear(), date.getMonth(), date.getDate(), date.getHours()]).toEqual([2026, 3, 1, 0])
+  })
+})
+
+describe("formatShortDate", () => {
+  it("renders the month and day of a date key, including the 1st of a month", () => {
+    expect(formatShortDate("2026-04-01")).toBe("Apr 1")
+    expect(formatShortDate("2026-12-31")).toBe("Dec 31")
   })
 })
 
