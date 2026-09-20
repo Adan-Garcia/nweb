@@ -137,12 +137,12 @@ Once the toolchain lands, these rules take effect `[TARGET]`:
 | Purpose | Command | Notes |
 | --- | --- | --- |
 | Dev server | `npm run dev` | |
-| Typecheck | `npx tsc -b` | **Use this, not `npm run typecheck`.** The root `tsconfig.json` is solution-style (`"files": []`), so `tsc --noEmit` checks zero source files and always passes. |
+| Typecheck | `npm run typecheck` | `tsc -b`. The root `tsconfig.json` is solution-style, so build mode (`-b`) is required; a bare `tsc --noEmit` checks zero files. |
 | Lint | `npm run lint` | `eslint .` |
 | Build | `npm run build` | `tsc -b && vite build` |
 | Test | — | Not available (§4). |
 
-*   **Before reporting completion run:** `npx tsc -b && npm run lint && npm run build`. All three pass on a clean tree today; keep them clean.
+*   **Before reporting completion run:** `npm run typecheck && npm run lint && npm run build`. All three pass on a clean tree today; keep them clean.
 *   Node **>= 22.13** is required (`pdfjs-dist` v6).
 
 ## 7. Domain Model
@@ -179,7 +179,7 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 *   **Never run `npm audit fix --force`.** It downgrades `@excalidraw/excalidraw` to 0.17.6 (removing the `/types` and `index.css` subpaths `src/` imports) and bumps `pdfjs-dist` a major; Vite then fails to boot. `[REQUIRED]`
 *   Remaining audit advisories in the Excalidraw chain (`lodash-es`, `nanoid`, `@mermaid-js/parser`) are handled by the scoped `overrides` block in `package.json`. Extend that block; do not remove it.
 *   Pinned constraints: `@excalidraw/excalidraw` stays on `^0.18`; `pdfjs-dist` stays on v6 (fixes a high-severity malicious-PDF advisory; `destroy()` is on the loading task, not `PDFDocumentProxy`).
-*   After **any** dependency change run `npx tsc -b`, `npm run lint`, `npm run build`, and `npm audit`.
+*   After **any** dependency change run `npm run typecheck`, `npm run lint`, `npm run build`, and `npm audit`.
 *   Prefer what is already installed (`date-fns`, `zod`, `lucide-react`, `@dnd-kit`, `zustand`) over adding a new package. A new dependency needs a stated reason and explicit approval.
 *   Commit `package-lock.json` with `package.json`. Do not use `--force` or `--legacy-peer-deps`.
 
@@ -194,7 +194,7 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 ## 11. Definition of Done
 
 A change is done only when:
-1.  `npx tsc -b`, `npm run lint`, and `npm run build` pass.
+1.  `npm run typecheck`, `npm run lint`, and `npm run build` pass.
 2.  No new violation of any §1 directive; touched files are no worse against §13.
 3.  No leftover `console.*`, commented-out code, or unowned TODOs.
 4.  Any new storage shape has a version bump and migration; any new external input has a Zod schema.
@@ -215,7 +215,6 @@ Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
 1.  **No test toolchain.** Install Vitest, RTL, MSW, `fake-indexeddb`; add a `test` script.
 2.  **`strict` is not enabled** in `tsconfig.app.json`, contradicting §1. Adding `"strict": true` produces **0 errors** today (`tsc --noEmit --strict -p tsconfig.app.json`), so it is a one-line change.
-3.  **`npm run typecheck` is a no-op** (see §6). Change it to `tsc -b`.
 4.  **Credential logging:** `login-form.tsx:50` and `signup-form.tsx:51` `console.info` the submitted form `values` (includes the password field); `search-form.tsx:32` does the same. Remove when real submit handlers land.
 5.  **Oversized files** (limits: components 150, hooks/lib 300): `notes/use-notes-workspace.ts` 954, `notes/notes-file-viewer.tsx` 475, `pages/calendar.tsx` 402, `lib/media-worker-client.ts` 399, `lib/notes-storage.ts` 387, `pages/notes.tsx` 351, `pages/dashboard.tsx` 349, `notes/spatial-notes-editor.tsx` 313, `pages/index.tsx` 235, `workers/mediaWorker.ts` 225, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `pages/privacy.tsx` 169, `pages/pricing.tsx` 163, `pages/documentation.tsx` 158, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
 6.  **Index used as key:** `pages/onboarding.tsx:89` (`components/ui/field.tsx:203` is generated).
