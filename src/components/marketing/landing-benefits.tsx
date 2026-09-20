@@ -1,5 +1,7 @@
 import { LockKeyhole, type LucideIcon, ShieldCheck } from "lucide-react";
 
+import { BenefitCards } from "@/components/auth/benefit-cards";
+
 type Benefit = {
   icon: LucideIcon;
   title: string;
@@ -51,18 +53,13 @@ const BENEFITS: Benefit[] = [
 
 export function LandingBenefits() {
   return (
-    <div className="signin-points" aria-label="Features and benefits of using Cuervo Planner">
-      {BENEFITS.map(({ icon: Icon, title, copy }) => (
-        <div className="signin-point" key={title}>
-          <span className="signin-point-badge">
-            <Icon className="size-4" />
-          </span>
-          <div>
-            <p className="signin-point-title">{title}</p>
-            <p className="signin-point-copy">{copy}</p>
-          </div>
-        </div>
-      ))}
-    </div>
+    <BenefitCards
+      label="Features and benefits of using Cuervo Planner"
+      benefits={BENEFITS.map(({ icon: Icon, title, copy }) => ({
+        icon: <Icon className="size-4" />,
+        title,
+        copy,
+      }))}
+    />
   );
 }

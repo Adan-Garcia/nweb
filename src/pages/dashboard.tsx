@@ -8,8 +8,6 @@ import { useDashboardData } from "@/components/dashboard/use-dashboard-data";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { useThemeMode } from "@/hooks/use-theme-mode";
 
-import "../App.css";
-
 export function DashboardPage() {
   const { isDark, toggleTheme } = useThemeMode();
   const dashboard = useDashboardData();

@@ -7,8 +7,6 @@ import { OnboardingStepList } from "@/components/onboarding/onboarding-step-list
 import { ONBOARDING_STEPS } from "@/components/onboarding/onboarding-steps";
 import { useThemeMode } from "@/hooks/use-theme-mode";
 
-import "../App.css";
-
 export function OnboardingPage() {
   const { isDark, toggleTheme } = useThemeMode();
   const [currentStep, setCurrentStep] = useState(0);

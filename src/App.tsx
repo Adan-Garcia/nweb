@@ -4,8 +4,6 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { RouteFallback } from "@/components/route-fallback";
 import { IndexPage } from "@/pages/index";
 
-import "./App.css";
-
 /** Loads a page's named export on demand, so its dependencies stay out of the entry bundle. */
 function lazyPage<Name extends string>(
   load: () => Promise<Record<Name, ComponentType>>,
