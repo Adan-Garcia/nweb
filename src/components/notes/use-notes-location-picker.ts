@@ -15,13 +15,7 @@ import type {
   NotesMode,
 } from "@/components/notes/types";
 
-const SEGMENTS: LocationSegment[] = [
-  "wing",
-  "flight",
-  "branch",
-  "nest",
-  "feather",
-];
+const SEGMENTS: LocationSegment[] = ["wing", "flight", "branch", "nest", "feather"];
 
 type UseNotesLocationPickerOptions = {
   mode: NotesMode;
@@ -47,14 +41,12 @@ export function useNotesLocationPicker({
   createOrOpenDocumentAtLocation,
   openDocumentById,
 }: UseNotesLocationPickerOptions) {
-  const [draftLocation, setDraftLocation] =
-    useState<NotesHierarchyLocation>(activeLocation);
+  const [draftLocation, setDraftLocation] = useState<NotesHierarchyLocation>(activeLocation);
   const [syncedLocation, setSyncedLocation] = useState(activeLocation);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newNoteMode, setNewNoteMode] = useState<NotesDocumentMode>(mode);
   const [isCreatingNote, setIsCreatingNote] = useState(false);
-  const [segmentModalState, setSegmentModalState] =
-    useState<SegmentModalState | null>(null);
+  const [segmentModalState, setSegmentModalState] = useState<SegmentModalState | null>(null);
   const [segmentDraftValue, setSegmentDraftValue] = useState("");
 
   // Whenever the active note changes, the draft path restarts from it.
@@ -79,9 +71,7 @@ export function useNotesLocationPicker({
     };
   }, [directoryEntries, draftLocation]);
 
-  const selectedLocationSummary = SEGMENTS.map(
-    (segment) => draftLocation[segment],
-  ).join(" / ");
+  const selectedLocationSummary = SEGMENTS.map((segment) => draftLocation[segment]).join(" / ");
 
   const openCreateModal = () => {
     setNewNoteMode(mode);
@@ -100,10 +90,7 @@ export function useNotesLocationPicker({
   };
 
   /** Adopts `nextLocation`; a chosen note opens if it exists, else offers to create it. */
-  const settleLocation = (
-    segment: LocationSegment,
-    nextLocation: NotesHierarchyLocation,
-  ) => {
+  const settleLocation = (segment: LocationSegment, nextLocation: NotesHierarchyLocation) => {
     setDraftLocation(nextLocation);
 
     if (segment !== "feather") {

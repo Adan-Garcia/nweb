@@ -1,19 +1,13 @@
-import type { LucideIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type BulletListCardProps = {
-  title: string
-  icon: LucideIcon
-  description?: string
-  items: string[]
-}
+  title: string;
+  icon: LucideIcon;
+  description?: string;
+  items: string[];
+};
 
 /** A card with an icon heading and a list of short statements. */
 export function BulletListCard({ title, icon: Icon, description, items }: BulletListCardProps) {
@@ -36,5 +30,5 @@ export function BulletListCard({ title, icon: Icon, description, items }: Bullet
         </ul>
       </CardContent>
     </Card>
-  )
+  );
 }

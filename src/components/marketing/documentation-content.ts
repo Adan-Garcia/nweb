@@ -1,9 +1,9 @@
-import { ShieldCheck, Workflow, Wrench, type LucideIcon } from "lucide-react"
+import { ShieldCheck, Workflow, Wrench, type LucideIcon } from "lucide-react";
 
 export type HierarchyLevel = {
-  name: string
-  description: string
-}
+  name: string;
+  description: string;
+};
 
 export const HIERARCHY_LEVELS: HierarchyLevel[] = [
   {
@@ -26,13 +26,13 @@ export const HIERARCHY_LEVELS: HierarchyLevel[] = [
     name: "Twig & Feather",
     description: "Twigs are tasks, feathers are markdown notes connected to each class.",
   },
-]
+];
 
 export type RoadmapArea = {
-  area: string
-  icon: LucideIcon
-  items: string[]
-}
+  area: string;
+  icon: LucideIcon;
+  items: string[];
+};
 
 export const ROADMAP_AREAS: RoadmapArea[] = [
   {
@@ -62,4 +62,4 @@ export const ROADMAP_AREAS: RoadmapArea[] = [
       "Server and client revocation strategy for roster changes",
     ],
   },
-]
+];

@@ -1,21 +1,21 @@
-import type { FieldErrors, UseFormHandleSubmit, UseFormRegister } from "react-hook-form"
+import type { FieldErrors, UseFormHandleSubmit, UseFormRegister } from "react-hook-form";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import type { EventFormValues } from "@/components/calendar/calendar-shared"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import type { EventFormValues } from "@/components/calendar/calendar-shared";
 
 type EventOverlayProps = {
-  isOpen: boolean
-  editingEventId: number | null
-  register: UseFormRegister<EventFormValues>
-  handleSubmit: UseFormHandleSubmit<EventFormValues>
-  errors: FieldErrors<EventFormValues>
-  eventColorOptions: readonly string[]
-  onSubmit: (values: EventFormValues) => void
-  onClose: () => void
-}
+  isOpen: boolean;
+  editingEventId: number | null;
+  register: UseFormRegister<EventFormValues>;
+  handleSubmit: UseFormHandleSubmit<EventFormValues>;
+  errors: FieldErrors<EventFormValues>;
+  eventColorOptions: readonly string[];
+  onSubmit: (values: EventFormValues) => void;
+  onClose: () => void;
+};
 
 export function EventOverlay({
   isOpen,
@@ -28,7 +28,7 @@ export function EventOverlay({
   onClose,
 }: EventOverlayProps) {
   if (!isOpen) {
-    return null
+    return null;
   }
 
   return (
@@ -36,19 +36,25 @@ export function EventOverlay({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
-          onClose()
+          onClose();
         }
       }}
       role="presentation"
     >
-      <Card className="w-full max-w-lg border-border/80 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+      <Card
+        className="w-full max-w-lg border-border/80 shadow-2xl"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <CardHeader>
           <CardTitle>{editingEventId === null ? "Add event" : "Edit event"}</CardTitle>
         </CardHeader>
         <CardContent>
-          <form noValidate onSubmit={(event) => {
-              void handleSubmit(onSubmit)(event)
-            }}>
+          <form
+            noValidate
+            onSubmit={(event) => {
+              void handleSubmit(onSubmit)(event);
+            }}
+          >
             <FieldGroup>
               <Field data-invalid={!!errors.title}>
                 <FieldLabel htmlFor="event-title">Title</FieldLabel>
@@ -120,12 +126,14 @@ export function EventOverlay({
                 <Button type="button" variant="outline" onClick={onClose}>
                   Cancel
                 </Button>
-                <Button type="submit">{editingEventId === null ? "Create event" : "Save changes"}</Button>
+                <Button type="submit">
+                  {editingEventId === null ? "Create event" : "Save changes"}
+                </Button>
               </Field>
             </FieldGroup>
           </form>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

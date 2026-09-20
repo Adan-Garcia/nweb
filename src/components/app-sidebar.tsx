@@ -20,10 +20,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar {...props}>
       <SidebarHeader>
-        <VersionSwitcher
-          versions={data.versions}
-          defaultVersion={data.versions[0]}
-        />
+        <VersionSwitcher versions={data.versions} defaultVersion={data.versions[0]} />
         <SearchForm />
       </SidebarHeader>
       <SidebarContent>
@@ -34,10 +31,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenu>
                 {item.items.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      isActive={item.isActive}
-                      render={<a href={item.url} />}
-                    >
+                    <SidebarMenuButton isActive={item.isActive} render={<a href={item.url} />}>
                       {item.title}
                     </SidebarMenuButton>
                   </SidebarMenuItem>

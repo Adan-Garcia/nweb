@@ -40,8 +40,8 @@ export function NotesCreateNoteDialog({
         <DialogHeader>
           <DialogTitle>Create New Note</DialogTitle>
           <DialogDescription>
-            Pick the note type. The editor will switch to the selected mode as
-            soon as the note opens.
+            Pick the note type. The editor will switch to the selected mode as soon as the note
+            opens.
           </DialogDescription>
         </DialogHeader>
 
@@ -83,10 +83,7 @@ export function NotesCreateNoteDialog({
         </div>
 
         <DialogFooter>
-          <DialogClose
-            render={<Button variant="outline" />}
-            disabled={isCreatingNote}
-          >
+          <DialogClose render={<Button variant="outline" />} disabled={isCreatingNote}>
             Cancel
           </DialogClose>
           <Button

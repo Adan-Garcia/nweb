@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-import {
-  DEFAULT_PEN_WIDTH,
-  clampPenWidth,
-} from "@/components/notes/spatial-notes-editor-utils";
+import { DEFAULT_PEN_WIDTH, clampPenWidth } from "@/components/notes/spatial-notes-editor-utils";
 
 /**
  * Holds the Excalidraw API handle and keeps the toolbar's pen width in sync
@@ -40,9 +37,7 @@ export function useExcalidrawPen() {
         onChangeUnsubscribeRef.current = null;
       }
 
-      const initialWidth = clampPenWidth(
-        api.getAppState().currentItemStrokeWidth,
-      );
+      const initialWidth = clampPenWidth(api.getAppState().currentItemStrokeWidth);
       applyPenWidth(initialWidth);
 
       onChangeUnsubscribeRef.current = api.onChange((_elements, appState) => {

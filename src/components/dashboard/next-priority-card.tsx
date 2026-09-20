@@ -1,10 +1,5 @@
 import { formatHumanDate } from "@/components/calendar/calendar-shared";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CalendarEvent } from "@/lib/calendar-event";
 
 export function NextPriorityCard({ event }: { event: CalendarEvent | null }) {

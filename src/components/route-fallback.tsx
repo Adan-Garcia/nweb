@@ -6,5 +6,5 @@ export function RouteFallback() {
         Loading...
       </p>
     </div>
-  )
+  );
 }

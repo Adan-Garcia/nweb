@@ -25,10 +25,7 @@ export function SpatialNotesToolbar({
 }) {
   return (
     <div className="flex items-center gap-2 rounded-md border bg-background/95 px-2 py-1 shadow-sm">
-      <label
-        htmlFor="notes-pen-width"
-        className="text-xs font-medium text-muted-foreground"
-      >
+      <label htmlFor="notes-pen-width" className="text-xs font-medium text-muted-foreground">
         Pen {penWidth.toFixed(2)}
       </label>
       <input
@@ -60,9 +57,7 @@ export function SpatialNotesToolbar({
         variant="outline"
         size="sm"
         onClick={onToggleFullscreen}
-        aria-label={
-          isFullscreen ? "Exit canvas fullscreen" : "Enter canvas fullscreen"
-        }
+        aria-label={isFullscreen ? "Exit canvas fullscreen" : "Enter canvas fullscreen"}
       >
         {isFullscreen ? (
           <>

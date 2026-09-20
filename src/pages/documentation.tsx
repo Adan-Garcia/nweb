@@ -1,10 +1,10 @@
-import { BookOpen } from "lucide-react"
+import { BookOpen } from "lucide-react";
 
-import { BulletListCard } from "@/components/marketing/bullet-list-card"
-import { HIERARCHY_LEVELS, ROADMAP_AREAS } from "@/components/marketing/documentation-content"
-import { HierarchyLevelCard } from "@/components/marketing/hierarchy-level-card"
-import { MarketingEyebrow } from "@/components/marketing/marketing-eyebrow"
-import { MarketingPage } from "@/components/marketing/marketing-page"
+import { BulletListCard } from "@/components/marketing/bullet-list-card";
+import { HIERARCHY_LEVELS, ROADMAP_AREAS } from "@/components/marketing/documentation-content";
+import { HierarchyLevelCard } from "@/components/marketing/hierarchy-level-card";
+import { MarketingEyebrow } from "@/components/marketing/marketing-eyebrow";
+import { MarketingPage } from "@/components/marketing/marketing-page";
 
 export function DocumentationPage() {
   return (
@@ -16,7 +16,8 @@ export function DocumentationPage() {
             Build with the same structure as your study flow
           </h1>
           <p className="max-w-3xl text-base text-muted-foreground sm:text-lg">
-            This guide mirrors the planner model shown in the app and combines your current implementation roadmap so new contributors can onboard quickly.
+            This guide mirrors the planner model shown in the app and combines your current
+            implementation roadmap so new contributors can onboard quickly.
           </p>
         </div>
 
@@ -39,5 +40,5 @@ export function DocumentationPage() {
         </div>
       </div>
     </MarketingPage>
-  )
+  );
 }

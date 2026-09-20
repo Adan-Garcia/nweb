@@ -30,8 +30,7 @@ export function SpatialNotesEditor({
 }) {
   const shellRef = useRef<HTMLElement | null>(null);
   const { isFullscreen, toggleFullscreen } = useElementFullscreen(shellRef);
-  const { excalidrawApiRef, penWidth, applyPenWidth, handleExcalidrawApi } =
-    useExcalidrawPen();
+  const { excalidrawApiRef, penWidth, applyPenWidth, handleExcalidrawApi } = useExcalidrawPen();
   const { pdfInputRef, isImportingPdf, openPdfPicker, handlePdfInputChange } =
     usePdfImport(excalidrawApiRef);
 
@@ -71,9 +70,7 @@ export function SpatialNotesEditor({
           }}
         >
           <MainMenu>
-            <MainMenu.Item onSelect={openPdfPicker}>
-              Insert PDF (choose pages)
-            </MainMenu.Item>
+            <MainMenu.Item onSelect={openPdfPicker}>Insert PDF (choose pages)</MainMenu.Item>
             <MainMenu.Separator />
             <MainMenu.DefaultItems.SaveAsImage />
             <MainMenu.DefaultItems.ClearCanvas />

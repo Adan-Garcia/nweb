@@ -1,10 +1,7 @@
 import { Clock3, Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  EVENT_COLORS,
-  formatShortDate,
-} from "@/components/calendar/calendar-shared";
+import { EVENT_COLORS, formatShortDate } from "@/components/calendar/calendar-shared";
 import { StatusSlider } from "@/components/calendar/status-slider";
 import type { CalendarEvent } from "@/lib/calendar-event";
 
@@ -25,9 +22,7 @@ export function CalendarEventListItem({
   return (
     <div
       className={`rounded-lg border border-border p-3 transition-opacity duration-300 ${
-        event.status === "complete"
-          ? "opacity-60"
-          : "opacity-90 hover:opacity-100"
+        event.status === "complete" ? "opacity-60" : "opacity-90 hover:opacity-100"
       }`}
     >
       <div className="mb-2 flex items-start justify-between gap-2 flex-col">

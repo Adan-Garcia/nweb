@@ -1,10 +1,10 @@
-import type { LucideIcon } from "lucide-react"
-import type { ReactNode } from "react"
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 type MarketingEyebrowProps = {
-  icon: LucideIcon
-  children: ReactNode
-}
+  icon: LucideIcon;
+  children: ReactNode;
+};
 
 /** The small pill above a page heading. */
 export function MarketingEyebrow({ icon: Icon, children }: MarketingEyebrowProps) {
@@ -13,5 +13,5 @@ export function MarketingEyebrow({ icon: Icon, children }: MarketingEyebrowProps
       <Icon className="size-3.5" />
       {children}
     </p>
-  )
+  );
 }

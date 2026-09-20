@@ -1,14 +1,14 @@
-import type { LucideIcon } from "lucide-react"
-import type { ReactNode } from "react"
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 type MarketingCalloutProps = {
-  title: string
-  icon?: LucideIcon
-  className?: string
-  children: ReactNode
-}
+  title: string;
+  icon?: LucideIcon;
+  className?: string;
+  children: ReactNode;
+};
 
 /** A bordered call-out with a heading and a paragraph of copy. */
 export function MarketingCallout({
@@ -25,5 +25,5 @@ export function MarketingCallout({
       </h2>
       <p className="text-sm text-muted-foreground sm:text-base">{children}</p>
     </div>
-  )
+  );
 }

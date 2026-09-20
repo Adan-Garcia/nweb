@@ -1,11 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type DashboardStatCardProps = {
   title: string;
@@ -14,12 +9,7 @@ type DashboardStatCardProps = {
   caption: string;
 };
 
-export function DashboardStatCard({
-  title,
-  icon: Icon,
-  value,
-  caption,
-}: DashboardStatCardProps) {
+export function DashboardStatCard({ title, icon: Icon, value, caption }: DashboardStatCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

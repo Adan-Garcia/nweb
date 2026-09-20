@@ -11,37 +11,34 @@ type SwitchContext = "openDocumentById" | "createOrOpenDocumentAtLocation";
 export function useDocumentSwitchQueue() {
   const queueRef = useRef<Promise<void>>(Promise.resolve());
 
-  return useCallback(
-    async (context: SwitchContext, operation: () => Promise<void>) => {
-      const previousOperation = queueRef.current;
-      let releaseCurrentOperation: () => void = () => {};
+  return useCallback(async (context: SwitchContext, operation: () => Promise<void>) => {
+    const previousOperation = queueRef.current;
+    let releaseCurrentOperation: () => void = () => {};
 
-      const currentOperation = new Promise<void>((resolve) => {
-        releaseCurrentOperation = resolve;
-      });
+    const currentOperation = new Promise<void>((resolve) => {
+      releaseCurrentOperation = resolve;
+    });
 
-      queueRef.current = previousOperation.then(() => currentOperation);
+    queueRef.current = previousOperation.then(() => currentOperation);
 
-      notesTrace("notes-workspace", "document-switch:queued", {
+    notesTrace("notes-workspace", "document-switch:queued", {
+      context,
+    });
+
+    await previousOperation;
+
+    notesTrace("notes-workspace", "document-switch:running", {
+      context,
+    });
+
+    try {
+      await operation();
+    } finally {
+      releaseCurrentOperation();
+
+      notesTrace("notes-workspace", "document-switch:complete", {
         context,
       });
-
-      await previousOperation;
-
-      notesTrace("notes-workspace", "document-switch:running", {
-        context,
-      });
-
-      try {
-        await operation();
-      } finally {
-        releaseCurrentOperation();
-
-        notesTrace("notes-workspace", "document-switch:complete", {
-          context,
-        });
-      }
-    },
-    [],
-  );
+    }
+  }, []);
 }

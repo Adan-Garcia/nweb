@@ -1,11 +1,5 @@
-import {
-  createDefaultNotesLocation,
-  sanitizeLocationSegment,
-} from "@/components/notes/constants";
-import type {
-  NotesDirectoryEntry,
-  NotesHierarchyLocation,
-} from "@/components/notes/types";
+import { createDefaultNotesLocation, sanitizeLocationSegment } from "@/components/notes/constants";
+import type { NotesDirectoryEntry, NotesHierarchyLocation } from "@/components/notes/types";
 
 export const FALLBACK_LOCATION = createDefaultNotesLocation();
 
@@ -19,18 +13,13 @@ export function toLocation(entry: NotesDirectoryEntry): NotesHierarchyLocation {
   };
 }
 
-export function normalizeLocation(
-  location: NotesHierarchyLocation,
-): NotesHierarchyLocation {
+export function normalizeLocation(location: NotesHierarchyLocation): NotesHierarchyLocation {
   return {
     wing: sanitizeLocationSegment(location.wing) || FALLBACK_LOCATION.wing,
-    flight:
-      sanitizeLocationSegment(location.flight) || FALLBACK_LOCATION.flight,
-    branch:
-      sanitizeLocationSegment(location.branch) || FALLBACK_LOCATION.branch,
+    flight: sanitizeLocationSegment(location.flight) || FALLBACK_LOCATION.flight,
+    branch: sanitizeLocationSegment(location.branch) || FALLBACK_LOCATION.branch,
     nest: sanitizeLocationSegment(location.nest) || FALLBACK_LOCATION.nest,
-    feather:
-      sanitizeLocationSegment(location.feather) || FALLBACK_LOCATION.feather,
+    feather: sanitizeLocationSegment(location.feather) || FALLBACK_LOCATION.feather,
   };
 }
 
@@ -41,13 +30,7 @@ export type SegmentModalState = {
   label: string;
 };
 
-const locationSegments: LocationSegment[] = [
-  "wing",
-  "flight",
-  "branch",
-  "nest",
-  "feather",
-];
+const locationSegments: LocationSegment[] = ["wing", "flight", "branch", "nest", "feather"];
 
 export function buildSegmentOptions(values: string[], activeValue: string) {
   const nextValues = new Set(values.filter((value) => value.trim().length > 0));
@@ -56,9 +39,7 @@ export function buildSegmentOptions(values: string[], activeValue: string) {
     nextValues.add(activeValue);
   }
 
-  return Array.from(nextValues).sort((left, right) =>
-    left.localeCompare(right),
-  );
+  return Array.from(nextValues).sort((left, right) => left.localeCompare(right));
 }
 
 export function getEntryForLocation(
@@ -113,13 +94,9 @@ export function listSegmentOptions(
     })
     .map((entry) => entry[segment]);
 
-  const uniqueValues = new Set(
-    segmentValues.filter((value) => value.trim().length > 0),
-  );
+  const uniqueValues = new Set(segmentValues.filter((value) => value.trim().length > 0));
 
-  return Array.from(uniqueValues).sort((left, right) =>
-    left.localeCompare(right),
-  );
+  return Array.from(uniqueValues).sort((left, right) => left.localeCompare(right));
 }
 
 export function resolveCascadingLocation(
@@ -141,11 +118,7 @@ export function resolveCascadingLocation(
     segmentIndex += 1
   ) {
     const childSegment = locationSegments[segmentIndex];
-    const childOptions = listSegmentOptions(
-      entries,
-      nextLocation,
-      childSegment,
-    );
+    const childOptions = listSegmentOptions(entries, nextLocation, childSegment);
 
     if (!childOptions.length) {
       continue;

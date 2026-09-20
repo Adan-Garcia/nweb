@@ -37,9 +37,7 @@ export function useNotesImageIngest({
         }),
       );
 
-      setOptimizedAssetCount(
-        (currentCount) => currentCount + optimizedFiles.length,
-      );
+      setOptimizedAssetCount((currentCount) => currentCount + optimizedFiles.length);
     },
     [mediaWorker],
   );

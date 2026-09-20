@@ -1,10 +1,6 @@
 import type { BinaryFileData } from "@excalidraw/excalidraw/types";
 
-import type {
-  SceneAppState,
-  SceneElements,
-  SceneFiles,
-} from "@/components/notes/types";
+import type { SceneAppState, SceneElements, SceneFiles } from "@/components/notes/types";
 import type { LoadedSceneFile } from "@/lib/notes-model";
 
 // The only place that talks to Excalidraw's opaque/branded persistence types.
@@ -34,9 +30,7 @@ export function parseStoredScene(serialized: string): StoredScene {
 }
 
 /** Rebuilds Excalidraw's file map from files loaded out of storage. */
-export function restoreSceneFiles(
-  loadedFiles: Record<string, LoadedSceneFile>,
-): SceneFiles {
+export function restoreSceneFiles(loadedFiles: Record<string, LoadedSceneFile>): SceneFiles {
   const restoredFiles: SceneFiles = {};
 
   for (const loadedFile of Object.values(loadedFiles)) {

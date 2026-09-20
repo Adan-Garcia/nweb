@@ -31,10 +31,7 @@ type CalendarEventListCardProps = {
   onOpenAddEvent: (defaultDate?: string | null) => void;
   onOpenEditEvent: (event: CalendarEvent) => void;
   onDeleteEvent: (event: CalendarEvent) => void;
-  onSetEventStatus: (
-    eventId: number,
-    nextStatus: CalendarEvent["status"],
-  ) => void;
+  onSetEventStatus: (eventId: number, nextStatus: CalendarEvent["status"]) => void;
 };
 
 export function CalendarEventListCard({

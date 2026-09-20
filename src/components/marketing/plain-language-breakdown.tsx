@@ -1,4 +1,4 @@
-import { PLAIN_LANGUAGE_STEPS } from "@/components/marketing/privacy-content"
+import { PLAIN_LANGUAGE_STEPS } from "@/components/marketing/privacy-content";
 
 export function PlainLanguageBreakdown({ intro }: { intro: string }) {
   return (
@@ -17,5 +17,5 @@ export function PlainLanguageBreakdown({ intro }: { intro: string }) {
         ))}
       </div>
     </div>
-  )
+  );
 }

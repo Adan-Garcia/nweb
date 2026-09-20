@@ -42,14 +42,15 @@ export function useNotesFlush({
   clearPendingLinearEdit,
   refreshDirectoryEntries,
 }: UseNotesFlushOptions) {
-  const { latestLinearContentRef, latestSpatialSnapshotRef, pendingLinearEditAtRef, pendingSpatialSceneVersionRef } = refs;
+  const {
+    latestLinearContentRef,
+    latestSpatialSnapshotRef,
+    pendingLinearEditAtRef,
+    pendingSpatialSceneVersionRef,
+  } = refs;
   const persistActiveDocumentBeforeSwitch = useCallback(
     async (context: SwitchContext, toDocumentId: string) => {
-      if (
-        !isStorageReady ||
-        !activeDocumentId ||
-        activeDocumentId === toDocumentId
-      ) {
+      if (!isStorageReady || !activeDocumentId || activeDocumentId === toDocumentId) {
         return;
       }
 
@@ -64,15 +65,10 @@ export function useNotesFlush({
             activeCreatedMode,
           );
         } catch (error) {
-          notesTraceError(
-            "notes-workspace",
-            `${context}:preswitch-linear-save-failed`,
-            error,
-            {
-              fromDocumentId: activeDocumentId,
-              toDocumentId,
-            },
-          );
+          notesTraceError("notes-workspace", `${context}:preswitch-linear-save-failed`, error, {
+            fromDocumentId: activeDocumentId,
+            toDocumentId,
+          });
         }
 
         clearPendingLinearEdit();
@@ -87,15 +83,10 @@ export function useNotesFlush({
             snapshotVersionForSwitch,
           );
         } catch (error) {
-          notesTraceError(
-            "notes-workspace",
-            `${context}:preswitch-spatial-save-failed`,
-            error,
-            {
-              fromDocumentId: activeDocumentId,
-              toDocumentId,
-            },
-          );
+          notesTraceError("notes-workspace", `${context}:preswitch-spatial-save-failed`, error, {
+            fromDocumentId: activeDocumentId,
+            toDocumentId,
+          });
         }
       }
     },
@@ -106,10 +97,10 @@ export function useNotesFlush({
       isStorageReady,
       persistLinearContent,
       persistSpatialSnapshot,
-    latestLinearContentRef,
-    latestSpatialSnapshotRef,
-    pendingLinearEditAtRef,
-    pendingSpatialSceneVersionRef,
+      latestLinearContentRef,
+      latestSpatialSnapshotRef,
+      pendingLinearEditAtRef,
+      pendingSpatialSceneVersionRef,
     ],
   );
 
@@ -121,11 +112,7 @@ export function useNotesFlush({
     const snapshotForManualSave = latestSpatialSnapshotRef.current;
     const snapshotVersionForManualSave = pendingSpatialSceneVersionRef.current;
 
-    await persistLinearContent(
-      latestLinearContentRef.current,
-      activeDocumentId,
-      activeCreatedMode,
-    );
+    await persistLinearContent(latestLinearContentRef.current, activeDocumentId, activeCreatedMode);
     if (snapshotForManualSave && snapshotVersionForManualSave !== null) {
       await persistSpatialSnapshot(
         activeDocumentId,

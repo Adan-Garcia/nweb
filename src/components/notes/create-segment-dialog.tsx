@@ -51,20 +51,13 @@ export function NotesCreateSegmentDialog({
             onChange={(event) => {
               onSegmentDraftValueChange(event.currentTarget.value);
             }}
-            placeholder={`Enter ${(
-              segmentModalState?.label ?? "value"
-            ).toLowerCase()}`}
+            placeholder={`Enter ${(segmentModalState?.label ?? "value").toLowerCase()}`}
           />
         </div>
 
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>
-            Cancel
-          </DialogClose>
-          <Button
-            onClick={onCreateSegment}
-            disabled={!segmentDraftValue.trim().length}
-          >
+          <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+          <Button onClick={onCreateSegment} disabled={!segmentDraftValue.trim().length}>
             Add {segmentModalState?.label ?? "Value"}
           </Button>
         </DialogFooter>

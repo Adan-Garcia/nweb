@@ -1,17 +1,17 @@
-import { useState } from "react"
+import { useState } from "react";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import type { NotesHierarchyLocation } from "@/components/notes/types"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import type { NotesHierarchyLocation } from "@/components/notes/types";
+import { cn } from "@/lib/utils";
 
 type LocationField = {
-  key: keyof NotesHierarchyLocation
-  label: string
-  placeholder: string
-  className?: string
-}
+  key: keyof NotesHierarchyLocation;
+  label: string;
+  placeholder: string;
+  className?: string;
+};
 
 const LOCATION_FIELDS: LocationField[] = [
   { key: "wing", label: "Wing", placeholder: "My Wing" },
@@ -24,14 +24,14 @@ const LOCATION_FIELDS: LocationField[] = [
     placeholder: "Exam review",
     className: "col-span-2 max-[640px]:col-span-1",
   },
-]
+];
 
 type NotesLocationFormProps = {
-  activeLocation: NotesHierarchyLocation
-  isDisabled: boolean
-  onCreateOrOpenLocation: (location: NotesHierarchyLocation) => void
-  onSaveNow: () => void
-}
+  activeLocation: NotesHierarchyLocation;
+  isDisabled: boolean;
+  onCreateOrOpenLocation: (location: NotesHierarchyLocation) => void;
+  onSaveNow: () => void;
+};
 
 /** Edit a Wing/Flight/Branch/Nest/Feather path, then open or create it. */
 export function NotesLocationForm({
@@ -40,13 +40,13 @@ export function NotesLocationForm({
   onCreateOrOpenLocation,
   onSaveNow,
 }: NotesLocationFormProps) {
-  const [draftLocation, setDraftLocation] = useState<NotesHierarchyLocation>(activeLocation)
-  const [syncedLocation, setSyncedLocation] = useState(activeLocation)
+  const [draftLocation, setDraftLocation] = useState<NotesHierarchyLocation>(activeLocation);
+  const [syncedLocation, setSyncedLocation] = useState(activeLocation);
 
   // Whenever the active note changes, the draft restarts from it.
   if (syncedLocation !== activeLocation) {
-    setSyncedLocation(activeLocation)
-    setDraftLocation(activeLocation)
+    setSyncedLocation(activeLocation);
+    setDraftLocation(activeLocation);
   }
 
   return (
@@ -59,8 +59,8 @@ export function NotesLocationForm({
               id={field.key}
               value={draftLocation[field.key]}
               onChange={(event) => {
-                const { value } = event.currentTarget
-                setDraftLocation((current) => ({ ...current, [field.key]: value }))
+                const { value } = event.currentTarget;
+                setDraftLocation((current) => ({ ...current, [field.key]: value }));
               }}
               placeholder={field.placeholder}
             />
@@ -73,7 +73,7 @@ export function NotesLocationForm({
           type="button"
           variant="default"
           onClick={() => {
-            onCreateOrOpenLocation(draftLocation)
+            onCreateOrOpenLocation(draftLocation);
           }}
           disabled={isDisabled}
         >
@@ -84,5 +84,5 @@ export function NotesLocationForm({
         </Button>
       </div>
     </>
-  )
+  );
 }

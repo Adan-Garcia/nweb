@@ -1,11 +1,11 @@
-import { Button } from "@/components/ui/button"
-import { LandingBenefits } from "@/components/marketing/landing-benefits"
-import { LandingHeader } from "@/components/marketing/landing-header"
-import { useThemeMode } from "@/hooks/use-theme-mode"
-import "../App.css"
+import { Button } from "@/components/ui/button";
+import { LandingBenefits } from "@/components/marketing/landing-benefits";
+import { LandingHeader } from "@/components/marketing/landing-header";
+import { useThemeMode } from "@/hooks/use-theme-mode";
+import "../App.css";
 
 export function IndexPage() {
-  const { isDark, toggleTheme } = useThemeMode()
+  const { isDark, toggleTheme } = useThemeMode();
 
   return (
     <main className="min-h-screen w-full bg-background text-foreground">
@@ -16,10 +16,9 @@ export function IndexPage() {
           <div className="mb-8">
             <h1 className="mb-2 text-4xl font-bold">Cuervo Planner</h1>
             <p className="text-lg text-muted-foreground">
-              A simple homework planner and note taking app built with privacy
-              in mind. Create an account to keep your information encrypted and
-              safe. Your data is stored locally on your device and never leaves
-              it, for more information, see our{" "}
+              A simple homework planner and note taking app built with privacy in mind. Create an
+              account to keep your information encrypted and safe. Your data is stored locally on
+              your device and never leaves it, for more information, see our{" "}
               <a href="/privacy" className="text-primary hover:underline">
                 <b>privacy policy</b>
               </a>
@@ -39,5 +38,5 @@ export function IndexPage() {
         <LandingBenefits />
       </div>
     </main>
-  )
+  );
 }

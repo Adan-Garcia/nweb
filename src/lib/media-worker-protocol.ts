@@ -28,10 +28,7 @@ export type DecompressTextRequest = {
   };
 };
 
-export type WorkerRequest =
-  | OptimizeImageRequest
-  | CompressTextRequest
-  | DecompressTextRequest;
+export type WorkerRequest = OptimizeImageRequest | CompressTextRequest | DecompressTextRequest;
 
 export type WorkerResponse =
   | {

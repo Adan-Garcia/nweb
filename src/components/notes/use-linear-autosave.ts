@@ -31,11 +31,7 @@ export function useLinearAutosave({
 }: UseLinearAutosaveOptions) {
   const { latestLinearContentRef, linearSaveTimeoutRef, pendingLinearEditAtRef } = refs;
   const persistLinearContent = useCallback(
-    async (
-      content: string,
-      documentId: string,
-      createdMode?: NotesDocumentMode,
-    ) => {
+    async (content: string, documentId: string, createdMode?: NotesDocumentMode) => {
       const compressed = await mediaWorker.compressText(content);
 
       await saveLinearDocumentPayload({
@@ -72,15 +68,13 @@ export function useLinearAutosave({
         return;
       }
 
-      void persistLinearContent(
-        contentForScheduledSave,
-        activeDocumentId,
-        activeCreatedMode,
-      ).then(() => {
-        if (pendingLinearEditAtRef.current === scheduledEditAt) {
-          clearPendingLinearEdit();
-        }
-      });
+      void persistLinearContent(contentForScheduledSave, activeDocumentId, activeCreatedMode).then(
+        () => {
+          if (pendingLinearEditAtRef.current === scheduledEditAt) {
+            clearPendingLinearEdit();
+          }
+        },
+      );
     }, 700);
 
     return () => {

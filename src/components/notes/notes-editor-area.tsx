@@ -11,10 +11,7 @@ type NotesEditorAreaProps = {
 export function NotesEditorArea({ workspace, isDark }: NotesEditorAreaProps) {
   if (workspace.mode === "linear") {
     return (
-      <LinearNotesEditor
-        value={workspace.linearContent}
-        onChange={workspace.setLinearContent}
-      />
+      <LinearNotesEditor value={workspace.linearContent} onChange={workspace.setLinearContent} />
     );
   }
 

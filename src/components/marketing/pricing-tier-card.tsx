@@ -1,19 +1,15 @@
-import { Check, Zap } from "lucide-react"
+import { Check, Zap } from "lucide-react";
 
-import type { PricingTier } from "@/components/marketing/pricing-tiers"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { cn } from "@/lib/utils"
+import type { PricingTier } from "@/components/marketing/pricing-tiers";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export function PricingTierCard({ tier }: { tier: PricingTier }) {
   return (
-    <Card className={cn("text-left", tier.highlight && "border-primary shadow-lg shadow-primary/10")}>
+    <Card
+      className={cn("text-left", tier.highlight && "border-primary shadow-lg shadow-primary/10")}
+    >
       <CardHeader>
         <div className="mb-2 flex items-center justify-between">
           <CardTitle className="text-2xl">{tier.name}</CardTitle>
@@ -41,5 +37,5 @@ export function PricingTierCard({ tier }: { tier: PricingTier }) {
         </Button>
       </CardContent>
     </Card>
-  )
+  );
 }

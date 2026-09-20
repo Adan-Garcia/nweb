@@ -1,8 +1,4 @@
-import {
-  dateKeyToDate,
-  formatDateKey,
-  startOfWeek,
-} from "@/components/calendar/calendar-shared";
+import { dateKeyToDate, formatDateKey, startOfWeek } from "@/components/calendar/calendar-shared";
 import type { CalendarEvent } from "@/lib/calendar-event";
 
 export type CalendarViewMode = "month" | "week";
@@ -68,9 +64,7 @@ export function formatWeekLabel(weekDates: Date[]): string {
   return `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
 }
 
-export function groupEventsByDate(
-  events: CalendarEvent[],
-): Map<string, CalendarEvent[]> {
+export function groupEventsByDate(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
   const map = new Map<string, CalendarEvent[]>();
   events.forEach((event) => {
     const list = map.get(event.date) ?? [];
@@ -140,15 +134,11 @@ export function filterVisibleEvents({
 }
 
 export function listEventClasses(events: CalendarEvent[]): string[] {
-  return Array.from(new Set(events.map((event) => event.color))).sort((a, b) =>
-    a.localeCompare(b),
-  );
+  return Array.from(new Set(events.map((event) => event.color))).sort((a, b) => a.localeCompare(b));
 }
 
 export function nextEventId(events: CalendarEvent[]): number {
-  return (
-    events.reduce((maxId, calendarEvent) => Math.max(maxId, calendarEvent.id), 0) + 1
-  );
+  return events.reduce((maxId, calendarEvent) => Math.max(maxId, calendarEvent.id), 0) + 1;
 }
 
 export function startOfMonth(date: Date): Date {

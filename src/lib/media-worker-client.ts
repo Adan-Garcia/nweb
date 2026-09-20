@@ -102,27 +102,18 @@ export class MediaWorkerClient {
     if (!this.worker) {
       try {
         const convertedBlob = await convertImageBlobToWebp(blob, quality);
-        notesTrace(
-          "media-worker-client",
-          "optimizeImageBlob:no-worker-result",
-          {
-            sourceMimeType: blob.type,
-            sourceSize: blob.size,
-            resultMimeType: convertedBlob.type,
-            resultSize: convertedBlob.size,
-          },
-        );
+        notesTrace("media-worker-client", "optimizeImageBlob:no-worker-result", {
+          sourceMimeType: blob.type,
+          sourceSize: blob.size,
+          resultMimeType: convertedBlob.type,
+          resultSize: convertedBlob.size,
+        });
         return convertedBlob;
       } catch (error) {
-        notesTraceError(
-          "media-worker-client",
-          "optimizeImageBlob:no-worker-failed",
-          error,
-          {
-            mimeType: blob.type,
-            size: blob.size,
-          },
-        );
+        notesTraceError("media-worker-client", "optimizeImageBlob:no-worker-failed", error, {
+          mimeType: blob.type,
+          size: blob.size,
+        });
         return blob;
       }
     }
@@ -148,15 +139,10 @@ export class MediaWorkerClient {
         });
       }
     } catch (error) {
-      notesTraceError(
-        "media-worker-client",
-        "optimizeImageBlob:worker-failed",
-        error,
-        {
-          sourceMimeType: blob.type,
-          sourceSize: blob.size,
-        },
-      );
+      notesTraceError("media-worker-client", "optimizeImageBlob:worker-failed", error, {
+        sourceMimeType: blob.type,
+        sourceSize: blob.size,
+      });
       optimizedBlob = blob;
     }
 
@@ -172,10 +158,7 @@ export class MediaWorkerClient {
     }
 
     try {
-      const convertedBlob = await convertImageBlobToWebp(
-        optimizedBlob,
-        quality,
-      );
+      const convertedBlob = await convertImageBlobToWebp(optimizedBlob, quality);
       notesTrace("media-worker-client", "optimizeImageBlob:fallback-result", {
         inputMimeType: optimizedBlob.type,
         inputSize: optimizedBlob.size,
@@ -184,15 +167,10 @@ export class MediaWorkerClient {
       });
       return convertedBlob;
     } catch (error) {
-      notesTraceError(
-        "media-worker-client",
-        "optimizeImageBlob:fallback-failed",
-        error,
-        {
-          inputMimeType: optimizedBlob.type,
-          inputSize: optimizedBlob.size,
-        },
-      );
+      notesTraceError("media-worker-client", "optimizeImageBlob:fallback-failed", error, {
+        inputMimeType: optimizedBlob.type,
+        inputSize: optimizedBlob.size,
+      });
       return optimizedBlob;
     }
   }
@@ -201,14 +179,10 @@ export class MediaWorkerClient {
     const optimizedBlob = await this.optimizeImageBlob(file, quality);
     const shouldRename = optimizedBlob.type === "image/webp";
 
-    return new File(
-      [optimizedBlob],
-      shouldRename ? renameToWebp(file.name) : file.name,
-      {
-        type: optimizedBlob.type || file.type,
-        lastModified: file.lastModified,
-      },
-    );
+    return new File([optimizedBlob], shouldRename ? renameToWebp(file.name) : file.name, {
+      type: optimizedBlob.type || file.type,
+      lastModified: file.lastModified,
+    });
   }
 
   async compressText(text: string): Promise<TextCompressionResult> {

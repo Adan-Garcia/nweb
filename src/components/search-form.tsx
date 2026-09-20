@@ -1,20 +1,16 @@
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { Label } from "@/components/ui/label"
-import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarInput,
-} from "@/components/ui/sidebar"
-import { SearchIcon } from "lucide-react"
+import { Label } from "@/components/ui/label";
+import { SidebarGroup, SidebarGroupContent, SidebarInput } from "@/components/ui/sidebar";
+import { SearchIcon } from "lucide-react";
 
 const searchSchema = z.object({
   query: z.string().min(1, "Enter a search term"),
-})
+});
 
-type SearchFormValues = z.infer<typeof searchSchema>
+type SearchFormValues = z.infer<typeof searchSchema>;
 
 export function SearchForm({ ...props }: React.ComponentProps<"form">) {
   const {
@@ -26,15 +22,19 @@ export function SearchForm({ ...props }: React.ComponentProps<"form">) {
     defaultValues: {
       query: "",
     },
-  })
+  });
 
   // Search is not wired to a data source yet, so a valid submit is a no-op.
-  const handleSearch = () => {}
+  const handleSearch = () => {};
 
   return (
-    <form {...props} noValidate onSubmit={(event) => {
-        void handleSubmit(handleSearch)(event)
-      }}>
+    <form
+      {...props}
+      noValidate
+      onSubmit={(event) => {
+        void handleSubmit(handleSearch)(event);
+      }}
+    >
       <SidebarGroup className="py-0">
         <SidebarGroupContent className="relative">
           <Label htmlFor="search" className="sr-only">
@@ -54,5 +54,5 @@ export function SearchForm({ ...props }: React.ComponentProps<"form">) {
         </SidebarGroupContent>
       </SidebarGroup>
     </form>
-  )
+  );
 }

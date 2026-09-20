@@ -1,20 +1,17 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState } from "react";
 
-import { NotesNoteButton } from "@/components/notes/notes-note-button"
-import { NotesTreeGroup } from "@/components/notes/notes-tree-group"
-import { buildTree, getActivePathKeys } from "@/components/notes/notes-tree"
-import type {
-  NotesDirectoryEntry,
-  NotesHierarchyLocation,
-} from "@/components/notes/types"
+import { NotesNoteButton } from "@/components/notes/notes-note-button";
+import { NotesTreeGroup } from "@/components/notes/notes-tree-group";
+import { buildTree, getActivePathKeys } from "@/components/notes/notes-tree";
+import type { NotesDirectoryEntry, NotesHierarchyLocation } from "@/components/notes/types";
 
 type NotesTreeViewProps = {
-  entries: NotesDirectoryEntry[]
-  activeDocumentId: string | null
-  activeLocation: NotesHierarchyLocation
-  isBusy: boolean
-  onOpenDocument: (documentId: string) => void
-}
+  entries: NotesDirectoryEntry[];
+  activeDocumentId: string | null;
+  activeLocation: NotesHierarchyLocation;
+  isBusy: boolean;
+  onOpenDocument: (documentId: string) => void;
+};
 
 /** Saved notes grouped as Wing > Flight > Branch > Nest > Feather. */
 export function NotesTreeView({
@@ -25,32 +22,32 @@ export function NotesTreeView({
   onOpenDocument,
 }: NotesTreeViewProps) {
   const tree = useMemo(() => {
-    return buildTree(entries)
-  }, [entries])
+    return buildTree(entries);
+  }, [entries]);
 
-  const activePathKeys = useMemo(() => getActivePathKeys(activeLocation), [activeLocation])
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set(activePathKeys))
-  const [syncedPathKeys, setSyncedPathKeys] = useState(activePathKeys)
+  const activePathKeys = useMemo(() => getActivePathKeys(activeLocation), [activeLocation]);
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set(activePathKeys));
+  const [syncedPathKeys, setSyncedPathKeys] = useState(activePathKeys);
 
   // Whenever the active note changes, make sure the groups on its path are open.
   if (syncedPathKeys !== activePathKeys) {
-    setSyncedPathKeys(activePathKeys)
-    setExpandedKeys((current) => new Set([...current, ...activePathKeys]))
+    setSyncedPathKeys(activePathKeys);
+    setExpandedKeys((current) => new Set([...current, ...activePathKeys]));
   }
 
   const setGroupExpanded = (groupKey: string, isExpanded: boolean) => {
     setExpandedKeys((current) => {
-      const next = new Set(current)
+      const next = new Set(current);
 
       if (isExpanded) {
-        next.add(groupKey)
+        next.add(groupKey);
       } else {
-        next.delete(groupKey)
+        next.delete(groupKey);
       }
 
-      return next
-    })
-  }
+      return next;
+    });
+  };
 
   return (
     <div
@@ -121,5 +118,5 @@ export function NotesTreeView({
         <p className="text-xs text-muted-foreground">No notes saved yet for this workspace.</p>
       )}
     </div>
-  )
+  );
 }

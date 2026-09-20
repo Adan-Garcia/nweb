@@ -32,19 +32,15 @@ export function useNotesWorkspace() {
   const [mode, setMode] = useState<NotesMode>("linear");
   const [isStorageReady, setIsStorageReady] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
-  const [directoryEntries, setDirectoryEntries] = useState<
-    NotesDirectoryEntry[]
-  >([]);
+  const [directoryEntries, setDirectoryEntries] = useState<NotesDirectoryEntry[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
-  const [selectedCreatedMode, setSelectedCreatedMode] =
-    useState<NotesDocumentMode>("linear");
-  const [activeLocation, setActiveLocation] =
-    useState<NotesHierarchyLocation>(FALLBACK_LOCATION);
+  const [selectedCreatedMode, setSelectedCreatedMode] = useState<NotesDocumentMode>("linear");
+  const [activeLocation, setActiveLocation] = useState<NotesHierarchyLocation>(FALLBACK_LOCATION);
 
   // Derived: once the note has a directory entry, the stored mode is the truth.
   const activeCreatedMode =
-    directoryEntries.find((entry) => entry.id === activeDocumentId)
-      ?.createdMode ?? selectedCreatedMode;
+    directoryEntries.find((entry) => entry.id === activeDocumentId)?.createdMode ??
+    selectedCreatedMode;
 
   const markSaved = useCallback(() => setLastSavedAt(Date.now()), []);
   const markStorageReady = useCallback(() => setIsStorageReady(true), []);
@@ -106,17 +102,16 @@ export function useNotesWorkspace() {
     markSaved,
   });
 
-  const { persistActiveDocumentBeforeSwitch, saveActiveDocumentNow } =
-    useNotesFlush({
-      refs,
-      isStorageReady,
-      activeDocumentId,
-      activeCreatedMode,
-      persistLinearContent,
-      persistSpatialSnapshot,
-      clearPendingLinearEdit,
-      refreshDirectoryEntries,
-    });
+  const { persistActiveDocumentBeforeSwitch, saveActiveDocumentNow } = useNotesFlush({
+    refs,
+    isStorageReady,
+    activeDocumentId,
+    activeCreatedMode,
+    persistLinearContent,
+    persistSpatialSnapshot,
+    clearPendingLinearEdit,
+    refreshDirectoryEntries,
+  });
 
   const openDocumentById = useCallback(
     async (documentId: string) => {
@@ -127,9 +122,7 @@ export function useNotesWorkspace() {
       await runInDocumentSwitchQueue("openDocumentById", async () => {
         await persistActiveDocumentBeforeSwitch("openDocumentById", documentId);
 
-        const entry = directoryEntries.find(
-          (candidate) => candidate.id === documentId,
-        );
+        const entry = directoryEntries.find((candidate) => candidate.id === documentId);
 
         if (entry) {
           setActiveLocation(toLocation(entry));
@@ -150,45 +143,29 @@ export function useNotesWorkspace() {
   );
 
   const createOrOpenDocumentAtLocation = useCallback(
-    async (
-      location: NotesHierarchyLocation,
-      preferredMode?: NotesDocumentMode,
-    ) => {
+    async (location: NotesHierarchyLocation, preferredMode?: NotesDocumentMode) => {
       const normalizedLocation = normalizeLocation(location);
       const documentId = buildNotesDocumentId(normalizedLocation);
       const targetMode = preferredMode ?? mode;
 
-      await runInDocumentSwitchQueue(
-        "createOrOpenDocumentAtLocation",
-        async () => {
-          await persistActiveDocumentBeforeSwitch(
-            "createOrOpenDocumentAtLocation",
-            documentId,
-          );
+      await runInDocumentSwitchQueue("createOrOpenDocumentAtLocation", async () => {
+        await persistActiveDocumentBeforeSwitch("createOrOpenDocumentAtLocation", documentId);
 
-          await upsertNotesDirectoryEntry({
-            id: documentId,
-            location: normalizedLocation,
-            createdMode: targetMode,
-          });
+        await upsertNotesDirectoryEntry({
+          id: documentId,
+          location: normalizedLocation,
+          createdMode: targetMode,
+        });
 
-          const nextEntries = await refreshDirectoryEntries();
-          const createdEntry = nextEntries.find(
-            (entry) => entry.id === documentId,
-          );
+        const nextEntries = await refreshDirectoryEntries();
+        const createdEntry = nextEntries.find((entry) => entry.id === documentId);
 
-          setActiveDocumentId(documentId);
-          setActiveLocation(
-            createdEntry ? toLocation(createdEntry) : normalizedLocation,
-          );
-          setSelectedCreatedMode(createdEntry?.createdMode ?? targetMode);
-          setMode(createdEntry?.createdMode ?? targetMode);
-          await hydrateDocument(
-            documentId,
-            createdEntry?.createdMode ?? targetMode,
-          );
-        },
-      );
+        setActiveDocumentId(documentId);
+        setActiveLocation(createdEntry ? toLocation(createdEntry) : normalizedLocation);
+        setSelectedCreatedMode(createdEntry?.createdMode ?? targetMode);
+        setMode(createdEntry?.createdMode ?? targetMode);
+        await hydrateDocument(documentId, createdEntry?.createdMode ?? targetMode);
+      });
     },
     [
       hydrateDocument,

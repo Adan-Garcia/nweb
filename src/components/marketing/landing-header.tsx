@@ -1,11 +1,11 @@
-import { BrandIcon } from "@/components/brand-icon"
-import { LANDING_LINKS } from "@/components/marketing/marketing-nav"
-import { ThemeToggleButton } from "@/components/marketing/theme-toggle-button"
+import { BrandIcon } from "@/components/brand-icon";
+import { LANDING_LINKS } from "@/components/marketing/marketing-nav";
+import { ThemeToggleButton } from "@/components/marketing/theme-toggle-button";
 
 type LandingHeaderProps = {
-  isDark: boolean
-  onToggleTheme: () => void
-}
+  isDark: boolean;
+  onToggleTheme: () => void;
+};
 
 function MobileMenu() {
   return (
@@ -41,7 +41,7 @@ function MobileMenu() {
         </div>
       </details>
     </div>
-  )
+  );
 }
 
 /** The landing page header: brand, a mobile menu, desktop nav and theme toggle. */
@@ -74,5 +74,5 @@ export function LandingHeader({ isDark, onToggleTheme }: LandingHeaderProps) {
         </div>
       </div>
     </header>
-  )
+  );
 }

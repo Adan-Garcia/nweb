@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 
-import {
-  INITIAL_EVENTS,
-  type EventFormValues,
-} from "@/components/calendar/calendar-shared";
+import { INITIAL_EVENTS, type EventFormValues } from "@/components/calendar/calendar-shared";
 import { nextEventId } from "@/components/calendar/calendar-views";
 import type { CalendarEvent } from "@/lib/calendar-event";
 import { loadCalendarEvents, saveCalendarEvents } from "@/lib/calendar-storage";
@@ -18,10 +15,7 @@ export function useCalendarEvents() {
     saveCalendarEvents(calendarEvents);
   }, [calendarEvents]);
 
-  const setEventStatus = (
-    eventId: number,
-    nextStatus: CalendarEvent["status"],
-  ) => {
+  const setEventStatus = (eventId: number, nextStatus: CalendarEvent["status"]) => {
     setCalendarEvents((prev) =>
       prev.map((calendarEvent) => {
         if (calendarEvent.id !== eventId) {
@@ -33,10 +27,7 @@ export function useCalendarEvents() {
   };
 
   /** Updates the event `editingEventId`, or appends a new one when it is null. */
-  const saveEvent = (
-    values: EventFormValues,
-    editingEventId: number | null,
-  ): EventFormValues => {
+  const saveEvent = (values: EventFormValues, editingEventId: number | null): EventFormValues => {
     const normalized: EventFormValues = {
       ...values,
       title: values.title.trim(),
@@ -53,10 +44,7 @@ export function useCalendarEvents() {
         }),
       );
     } else {
-      setCalendarEvents((prev) => [
-        ...prev,
-        { id: nextEventId(prev), ...normalized },
-      ]);
+      setCalendarEvents((prev) => [...prev, { id: nextEventId(prev), ...normalized }]);
     }
 
     return normalized;

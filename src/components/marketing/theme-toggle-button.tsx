@@ -1,13 +1,13 @@
-import { MoonIcon, SunIcon } from "lucide-react"
+import { MoonIcon, SunIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 type ThemeToggleButtonProps = {
-  isDark: boolean
-  onToggle: () => void
-  variant?: "ghost" | "outline"
-  size?: "icon" | "sm"
-}
+  isDark: boolean;
+  onToggle: () => void;
+  variant?: "ghost" | "outline";
+  size?: "icon" | "sm";
+};
 
 export function ThemeToggleButton({
   isDark,
@@ -25,5 +25,5 @@ export function ThemeToggleButton({
     >
       {isDark ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
     </Button>
-  )
+  );
 }

@@ -1,37 +1,34 @@
-import { Button } from "@/components/ui/button"
-import {
-  MoonIcon,
-  SunIcon,
-} from "lucide-react"
-import type { ReactNode } from "react"
-import { useThemeMode } from "@/hooks/use-theme-mode"
-import { BrandIcon } from "@/components/brand-icon"
+import { Button } from "@/components/ui/button";
+import { MoonIcon, SunIcon } from "lucide-react";
+import type { ReactNode } from "react";
+import { useThemeMode } from "@/hooks/use-theme-mode";
+import { BrandIcon } from "@/components/brand-icon";
 
 type AuthBenefit = {
-  icon: ReactNode
-  title: string
-  copy: string
-}
+  icon: ReactNode;
+  title: string;
+  copy: string;
+};
 
 type AuthShellProps = {
-  pageClassName: string
-  shellClassName: string
-  brandClassName: string
-  copyClassName: string
-  formPanelClassName: string
-  formAriaLabel: string
-  eyebrow: string
-  title: string
-  description: string
-  form: ReactNode
-  benefits?: AuthBenefit[]
-  benefitsClassName?: string
-  benefitClassName?: string
-  benefitBadgeClassName?: string
-  benefitTitleClassName?: string
-  benefitCopyClassName?: string
-  brandFooter?: ReactNode
-}
+  pageClassName: string;
+  shellClassName: string;
+  brandClassName: string;
+  copyClassName: string;
+  formPanelClassName: string;
+  formAriaLabel: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  form: ReactNode;
+  benefits?: AuthBenefit[];
+  benefitsClassName?: string;
+  benefitClassName?: string;
+  benefitBadgeClassName?: string;
+  benefitTitleClassName?: string;
+  benefitCopyClassName?: string;
+  brandFooter?: ReactNode;
+};
 
 export function AuthShell({
   pageClassName,
@@ -52,7 +49,7 @@ export function AuthShell({
   benefitCopyClassName,
   brandFooter,
 }: AuthShellProps) {
-  const { isDark, toggleTheme: handleToggleTheme } = useThemeMode()
+  const { isDark, toggleTheme: handleToggleTheme } = useThemeMode();
 
   return (
     <main className={pageClassName}>
@@ -108,5 +105,5 @@ export function AuthShell({
         </section>
       </section>
     </main>
-  )
+  );
 }

@@ -76,8 +76,7 @@ export async function saveLinearDocumentPayload({
 }) {
   const database = await getNotesDb();
   const existingDocument =
-    (await database.get("notes-documents", documentId)) ??
-    buildEmptyDocument(documentId);
+    (await database.get("notes-documents", documentId)) ?? buildEmptyDocument(documentId);
 
   await database.put("notes-documents", {
     ...existingDocument,
@@ -105,16 +104,12 @@ export async function saveSpatialDocumentPayload({
   createdMode?: NotesDocumentMode;
 }) {
   const database = await getNotesDb();
-  const transaction = database.transaction(
-    ["notes-documents", "notes-media"],
-    "readwrite",
-  );
+  const transaction = database.transaction(["notes-documents", "notes-media"], "readwrite");
 
   const documentStore = transaction.objectStore("notes-documents");
   const mediaStore = transaction.objectStore("notes-media");
 
-  const existingDocument =
-    (await documentStore.get(documentId)) ?? buildEmptyDocument(documentId);
+  const existingDocument = (await documentStore.get(documentId)) ?? buildEmptyDocument(documentId);
 
   notesTrace("notes-storage", "saveSpatialDocumentPayload:start", {
     documentId,
@@ -145,10 +140,7 @@ export async function saveSpatialDocumentPayload({
     const retainedFileIds = new Set(nextSceneFiles.map((file) => file.id));
 
     for (const existingFile of existingDocument.sceneFiles) {
-      if (
-        referencedFileIds.includes(existingFile.id) &&
-        !retainedFileIds.has(existingFile.id)
-      ) {
+      if (referencedFileIds.includes(existingFile.id) && !retainedFileIds.has(existingFile.id)) {
         nextSceneFiles.push(existingFile);
         retainedFileIds.add(existingFile.id);
       }
@@ -156,9 +148,7 @@ export async function saveSpatialDocumentPayload({
   }
 
   const nextSceneFileIds = new Set(nextSceneFiles.map((file) => file.id));
-  const previousSceneFileIds = new Set(
-    existingDocument.sceneFiles.map((file) => file.id),
-  );
+  const previousSceneFileIds = new Set(existingDocument.sceneFiles.map((file) => file.id));
   const deletedFileIds: string[] = [];
 
   for (const previousId of previousSceneFileIds) {

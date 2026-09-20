@@ -11,13 +11,8 @@ type StatusSliderProps = {
   eventTitle: string;
 };
 
-export function StatusSlider({
-  status,
-  onChangeStatus,
-  eventTitle,
-}: StatusSliderProps) {
-  const [optimisticStatus, setOptimisticStatus] =
-    useState<CalendarEvent["status"]>(status);
+export function StatusSlider({ status, onChangeStatus, eventTitle }: StatusSliderProps) {
+  const [optimisticStatus, setOptimisticStatus] = useState<CalendarEvent["status"]>(status);
   const [isSliding, setIsSliding] = useState(false);
   const completeDelayTimeoutRef = useRef<number | undefined>(undefined);
 

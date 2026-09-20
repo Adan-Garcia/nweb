@@ -1,29 +1,25 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { ChevronsUpDownIcon, CheckIcon } from "lucide-react"
-import { BrandIcon } from "@/components/brand-icon"
+} from "@/components/ui/dropdown-menu";
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { ChevronsUpDownIcon, CheckIcon } from "lucide-react";
+import { BrandIcon } from "@/components/brand-icon";
 
 export function VersionSwitcher({
   versions,
   defaultVersion,
 }: {
-  versions: string[]
-  defaultVersion: string
+  versions: string[];
+  defaultVersion: string;
 }) {
-  const [selectedVersion, setSelectedVersion] = React.useState(defaultVersion)
+  const [selectedVersion, setSelectedVersion] = React.useState(defaultVersion);
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -47,19 +43,13 @@ export function VersionSwitcher({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             {versions.map((version) => (
-              <DropdownMenuItem
-                key={version}
-                onSelect={() => setSelectedVersion(version)}
-              >
-                v{version}{" "}
-                {version === selectedVersion && (
-                  <CheckIcon className="ml-auto" />
-                )}
+              <DropdownMenuItem key={version} onSelect={() => setSelectedVersion(version)}>
+                v{version} {version === selectedVersion && <CheckIcon className="ml-auto" />}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

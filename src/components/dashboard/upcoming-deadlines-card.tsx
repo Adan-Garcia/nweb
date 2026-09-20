@@ -1,17 +1,8 @@
 import { CalendarDays } from "lucide-react";
 
-import {
-  EVENT_COLORS,
-  formatHumanDate,
-} from "@/components/calendar/calendar-shared";
+import { EVENT_COLORS, formatHumanDate } from "@/components/calendar/calendar-shared";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CalendarEvent } from "@/lib/calendar-event";
 
 export function UpcomingDeadlinesCard({ events }: { events: CalendarEvent[] }) {
@@ -39,9 +30,7 @@ export function UpcomingDeadlinesCard({ events }: { events: CalendarEvent[] }) {
                   aria-hidden="true"
                   className={`inline-block size-2.5 rounded-full ${EVENT_COLORS[event.color]}`}
                 />
-                <span className="text-xs text-muted-foreground">
-                  {event.color}
-                </span>
+                <span className="text-xs text-muted-foreground">{event.color}</span>
               </div>
             </div>
           ))

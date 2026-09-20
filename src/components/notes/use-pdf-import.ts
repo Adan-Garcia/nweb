@@ -1,23 +1,12 @@
-import {
-  useCallback,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type RefObject,
-} from "react";
+import { useCallback, useRef, useState, type ChangeEvent, type RefObject } from "react";
 import { convertToExcalidrawElements } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { renderPdfPagesToPng } from "@/components/notes/spatial-notes-pdf";
-import {
-  describePdfInsert,
-  layoutPdfPages,
-} from "@/components/notes/spatial-notes-pdf-layout";
+import { describePdfInsert, layoutPdfPages } from "@/components/notes/spatial-notes-pdf-layout";
 
 /** Picking a PDF and inserting its pages into the canvas as images. */
-export function usePdfImport(
-  excalidrawApiRef: RefObject<ExcalidrawImperativeAPI | null>,
-) {
+export function usePdfImport(excalidrawApiRef: RefObject<ExcalidrawImperativeAPI | null>) {
   const pdfInputRef = useRef<HTMLInputElement | null>(null);
   const [isImportingPdf, setIsImportingPdf] = useState(false);
 
@@ -33,8 +22,7 @@ export function usePdfImport(
       }
 
       const isLikelyPdf =
-        file.type === "application/pdf" ||
-        file.name.toLowerCase().endsWith(".pdf");
+        file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 
       if (!isLikelyPdf) {
         api.setToast({ message: "Please choose a PDF file." });
@@ -57,20 +45,18 @@ export function usePdfImport(
         });
 
         const imageElements = convertToExcalidrawElements(imageSkeletons);
-        const selectedElementIds = imageElements.reduce<
-          Record<string, true>
-        >((selectedIds, imageElement) => {
-          selectedIds[imageElement.id] = true;
-          return selectedIds;
-        }, {});
+        const selectedElementIds = imageElements.reduce<Record<string, true>>(
+          (selectedIds, imageElement) => {
+            selectedIds[imageElement.id] = true;
+            return selectedIds;
+          },
+          {},
+        );
 
         api.addFiles(fileEntries);
 
         api.updateScene({
-          elements: [
-            ...api.getSceneElementsIncludingDeleted(),
-            ...imageElements,
-          ],
+          elements: [...api.getSceneElementsIncludingDeleted(), ...imageElements],
           appState: {
             selectedElementIds,
           },
@@ -82,8 +68,7 @@ export function usePdfImport(
         }
       } catch {
         api.setToast({
-          message:
-            "Could not import PDF. Use a valid page selection like 1, 3-5, or all.",
+          message: "Could not import PDF. Use a valid page selection like 1, 3-5, or all.",
         });
       } finally {
         setIsImportingPdf(false);

@@ -1,39 +1,21 @@
-import { zodResolver } from "@hookform/resolvers/zod"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { BrandIcon } from "@/components/brand-icon"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { BrandIcon } from "@/components/brand-icon";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "Email is required")
-    .email("Enter a valid email address"),
+  email: z.string().min(1, "Email is required").email("Enter a valid email address"),
   password: z.string().min(1, "Password is required"),
-})
+});
 
-type LoginFormValues = z.infer<typeof loginSchema>
+type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<typeof Card>) {
+export function LoginForm({ className, ...props }: React.ComponentProps<typeof Card>) {
   const {
     register,
     handleSubmit,
@@ -44,18 +26,15 @@ export function LoginForm({
       email: "",
       password: "",
     },
-  })
+  });
 
   // No auth backend exists yet, so a valid submit is intentionally a no-op.
   // Do not log the submitted values: they contain the password.
-  const handleLogin = () => {}
+  const handleLogin = () => {};
 
   return (
     <Card
-      className={cn(
-        "border-border/70 shadow-[0_24px_70px_-30px_rgba(0,0,0,0.35)]",
-        className
-      )}
+      className={cn("border-border/70 shadow-[0_24px_70px_-30px_rgba(0,0,0,0.35)]", className)}
       {...props}
     >
       <CardHeader className="space-y-3 text-center">
@@ -70,18 +49,19 @@ export function LoginForm({
         </a>
         <div className="space-y-1">
           <CardTitle className="text-2xl">Welcome back</CardTitle>
-          <CardDescription>
-            Sign in to continue to your private workspace.
-          </CardDescription>
+          <CardDescription>Sign in to continue to your private workspace.</CardDescription>
         </div>
         <FieldDescription className="text-center">
           Don&apos;t have an account? <a href="/auth/signup">Create one</a>
         </FieldDescription>
       </CardHeader>
       <CardContent>
-        <form noValidate onSubmit={(event) => {
-          void handleSubmit(handleLogin)(event)
-        }}>
+        <form
+          noValidate
+          onSubmit={(event) => {
+            void handleSubmit(handleLogin)(event);
+          }}
+        >
           <FieldGroup>
             <Field data-invalid={!!errors.email}>
               <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -122,5 +102,5 @@ export function LoginForm({
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

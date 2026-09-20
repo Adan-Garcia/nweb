@@ -1,31 +1,25 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { NotesLocationForm } from "@/components/notes/notes-location-form"
-import { NotesTreeView } from "@/components/notes/notes-tree-view"
-import { formatPath } from "@/components/notes/notes-tree"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { NotesLocationForm } from "@/components/notes/notes-location-form";
+import { NotesTreeView } from "@/components/notes/notes-tree-view";
+import { formatPath } from "@/components/notes/notes-tree";
 import type {
   NotesDirectoryEntry,
   NotesDocumentMode,
   NotesHierarchyLocation,
-} from "@/components/notes/types"
+} from "@/components/notes/types";
 
 type NotesFileViewerProps = {
-  entries: NotesDirectoryEntry[]
-  activeDocumentId: string | null
-  activeCreatedMode: NotesDocumentMode
-  activeLocation: NotesHierarchyLocation
-  isStorageReady: boolean
-  isBusy: boolean
-  onOpenDocument: (documentId: string) => void
-  onCreateOrOpenLocation: (location: NotesHierarchyLocation) => void
-  onSaveNow: () => void
-}
+  entries: NotesDirectoryEntry[];
+  activeDocumentId: string | null;
+  activeCreatedMode: NotesDocumentMode;
+  activeLocation: NotesHierarchyLocation;
+  isStorageReady: boolean;
+  isBusy: boolean;
+  onOpenDocument: (documentId: string) => void;
+  onCreateOrOpenLocation: (location: NotesHierarchyLocation) => void;
+  onSaveNow: () => void;
+};
 
 export function NotesFileViewer({
   entries,
@@ -72,5 +66,5 @@ export function NotesFileViewer({
         </CardContent>
       </Card>
     </aside>
-  )
+  );
 }

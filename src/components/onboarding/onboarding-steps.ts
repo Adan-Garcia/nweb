@@ -1,12 +1,12 @@
-import { CheckCircle2, Sparkles, Users, Zap, type LucideIcon } from "lucide-react"
+import { CheckCircle2, Sparkles, Users, Zap, type LucideIcon } from "lucide-react";
 
 export type OnboardingStep = {
-  id: string
-  title: string
-  description: string
-  icon: LucideIcon
-  content: string
-}
+  id: string;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  content: string;
+};
 
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
@@ -29,8 +29,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     title: "Invite Your Flock",
     description: "Collaborate with others",
     icon: Users,
-    content:
-      "Add flock members, set permissions, and start collaborating in real-time in wings.",
+    content: "Add flock members, set permissions, and start collaborating in real-time in wings.",
   },
   {
     id: "ready",
@@ -39,4 +38,4 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     icon: CheckCircle2,
     content: "Everything is ready. Head to your dashboard to see your wings and start building.",
   },
-]
+];

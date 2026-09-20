@@ -7,9 +7,7 @@ import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
 export function useLinearNoteState(refs: NotesSessionRefs) {
   const { latestLinearContentRef, pendingLinearEditAtRef } = refs;
   const [linearContent, setLinearContentState] = useState(defaultLinearContent);
-  const [pendingLinearEditAt, setPendingLinearEditAt] = useState<number | null>(
-    null,
-  );
+  const [pendingLinearEditAt, setPendingLinearEditAt] = useState<number | null>(null);
 
   const setLinearContent = useCallback(
     (nextContent: string) => {

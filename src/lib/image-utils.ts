@@ -1,9 +1,6 @@
 import { notesTrace } from "./notes-trace";
 
-export async function convertImageBlobToWebp(
-  blob: Blob,
-  quality: number,
-): Promise<Blob> {
+export async function convertImageBlobToWebp(blob: Blob, quality: number): Promise<Blob> {
   if (!blob.type.startsWith("image/") || blob.type === "image/webp") {
     return blob;
   }

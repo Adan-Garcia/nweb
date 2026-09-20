@@ -41,9 +41,7 @@ export function isPdfEmbeddableUrl(url: string | null | undefined) {
     const extension = parsed.searchParams.get("ext")?.toLowerCase();
     const mime = parsed.searchParams.get("mime")?.toLowerCase();
 
-    return (
-      format === "pdf" || extension === "pdf" || mime === "application/pdf"
-    );
+    return format === "pdf" || extension === "pdf" || mime === "application/pdf";
   } catch {
     return false;
   }
@@ -79,11 +77,7 @@ export function parsePdfPageSelection(input: string, totalPages: number) {
     if (!token.includes("-")) {
       const pageNumber = Number.parseInt(token, 10);
 
-      if (
-        Number.isNaN(pageNumber) ||
-        pageNumber < 1 ||
-        pageNumber > totalPages
-      ) {
+      if (Number.isNaN(pageNumber) || pageNumber < 1 || pageNumber > totalPages) {
         throw new Error("Invalid page number.");
       }
 

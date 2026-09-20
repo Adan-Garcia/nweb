@@ -1,9 +1,6 @@
 import type { BinaryFileData } from "@excalidraw/excalidraw/types";
 
-import {
-  createPngSceneFile,
-  newSceneFileId,
-} from "@/components/notes/excalidraw-adapter";
+import { createPngSceneFile, newSceneFileId } from "@/components/notes/excalidraw-adapter";
 import {
   PDF_INSERT_MAX_HEIGHT,
   PDF_INSERT_MAX_WIDTH,

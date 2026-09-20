@@ -28,12 +28,7 @@ export function notesTrace(scope: string, message: string, payload?: unknown) {
   console.debug(prefix, payload);
 }
 
-export function notesTraceError(
-  scope: string,
-  message: string,
-  error: unknown,
-  payload?: unknown,
-) {
+export function notesTraceError(scope: string, message: string, error: unknown, payload?: unknown) {
   if (!isTraceEnabled()) {
     return;
   }
@@ -53,9 +48,7 @@ export function notesTraceError(
     payload === undefined
       ? { error: errorDetails }
       : {
-          ...(typeof payload === "object" && payload !== null
-            ? payload
-            : { payload }),
+          ...(typeof payload === "object" && payload !== null ? payload : { payload }),
           error: errorDetails,
         };
 

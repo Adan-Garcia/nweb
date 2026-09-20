@@ -1,10 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 
-import type {
-  NotesDirectoryEntry,
-  NotesDocumentRecord,
-  NotesMediaRecord,
-} from "./notes-model";
+import type { NotesDirectoryEntry, NotesDocumentRecord, NotesMediaRecord } from "./notes-model";
 
 const NOTES_DB_NAME = "cuervo-notes";
 const NOTES_DB_VERSION = 2;

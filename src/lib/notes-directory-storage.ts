@@ -1,13 +1,7 @@
 import { getNotesDb } from "./notes-db";
-import type {
-  NotesDirectoryEntry,
-  NotesDocumentMode,
-  NotesHierarchyLocation,
-} from "./notes-model";
+import type { NotesDirectoryEntry, NotesDocumentMode, NotesHierarchyLocation } from "./notes-model";
 
-export async function listNotesDirectoryEntries(): Promise<
-  NotesDirectoryEntry[]
-> {
+export async function listNotesDirectoryEntries(): Promise<NotesDirectoryEntry[]> {
   const database = await getNotesDb();
   const rawEntries = await database.getAll("notes-directory");
   const entries = rawEntries.map((entry) => ({

@@ -2,10 +2,7 @@ import { useEffect } from "react";
 
 import { buildNotesDocumentId } from "@/components/notes/constants";
 import { FALLBACK_LOCATION } from "@/components/notes/location-hierarchy";
-import type {
-  NotesDirectoryEntry,
-  NotesDocumentMode,
-} from "@/components/notes/types";
+import type { NotesDirectoryEntry, NotesDocumentMode } from "@/components/notes/types";
 import { revokeObjectUrls } from "@/lib/blob-utils";
 import {
   listNotesDirectoryEntries,
@@ -15,14 +12,8 @@ import { loadNotesDocument } from "@/lib/notes-document-storage";
 import { DEFAULT_NOTES_DOCUMENT_ID } from "@/lib/notes-model";
 
 type UseNotesBootstrapOptions = {
-  hydrateDocument: (
-    documentId: string,
-    targetMode?: NotesDocumentMode,
-  ) => Promise<void>;
-  applyInitialEntries: (
-    entries: NotesDirectoryEntry[],
-    initialEntry: NotesDirectoryEntry,
-  ) => void;
+  hydrateDocument: (documentId: string, targetMode?: NotesDocumentMode) => Promise<void>;
+  applyInitialEntries: (entries: NotesDirectoryEntry[], initialEntry: NotesDirectoryEntry) => void;
   markStorageReady: () => void;
 };
 
@@ -44,9 +35,7 @@ export function useNotesBootstrap({
         let existingEntries = await listNotesDirectoryEntries();
 
         if (!existingEntries.length) {
-          const legacyDocument = await loadNotesDocument(
-            DEFAULT_NOTES_DOCUMENT_ID,
-          );
+          const legacyDocument = await loadNotesDocument(DEFAULT_NOTES_DOCUMENT_ID);
 
           if (legacyDocument) {
             await upsertNotesDirectoryEntry({

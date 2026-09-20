@@ -1,23 +1,17 @@
-import { ArrowRight } from "lucide-react"
+import { ArrowRight } from "lucide-react";
 
-import type { OnboardingStep } from "@/components/onboarding/onboarding-steps"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import type { OnboardingStep } from "@/components/onboarding/onboarding-steps";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type OnboardingStepCardProps = {
-  step: OnboardingStep
-  isFirst: boolean
-  isLast: boolean
-  onBack: () => void
-  onNext: () => void
-  onFinish: () => void
-}
+  step: OnboardingStep;
+  isFirst: boolean;
+  isLast: boolean;
+  onBack: () => void;
+  onNext: () => void;
+  onFinish: () => void;
+};
 
 /** The current step's explanation and its Back / Next (or finish) buttons. */
 export function OnboardingStepCard({
@@ -28,7 +22,7 @@ export function OnboardingStepCard({
   onNext,
   onFinish,
 }: OnboardingStepCardProps) {
-  const StepIcon = step.icon
+  const StepIcon = step.icon;
 
   return (
     <Card>
@@ -60,5 +54,5 @@ export function OnboardingStepCard({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

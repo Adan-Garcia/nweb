@@ -1,25 +1,25 @@
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { EVENT_COLORS, formatDateKey, weekDays } from "@/components/calendar/calendar-shared"
-import type { CalendarEvent } from "@/lib/calendar-event"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EVENT_COLORS, formatDateKey, weekDays } from "@/components/calendar/calendar-shared";
+import type { CalendarEvent } from "@/lib/calendar-event";
 
 type CalendarGridCardProps = {
-  viewMode: "month" | "week"
-  onViewModeChange: (mode: "month" | "week") => void
-  monthLabel: string
-  weekLabel: string
-  onPrevious: () => void
-  onNext: () => void
-  onToday: () => void
-  visibleDates: Date[]
-  currentMonth: Date
-  today: Date
-  selectedDateKey: string | null
-  eventsByDate: Map<string, CalendarEvent[]>
-  onSelectDate: (date: Date) => void
-}
+  viewMode: "month" | "week";
+  onViewModeChange: (mode: "month" | "week") => void;
+  monthLabel: string;
+  weekLabel: string;
+  onPrevious: () => void;
+  onNext: () => void;
+  onToday: () => void;
+  visibleDates: Date[];
+  currentMonth: Date;
+  today: Date;
+  selectedDateKey: string | null;
+  eventsByDate: Map<string, CalendarEvent[]>;
+  onSelectDate: (date: Date) => void;
+};
 
 export function CalendarGridCard({
   viewMode,
@@ -42,10 +42,18 @@ export function CalendarGridCard({
         <CardTitle>{viewMode === "month" ? monthLabel : weekLabel}</CardTitle>
         <div className="flex items-center gap-2">
           <div className="rounded-md border border-border p-1">
-            <Button variant={viewMode === "month" ? "default" : "ghost"} size="sm" onClick={() => onViewModeChange("month")}>
+            <Button
+              variant={viewMode === "month" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => onViewModeChange("month")}
+            >
               Month
             </Button>
-            <Button variant={viewMode === "week" ? "default" : "ghost"} size="sm" onClick={() => onViewModeChange("week")}>
+            <Button
+              variant={viewMode === "week" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => onViewModeChange("week")}
+            >
               Week
             </Button>
           </div>
@@ -69,11 +77,11 @@ export function CalendarGridCard({
 
         <div className="grid min-h-120 grid-cols-7 auto-rows-fr gap-2">
           {visibleDates.map((date, index) => {
-            const dateKey = formatDateKey(date)
-            const dayEvents = eventsByDate.get(dateKey) ?? []
-            const isToday = date.toDateString() === today.toDateString()
-            const isCurrentMonth = date.getMonth() === currentMonth.getMonth()
-            const isSelected = dateKey === selectedDateKey
+            const dateKey = formatDateKey(date);
+            const dayEvents = eventsByDate.get(dateKey) ?? [];
+            const isToday = date.toDateString() === today.toDateString();
+            const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
+            const isSelected = dateKey === selectedDateKey;
 
             return (
               <button
@@ -116,13 +124,17 @@ export function CalendarGridCard({
                       {event.title}
                     </div>
                   ))}
-                  {dayEvents.length > 2 ? <p className="text-[11px] text-muted-foreground">+{dayEvents.length - 2} more</p> : null}
+                  {dayEvents.length > 2 ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      +{dayEvents.length - 2} more
+                    </p>
+                  ) : null}
                 </div>
               </button>
-            )
+            );
           })}
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

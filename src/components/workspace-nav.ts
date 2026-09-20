@@ -1,10 +1,10 @@
-import { CalendarDays, LayoutDashboard, Notebook, type LucideIcon } from "lucide-react"
+import { CalendarDays, LayoutDashboard, Notebook, type LucideIcon } from "lucide-react";
 
 export type WorkspaceNavItem = {
-  title: string
-  url: string
-  icon: LucideIcon
-}
+  title: string;
+  url: string;
+  icon: LucideIcon;
+};
 
 export const NAVIGATION_ITEMS: WorkspaceNavItem[] = [
   {
@@ -22,4 +22,4 @@ export const NAVIGATION_ITEMS: WorkspaceNavItem[] = [
     url: "/notes",
     icon: Notebook,
   },
-]
+];

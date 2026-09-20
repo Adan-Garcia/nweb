@@ -1,9 +1,4 @@
-import {
-  AlertTriangle,
-  BookOpenText,
-  CalendarClock,
-  ListChecks,
-} from "lucide-react";
+import { AlertTriangle, BookOpenText, CalendarClock, ListChecks } from "lucide-react";
 
 import { DashboardStatCard } from "@/components/dashboard/dashboard-stat-card";
 import { NextPriorityCard } from "@/components/dashboard/next-priority-card";
@@ -62,10 +57,7 @@ export function DashboardPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <UpcomingDeadlinesCard events={dashboard.upcomingPreview} />
-          <RecentNotesCard
-            notes={dashboard.recentNotes}
-            isLoading={dashboard.isNotesLoading}
-          />
+          <RecentNotesCard notes={dashboard.recentNotes} isLoading={dashboard.isNotesLoading} />
         </div>
       </div>
     </WorkspaceShell>

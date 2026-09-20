@@ -1,14 +1,14 @@
-import { BrandIcon } from "@/components/brand-icon"
-import { MARKETING_LINKS } from "@/components/marketing/marketing-nav"
-import { ThemeToggleButton } from "@/components/marketing/theme-toggle-button"
-import { cn } from "@/lib/utils"
+import { BrandIcon } from "@/components/brand-icon";
+import { MARKETING_LINKS } from "@/components/marketing/marketing-nav";
+import { ThemeToggleButton } from "@/components/marketing/theme-toggle-button";
+import { cn } from "@/lib/utils";
 
 type MarketingHeaderProps = {
   /** The `href` of the page being viewed; its link is highlighted. */
-  activeHref?: string
-  isDark: boolean
-  onToggleTheme: () => void
-}
+  activeHref?: string;
+  isDark: boolean;
+  onToggleTheme: () => void;
+};
 
 export function MarketingHeader({ activeHref, isDark, onToggleTheme }: MarketingHeaderProps) {
   return (
@@ -26,7 +26,7 @@ export function MarketingHeader({ activeHref, isDark, onToggleTheme }: Marketing
               href={link.href}
               className={cn(
                 "text-sm font-medium",
-                link.href === activeHref ? "text-primary" : "text-foreground hover:text-primary"
+                link.href === activeHref ? "text-primary" : "text-foreground hover:text-primary",
               )}
             >
               {link.label}
@@ -37,5 +37,5 @@ export function MarketingHeader({ activeHref, isDark, onToggleTheme }: Marketing
         <ThemeToggleButton isDark={isDark} onToggle={onToggleTheme} />
       </div>
     </header>
-  )
+  );
 }

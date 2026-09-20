@@ -29,8 +29,7 @@ const DEFAULT_EVENT_TIME = "9:00 AM";
 
 /** State and handlers behind the calendar page. */
 export function useCalendarPage() {
-  const { calendarEvents, setEventStatus, saveEvent, deleteEvent } =
-    useCalendarEvents();
+  const { calendarEvents, setEventStatus, saveEvent, deleteEvent } = useCalendarEvents();
 
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(today));
@@ -56,10 +55,7 @@ export function useCalendarPage() {
 
   const monthCells = useMemo(() => buildMonthCells(currentMonth), [currentMonth]);
   const weekDates = useMemo(() => buildWeekDates(focusedDate), [focusedDate]);
-  const eventsByDate = useMemo(
-    () => groupEventsByDate(calendarEvents),
-    [calendarEvents],
-  );
+  const eventsByDate = useMemo(() => groupEventsByDate(calendarEvents), [calendarEvents]);
   const monthLabel = formatMonthLabel(currentMonth);
   const weekLabel = useMemo(() => formatWeekLabel(weekDates), [weekDates]);
 
@@ -86,10 +82,7 @@ export function useCalendarPage() {
     [eventTab, searchTerm, selectedClassFilter, selectedDateKey, viewScopedEvents],
   );
 
-  const eventClasses = useMemo(
-    () => listEventClasses(viewScopedEvents),
-    [viewScopedEvents],
-  );
+  const eventClasses = useMemo(() => listEventClasses(viewScopedEvents), [viewScopedEvents]);
 
   const focusDate = (date: Date) => {
     setFocusedDate(startOfDay(date));
@@ -103,9 +96,7 @@ export function useCalendarPage() {
 
   const shiftView = (direction: 1 | -1) => {
     if (viewMode === "month") {
-      setCurrentMonth(
-        (month) => new Date(month.getFullYear(), month.getMonth() + direction, 1),
-      );
+      setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() + direction, 1));
       return;
     }
 

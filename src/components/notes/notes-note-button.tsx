@@ -1,15 +1,15 @@
-import { Clock3, FileText } from "lucide-react"
+import { Clock3, FileText } from "lucide-react";
 
-import { formatPath, formatUpdatedAt } from "@/components/notes/notes-tree"
-import type { NotesDirectoryEntry } from "@/components/notes/types"
-import { cn } from "@/lib/utils"
+import { formatPath, formatUpdatedAt } from "@/components/notes/notes-tree";
+import type { NotesDirectoryEntry } from "@/components/notes/types";
+import { cn } from "@/lib/utils";
 
 type NotesNoteButtonProps = {
-  entry: NotesDirectoryEntry
-  isActive: boolean
-  isBusy: boolean
-  onOpen: (documentId: string) => void
-}
+  entry: NotesDirectoryEntry;
+  isActive: boolean;
+  isBusy: boolean;
+  onOpen: (documentId: string) => void;
+};
 
 /** A saved note (feather) row in the file viewer. */
 export function NotesNoteButton({ entry, isActive, isBusy, onOpen }: NotesNoteButtonProps) {
@@ -18,11 +18,11 @@ export function NotesNoteButton({ entry, isActive, isBusy, onOpen }: NotesNoteBu
       type="button"
       className={cn(
         "grid w-full gap-1 rounded-md border border-border/70 bg-background/70 px-2 py-2 text-left transition-colors hover:bg-muted/60",
-        isActive && "border-primary/60 bg-primary/5"
+        isActive && "border-primary/60 bg-primary/5",
       )}
       style={{ paddingLeft: `${0.55 + 4 * 0.8}rem` }}
       onClick={() => {
-        onOpen(entry.id)
+        onOpen(entry.id);
       }}
       disabled={isBusy}
     >
@@ -39,5 +39,5 @@ export function NotesNoteButton({ entry, isActive, isBusy, onOpen }: NotesNoteBu
         Updated {formatUpdatedAt(entry.updatedAt)}
       </span>
     </button>
-  )
+  );
 }

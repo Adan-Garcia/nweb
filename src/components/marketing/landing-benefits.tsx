@@ -1,10 +1,10 @@
-import { LockKeyhole, ShieldCheck, type LucideIcon } from "lucide-react"
+import { LockKeyhole, ShieldCheck, type LucideIcon } from "lucide-react";
 
 type Benefit = {
-  icon: LucideIcon
-  title: string
-  copy: string
-}
+  icon: LucideIcon;
+  title: string;
+  copy: string;
+};
 
 const BENEFITS: Benefit[] = [
   {
@@ -47,14 +47,11 @@ const BENEFITS: Benefit[] = [
     title: "Offline first",
     copy: "Use Cuervo Planner even without an internet connection, your data will sync once you're back online.",
   },
-]
+];
 
 export function LandingBenefits() {
   return (
-    <div
-      className="signin-points"
-      aria-label="Features and benefits of using Cuervo Planner"
-    >
+    <div className="signin-points" aria-label="Features and benefits of using Cuervo Planner">
       {BENEFITS.map(({ icon: Icon, title, copy }) => (
         <div className="signin-point" key={title}>
           <span className="signin-point-badge">
@@ -67,5 +64,5 @@ export function LandingBenefits() {
         </div>
       ))}
     </div>
-  )
+  );
 }

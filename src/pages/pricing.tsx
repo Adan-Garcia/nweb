@@ -1,10 +1,10 @@
-import { Sparkles, ShieldCheck } from "lucide-react"
+import { Sparkles, ShieldCheck } from "lucide-react";
 
-import { MarketingCallout } from "@/components/marketing/marketing-callout"
-import { MarketingEyebrow } from "@/components/marketing/marketing-eyebrow"
-import { MarketingPage } from "@/components/marketing/marketing-page"
-import { PRICING_TIERS } from "@/components/marketing/pricing-tiers"
-import { PricingTierCard } from "@/components/marketing/pricing-tier-card"
+import { MarketingCallout } from "@/components/marketing/marketing-callout";
+import { MarketingEyebrow } from "@/components/marketing/marketing-eyebrow";
+import { MarketingPage } from "@/components/marketing/marketing-page";
+import { PRICING_TIERS } from "@/components/marketing/pricing-tiers";
+import { PricingTierCard } from "@/components/marketing/pricing-tier-card";
 
 export function PricingPage() {
   return (
@@ -16,7 +16,13 @@ export function PricingPage() {
             Pricing that scales from solo study to team collaboration
           </h1>
           <p className="text-base text-muted-foreground sm:text-lg">
-            The current launch includes a free beta. Dependent on user feedback and demand, we may introduce paid plans in the future to support the project and provide access to faster servers and priority support, but the core planner and all features will remain free and open source on GitHub. if the service becomes popular enough the paid plans will help support the continuation of the free offering, but if not the product will continue to be free and open source with no feature restrictions for self-hosting and local-first use.
+            The current launch includes a free beta. Dependent on user feedback and demand, we may
+            introduce paid plans in the future to support the project and provide access to faster
+            servers and priority support, but the core planner and all features will remain free and
+            open source on GitHub. if the service becomes popular enough the paid plans will help
+            support the continuation of the free offering, but if not the product will continue to
+            be free and open source with no feature restrictions for self-hosting and local-first
+            use.
           </p>
         </div>
 
@@ -31,12 +37,20 @@ export function PricingPage() {
           title="Security included on every tier"
           className="mt-10 text-left"
         >
-          Every plan follows the same encryption-first model: local-first data handling, secure key management, and access control designed for shared academic workspaces.
+          Every plan follows the same encryption-first model: local-first data handling, secure key
+          management, and access control designed for shared academic workspaces.
         </MarketingCallout>
-        <MarketingCallout icon={ShieldCheck} title="Forever open source" className="mt-10 text-left">
-          The core planner and all features will remain free and open source on GitHub, with paid plans supporting the project and providing access to faster servers and priority support. But the product will always support self-hosting and local-first use for students who prefer to keep their data private with no feature restrictions.
+        <MarketingCallout
+          icon={ShieldCheck}
+          title="Forever open source"
+          className="mt-10 text-left"
+        >
+          The core planner and all features will remain free and open source on GitHub, with paid
+          plans supporting the project and providing access to faster servers and priority support.
+          But the product will always support self-hosting and local-first use for students who
+          prefer to keep their data private with no feature restrictions.
         </MarketingCallout>
       </section>
     </MarketingPage>
-  )
+  );
 }

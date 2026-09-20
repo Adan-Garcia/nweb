@@ -77,10 +77,7 @@ export const eventFormSchema = z.object({
 
 export type EventFormValues = z.infer<typeof eventFormSchema>;
 
-export const STATUS_META: Record<
-  CalendarEvent["status"],
-  { label: string; track: string }
-> = {
+export const STATUS_META: Record<CalendarEvent["status"], { label: string; track: string }> = {
   incomplete: {
     label: "Todo",
     track: "bg-slate-300/80 dark:bg-slate-700",

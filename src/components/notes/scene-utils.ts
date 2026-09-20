@@ -10,11 +10,7 @@ export function collectReferencedFileIds(elements: SceneElements): Set<string> {
   const fileIds = new Set<string>();
 
   for (const element of elements) {
-    if (
-      "fileId" in element &&
-      typeof element.fileId === "string" &&
-      element.fileId.length > 0
-    ) {
+    if ("fileId" in element && typeof element.fileId === "string" && element.fileId.length > 0) {
       fileIds.add(element.fileId);
     }
   }
@@ -62,16 +58,11 @@ export async function convertSceneFilesForStorage({
       try {
         blobToPersist = await optimizeImageBlob(sourceBlob);
       } catch (error) {
-        notesTraceError(
-          "scene-utils",
-          "optimizeImageBlob:failed-using-source",
-          error,
-          {
-            fileId,
-            sourceMimeType: sourceBlob.type,
-            sourceSize: sourceBlob.size,
-          },
-        );
+        notesTraceError("scene-utils", "optimizeImageBlob:failed-using-source", error, {
+          fileId,
+          sourceMimeType: sourceBlob.type,
+          sourceSize: sourceBlob.size,
+        });
         blobToPersist = sourceBlob;
       }
     }
@@ -82,8 +73,7 @@ export async function convertSceneFilesForStorage({
       sourceSize: sourceBlob.size,
       persistedMimeType: blobToPersist.type || file.mimeType,
       persistedSize: blobToPersist.size,
-      convertedToWebp:
-        sourceBlob.type !== "image/webp" && blobToPersist.type === "image/webp",
+      convertedToWebp: sourceBlob.type !== "image/webp" && blobToPersist.type === "image/webp",
     });
 
     persistedFiles.push({
@@ -97,10 +87,7 @@ export async function convertSceneFilesForStorage({
   notesTrace("scene-utils", "convertSceneFilesForStorage:complete", {
     persistedFileCount: persistedFiles.length,
     referencedFileCount: referencedFileIds.size,
-    missingReferencedFiles: Math.max(
-      0,
-      referencedFileIds.size - persistedFiles.length,
-    ),
+    missingReferencedFiles: Math.max(0, referencedFileIds.size - persistedFiles.length),
   });
 
   return persistedFiles;

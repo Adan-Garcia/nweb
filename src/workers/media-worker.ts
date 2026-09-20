@@ -3,122 +3,125 @@ import type {
   OptimizeImageRequest,
   WorkerRequest,
   WorkerResponse,
-} from "@/lib/media-worker-protocol"
+} from "@/lib/media-worker-protocol";
 
 type WorkerScope = {
-  postMessage: (message: WorkerResponse, transfer?: Transferable[]) => void
-  onmessage: ((event: MessageEvent<WorkerRequest>) => void) | null
-}
+  postMessage: (message: WorkerResponse, transfer?: Transferable[]) => void;
+  onmessage: ((event: MessageEvent<WorkerRequest>) => void) | null;
+};
 
-const workerScope = self as unknown as WorkerScope
+const workerScope = self as unknown as WorkerScope;
 
 function postResponse(response: WorkerResponse, transfer: Transferable[] = []) {
-  workerScope.postMessage(response, transfer)
+  workerScope.postMessage(response, transfer);
 }
 
 async function optimizeImageToWebp(
   payload: OptimizeImageRequest["payload"],
 ): Promise<{ buffer: ArrayBuffer; mimeType: string }> {
-  const sourceBlob = new Blob([payload.buffer], { type: payload.mimeType })
-  const shouldConvert = sourceBlob.type.startsWith("image/") && sourceBlob.type !== "image/webp"
+  const sourceBlob = new Blob([payload.buffer], { type: payload.mimeType });
+  const shouldConvert = sourceBlob.type.startsWith("image/") && sourceBlob.type !== "image/webp";
 
-  if (!shouldConvert || typeof createImageBitmap !== "function" || typeof OffscreenCanvas === "undefined") {
+  if (
+    !shouldConvert ||
+    typeof createImageBitmap !== "function" ||
+    typeof OffscreenCanvas === "undefined"
+  ) {
     return {
       buffer: await sourceBlob.arrayBuffer(),
       mimeType: sourceBlob.type || payload.mimeType,
-    }
+    };
   }
 
-  const imageBitmap = await createImageBitmap(sourceBlob)
+  const imageBitmap = await createImageBitmap(sourceBlob);
 
   try {
-    const canvas = new OffscreenCanvas(imageBitmap.width, imageBitmap.height)
+    const canvas = new OffscreenCanvas(imageBitmap.width, imageBitmap.height);
     const context = canvas.getContext("2d", {
       alpha: true,
       desynchronized: true,
-    })
+    });
 
     if (!context) {
       return {
         buffer: await sourceBlob.arrayBuffer(),
         mimeType: sourceBlob.type || payload.mimeType,
-      }
+      };
     }
 
-    context.drawImage(imageBitmap, 0, 0)
+    context.drawImage(imageBitmap, 0, 0);
 
     const webpBlob = await canvas.convertToBlob({
       type: "image/webp",
       quality: payload.quality ?? 0.82,
-    })
+    });
 
     return {
       buffer: await webpBlob.arrayBuffer(),
       mimeType: "image/webp",
-    }
+    };
   } finally {
-    imageBitmap.close()
+    imageBitmap.close();
   }
 }
 
-async function tryCompression(
-  input: Uint8Array,
-  algorithm: string,
-): Promise<ArrayBuffer | null> {
+async function tryCompression(input: Uint8Array, algorithm: string): Promise<ArrayBuffer | null> {
   try {
-    const compressionStream = new CompressionStream(algorithm as CompressionFormat)
-    const sourceBuffer = Uint8Array.from(input).buffer
-    const stream = new Blob([sourceBuffer]).stream().pipeThrough(compressionStream)
-    return await new Response(stream).arrayBuffer()
+    const compressionStream = new CompressionStream(algorithm as CompressionFormat);
+    const sourceBuffer = Uint8Array.from(input).buffer;
+    const stream = new Blob([sourceBuffer]).stream().pipeThrough(compressionStream);
+    return await new Response(stream).arrayBuffer();
   } catch {
-    return null
+    return null;
   }
 }
 
 async function compressTextToBuffer(
   text: string,
 ): Promise<{ algorithm: string; buffer: ArrayBuffer }> {
-  const source = new TextEncoder().encode(text)
+  const source = new TextEncoder().encode(text);
 
-  const preferredAlgorithms = ["br", "brotli", "gzip", "deflate"]
+  const preferredAlgorithms = ["br", "brotli", "gzip", "deflate"];
 
   for (const algorithm of preferredAlgorithms) {
-    const compressed = await tryCompression(source, algorithm)
+    const compressed = await tryCompression(source, algorithm);
     if (compressed) {
       return {
         algorithm,
         buffer: compressed,
-      }
+      };
     }
   }
 
   return {
     algorithm: "none",
     buffer: source.slice().buffer,
-  }
+  };
 }
 
-async function decompressTextFromBuffer(payload: DecompressTextRequest["payload"]): Promise<string> {
+async function decompressTextFromBuffer(
+  payload: DecompressTextRequest["payload"],
+): Promise<string> {
   if (payload.algorithm === "none") {
-    return new TextDecoder().decode(payload.buffer)
+    return new TextDecoder().decode(payload.buffer);
   }
 
   try {
-    const decompressionStream = new DecompressionStream(payload.algorithm as CompressionFormat)
-    const stream = new Blob([payload.buffer]).stream().pipeThrough(decompressionStream)
-    const result = await new Response(stream).arrayBuffer()
-    return new TextDecoder().decode(result)
+    const decompressionStream = new DecompressionStream(payload.algorithm as CompressionFormat);
+    const stream = new Blob([payload.buffer]).stream().pipeThrough(decompressionStream);
+    const result = await new Response(stream).arrayBuffer();
+    return new TextDecoder().decode(result);
   } catch {
-    return new TextDecoder().decode(payload.buffer)
+    return new TextDecoder().decode(payload.buffer);
   }
 }
 
 async function handleMessage(event: MessageEvent<WorkerRequest>) {
-  const request = event.data
+  const request = event.data;
 
   try {
     if (request.type === "optimize-image") {
-      const optimized = await optimizeImageToWebp(request.payload)
+      const optimized = await optimizeImageToWebp(request.payload);
 
       postResponse(
         {
@@ -128,13 +131,13 @@ async function handleMessage(event: MessageEvent<WorkerRequest>) {
           payload: optimized,
         },
         [optimized.buffer],
-      )
+      );
 
-      return
+      return;
     }
 
     if (request.type === "compress-text") {
-      const compressed = await compressTextToBuffer(request.payload.text)
+      const compressed = await compressTextToBuffer(request.payload.text);
 
       postResponse(
         {
@@ -144,12 +147,12 @@ async function handleMessage(event: MessageEvent<WorkerRequest>) {
           payload: compressed,
         },
         [compressed.buffer],
-      )
+      );
 
-      return
+      return;
     }
 
-    const text = await decompressTextFromBuffer(request.payload)
+    const text = await decompressTextFromBuffer(request.payload);
 
     postResponse({
       id: request.id,
@@ -158,18 +161,18 @@ async function handleMessage(event: MessageEvent<WorkerRequest>) {
       payload: {
         text,
       },
-    })
+    });
   } catch (error) {
     postResponse({
       id: request.id,
       ok: false,
       error: error instanceof Error ? error.message : "Unknown worker error",
-    })
+    });
   }
 }
 
 workerScope.onmessage = (event) => {
-  void handleMessage(event)
-}
+  void handleMessage(event);
+};
 
-export {}
+export {};

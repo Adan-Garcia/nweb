@@ -1,10 +1,10 @@
-import { Database, KeyRound, ShieldCheck, Users, type LucideIcon } from "lucide-react"
+import { Database, KeyRound, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 
 export type PolicySection = {
-  title: string
-  icon: LucideIcon
-  items: string[]
-}
+  title: string;
+  icon: LucideIcon;
+  items: string[];
+};
 
 export const POLICY_SECTIONS: PolicySection[] = [
   {
@@ -44,13 +44,13 @@ export const POLICY_SECTIONS: PolicySection[] = [
       "You can stop using the service at any time; self-hosting and local-first workflows remain a supported direction.",
     ],
   },
-]
+];
 
 export type BreakdownStep = {
-  step: string
-  title: string
-  copy: string
-}
+  step: string;
+  title: string;
+  copy: string;
+};
 
 export const PLAIN_LANGUAGE_STEPS: BreakdownStep[] = [
   {
@@ -68,4 +68,4 @@ export const PLAIN_LANGUAGE_STEPS: BreakdownStep[] = [
     title: "No key means no reading",
     copy: "If someone gets the stored data but not your key, they only see encrypted gibberish.",
   },
-]
+];

@@ -1,11 +1,11 @@
 export type PricingTier = {
-  name: string
-  price: string
-  description: string
-  highlight: boolean
-  features: string[]
-  action: string
-}
+  name: string;
+  price: string;
+  description: string;
+  highlight: boolean;
+  features: string[];
+  action: string;
+};
 
 export const PRICING_TIERS: PricingTier[] = [
   {
@@ -46,4 +46,4 @@ export const PRICING_TIERS: PricingTier[] = [
     ],
     action: "Comming Soon",
   },
-]
+];

@@ -81,14 +81,10 @@ export function computeDashboardMetrics({
       return eventDate >= todayStart && eventDate <= upcomingWindowEnd;
     })
     .sort((left, right) => {
-      return (
-        dateKeyToDate(left.date).getTime() - dateKeyToDate(right.date).getTime()
-      );
+      return dateKeyToDate(left.date).getTime() - dateKeyToDate(right.date).getTime();
     });
 
-  const recentNotes = [...notesEntries]
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-    .slice(0, 5);
+  const recentNotes = [...notesEntries].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5);
 
   const weekAgo = now.getTime() - 7 * DAY_MS;
   const notesUpdatedThisWeekCount = notesEntries.filter(

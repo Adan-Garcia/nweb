@@ -3,14 +3,8 @@ import { getSceneVersion } from "@excalidraw/excalidraw";
 import type { ExcalidrawInitialDataState } from "@excalidraw/excalidraw/types";
 
 import { defaultLinearContent } from "@/components/notes/constants";
-import {
-  parseStoredScene,
-  restoreSceneFiles,
-} from "@/components/notes/excalidraw-adapter";
-import type {
-  NotesDocumentMode,
-  NotesSpatialInitialData,
-} from "@/components/notes/types";
+import { parseStoredScene, restoreSceneFiles } from "@/components/notes/excalidraw-adapter";
+import type { NotesDocumentMode, NotesSpatialInitialData } from "@/components/notes/types";
 import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
 import { revokeObjectUrls } from "@/lib/blob-utils";
 import type { MediaWorkerClient } from "@/lib/media-worker-client";
@@ -31,12 +25,18 @@ export function useNotesHydration({
   resetLinearContent,
   clearPendingLinearEdit,
 }: UseNotesHydrationOptions) {
-  const { activeObjectUrlsRef, latestSpatialSceneVersionRef, latestSpatialSnapshotRef, linearSaveTimeoutRef, loadRequestRef, pendingSpatialSceneVersionRef, spatialSaveTimeoutRef } = refs;
+  const {
+    activeObjectUrlsRef,
+    latestSpatialSceneVersionRef,
+    latestSpatialSnapshotRef,
+    linearSaveTimeoutRef,
+    loadRequestRef,
+    pendingSpatialSceneVersionRef,
+    spatialSaveTimeoutRef,
+  } = refs;
   const [isHydratingDocument, setIsHydratingDocument] = useState(false);
-  const [spatialInitialData, setSpatialInitialData] =
-    useState<NotesSpatialInitialData>(null);
-  const [isSpatialEditorReloading, setIsSpatialEditorReloading] =
-    useState(false);
+  const [spatialInitialData, setSpatialInitialData] = useState<NotesSpatialInitialData>(null);
+  const [isSpatialEditorReloading, setIsSpatialEditorReloading] = useState(false);
   const [spatialEditorReloadKey, setSpatialEditorReloadKey] = useState(0);
 
   const recycleSpatialEditor = useCallback(async () => {
@@ -44,10 +44,7 @@ export function useNotesHydration({
     setSpatialInitialData(null);
 
     await new Promise<void>((resolve) => {
-      if (
-        typeof window === "undefined" ||
-        typeof window.requestAnimationFrame !== "function"
-      ) {
+      if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
         resolve();
         return;
       }
@@ -128,19 +125,15 @@ export function useNotesHydration({
           const parsedScene = parseStoredScene(decompressedScene);
           const restoredFiles = restoreSceneFiles(loadedDocument.sceneFiles);
 
-          notesTrace(
-            "notes-workspace",
-            "hydrateDocument:restored-scene-files",
-            {
-              documentId,
-              requestId,
-              storedSceneFileRefs: loadedDocument.document.sceneFiles.length,
-              restoredSceneFiles: Object.keys(restoredFiles).length,
-              restoredMimeTypes: Object.values(loadedDocument.sceneFiles).map(
-                (file) => file.mimeType,
-              ),
-            },
-          );
+          notesTrace("notes-workspace", "hydrateDocument:restored-scene-files", {
+            documentId,
+            requestId,
+            storedSceneFileRefs: loadedDocument.document.sceneFiles.length,
+            restoredSceneFiles: Object.keys(restoredFiles).length,
+            restoredMimeTypes: Object.values(loadedDocument.sceneFiles).map(
+              (file) => file.mimeType,
+            ),
+          });
 
           revokeObjectUrls(activeObjectUrlsRef.current);
           activeObjectUrlsRef.current = loadedDocument.objectUrls;
@@ -150,9 +143,7 @@ export function useNotesHydration({
             appState: parsedScene.appState,
             files: restoredFiles,
           } satisfies ExcalidrawInitialDataState);
-          latestSpatialSceneVersionRef.current = getSceneVersion(
-            parsedScene.elements,
-          );
+          latestSpatialSceneVersionRef.current = getSceneVersion(parsedScene.elements);
         } else {
           revokeObjectUrls(activeObjectUrlsRef.current);
           activeObjectUrlsRef.current = [];
@@ -189,13 +180,13 @@ export function useNotesHydration({
       clearPendingLinearEdit,
       mediaWorker,
       recycleSpatialEditor,
-    activeObjectUrlsRef,
-    latestSpatialSceneVersionRef,
-    latestSpatialSnapshotRef,
-    linearSaveTimeoutRef,
-    loadRequestRef,
-    pendingSpatialSceneVersionRef,
-    spatialSaveTimeoutRef,
+      activeObjectUrlsRef,
+      latestSpatialSceneVersionRef,
+      latestSpatialSnapshotRef,
+      linearSaveTimeoutRef,
+      loadRequestRef,
+      pendingSpatialSceneVersionRef,
+      spatialSaveTimeoutRef,
       resetLinearContent,
     ],
   );

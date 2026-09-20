@@ -6,10 +6,7 @@ import {
   collectReferencedFileIds,
   convertSceneFilesForStorage,
 } from "@/components/notes/scene-utils";
-import type {
-  NotesDocumentMode,
-  SpatialSnapshot,
-} from "@/components/notes/types";
+import type { NotesDocumentMode, SpatialSnapshot } from "@/components/notes/types";
 import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
 import type { MediaWorkerClient } from "@/lib/media-worker-client";
 import { saveSpatialDocumentPayload } from "@/lib/notes-document-storage";
@@ -37,7 +34,12 @@ export function useSpatialAutosave({
   activeCreatedMode,
   markSaved,
 }: UseSpatialAutosaveOptions) {
-  const { latestSpatialSceneVersionRef, latestSpatialSnapshotRef, pendingSpatialSceneVersionRef, spatialSaveTimeoutRef } = refs;
+  const {
+    latestSpatialSceneVersionRef,
+    latestSpatialSnapshotRef,
+    pendingSpatialSceneVersionRef,
+    spatialSaveTimeoutRef,
+  } = refs;
   const optimizeImageBlob = useCallback(
     async (blob: Blob) => {
       return await mediaWorker.optimizeImageBlob(blob);
@@ -53,8 +55,7 @@ export function useSpatialAutosave({
       snapshotVersionOverride?: number | null,
     ) => {
       const snapshot = snapshotOverride ?? latestSpatialSnapshotRef.current;
-      const snapshotVersion =
-        snapshotVersionOverride ?? pendingSpatialSceneVersionRef.current;
+      const snapshotVersion = snapshotVersionOverride ?? pendingSpatialSceneVersionRef.current;
 
       if (!snapshot) {
         return;
@@ -71,12 +72,7 @@ export function useSpatialAutosave({
         referencedFileCount: referencedFileIds.size,
       });
 
-      const serializedScene = serializeAsJSON(
-        snapshot.elements,
-        snapshot.appState,
-        {},
-        "database",
-      );
+      const serializedScene = serializeAsJSON(snapshot.elements, snapshot.appState, {}, "database");
 
       const compressedScene = await mediaWorker.compressText(serializedScene);
 
@@ -113,7 +109,13 @@ export function useSpatialAutosave({
         pendingSpatialSceneVersionRef.current = null;
       }
     },
-    [markSaved, mediaWorker, optimizeImageBlob, latestSpatialSnapshotRef, pendingSpatialSceneVersionRef],
+    [
+      markSaved,
+      mediaWorker,
+      optimizeImageBlob,
+      latestSpatialSnapshotRef,
+      pendingSpatialSceneVersionRef,
+    ],
   );
 
   const scheduleSpatialPersist = useCallback(() => {
@@ -131,8 +133,7 @@ export function useSpatialAutosave({
     }
 
     const snapshotForScheduledSave = latestSpatialSnapshotRef.current;
-    const snapshotVersionForScheduledSave =
-      pendingSpatialSceneVersionRef.current;
+    const snapshotVersionForScheduledSave = pendingSpatialSceneVersionRef.current;
 
     spatialSaveTimeoutRef.current = window.setTimeout(() => {
       void persistSpatialSnapshot(
@@ -181,7 +182,12 @@ export function useSpatialAutosave({
 
       scheduleSpatialPersist();
     },
-    [latestSpatialSceneVersionRef, latestSpatialSnapshotRef, pendingSpatialSceneVersionRef, scheduleSpatialPersist],
+    [
+      latestSpatialSceneVersionRef,
+      latestSpatialSnapshotRef,
+      pendingSpatialSceneVersionRef,
+      scheduleSpatialPersist,
+    ],
   );
 
   return { persistSpatialSnapshot, handleSpatialChange };
