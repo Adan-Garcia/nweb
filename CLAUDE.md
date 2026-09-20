@@ -218,7 +218,7 @@ A change is done only when:
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
 1.  **Test coverage is thin.** Only `lib/calendar-*`, `lib/notes-*-storage.ts`, `lib/blob-utils.ts`, `lib/image-utils.ts`, `lib/media-worker-client.ts`, both hooks, `calendar-shared`, `location-hierarchy` and `LoginForm` are tested. `lib/notes-trace.ts`, `notes-tree.ts`/`NotesFileViewer` (tested), most other components, and the notes page/editor UI are at 0%; the notes workspace hook has behavioural (characterization) tests only.
-5.  **Oversized files** (limits: components 150, hooks/lib 300): `pages/index.tsx` 235, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
+5.  **Oversized files** (limits: components 150, hooks/lib 300): `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
 7.  **No formatter** (mixed tabs/spaces, quotes, semicolons). Adopt Prettier + `.editorconfig` and reformat in one dedicated commit.
 8.  **ESLint is not type-aware** (`recommended`, not `recommendedTypeChecked`); no import-order, `max-lines`, or `no-console` rules.
 9.  **No route-level code splitting** (`App.tsx` eagerly imports Excalidraw/pdf.js pages).
