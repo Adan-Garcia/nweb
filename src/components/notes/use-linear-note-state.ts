@@ -20,7 +20,9 @@ export function useLinearNoteState(refs: NotesSessionRefs) {
       latestLinearContentRef.current = nextContent;
       setLinearContentState(nextContent);
 
-      const editAt = Date.now();
+      // The token only needs to differ from the previous pending edit's, so two
+      // edits inside one millisecond still re-arm the autosave debounce.
+      const editAt = Math.max(Date.now(), (pendingLinearEditAtRef.current ?? 0) + 1);
       pendingLinearEditAtRef.current = editAt;
       setPendingLinearEditAt(editAt);
     },

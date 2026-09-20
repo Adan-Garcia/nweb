@@ -113,10 +113,9 @@ describe("useNotesWorkspace: linear autosave", () => {
     const { result, documents, spies } = await mountReady()
     const documentId = result.current.activeDocumentId ?? ""
 
+    // Back-to-back edits, possibly inside the same millisecond, must still batch
+    // into one save of the latest content.
     act(() => result.current.setLinearContent("<p>a</p>"))
-    // Keystrokes are always at least a few ms apart; edits within the same
-    // millisecond share one edit timestamp and would not re-arm the debounce.
-    await new Promise((resolve) => setTimeout(resolve, 5))
     act(() => result.current.setLinearContent("<p>ab</p>"))
     expect(spies.saveLinear).not.toHaveBeenCalled()
 

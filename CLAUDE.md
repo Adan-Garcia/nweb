@@ -226,4 +226,3 @@ Pre-existing; not blockers for unrelated work (§0). Highest value first.
 11. **Zustand installed but unused.**
 13. **`README.md` is the unmodified Vite template.** Replace with real project docs.
 14. **Legacy plain CSS:** `App.css` (391 lines) and `pages/notes.css` (273 lines) should migrate to Tailwind utilities over time.
-15. **Same-millisecond edits skip the linear autosave debounce.** `setLinearContent` keys the debounce on `Date.now()`; two edits in one millisecond share a timestamp, so the second does not re-arm the timer and the first edit's content is saved. Unreachable by typing; pinned by a comment in `use-notes-workspace.test.ts`. Fix by using a monotonic counter instead of the timestamp.
