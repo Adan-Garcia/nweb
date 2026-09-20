@@ -92,7 +92,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
     | Object-shape types | `type` (55 of 56 existing declarations); `interface` only when declaration merging is needed | `type LocationSegment = …` |
 
 *   **One component per file** (small internal helper components excepted). Exported names must match the file's purpose.
-*   **TypeScript flags in force** `[ENFORCED]`: `verbatimModuleSyntax` (use `import type` for type-only imports), `erasableSyntaxOnly` (**no `enum`, no `namespace`, no constructor parameter properties**; use union types / `as const` objects), `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`.
+*   **TypeScript flags in force** `[ENFORCED]`: `strict`, `verbatimModuleSyntax` (use `import type` for type-only imports), `erasableSyntaxOnly` (**no `enum`, no `namespace`, no constructor parameter properties**; use union types / `as const` objects), `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`.
 *   **Imports:**
     *   Cross-directory imports use the `@/` alias. Never `../..`. Same-directory siblings use `./`.
     *   No file extensions in import specifiers.
@@ -214,7 +214,6 @@ A change is done only when:
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
 1.  **No test toolchain.** Install Vitest, RTL, MSW, `fake-indexeddb`; add a `test` script.
-2.  **`strict` is not enabled** in `tsconfig.app.json`, contradicting §1. Adding `"strict": true` produces **0 errors** today (`tsc --noEmit --strict -p tsconfig.app.json`), so it is a one-line change.
 4.  **Credential logging:** `login-form.tsx:50` and `signup-form.tsx:51` `console.info` the submitted form `values` (includes the password field); `search-form.tsx:32` does the same. Remove when real submit handlers land.
 5.  **Oversized files** (limits: components 150, hooks/lib 300): `notes/use-notes-workspace.ts` 954, `notes/notes-file-viewer.tsx` 475, `pages/calendar.tsx` 402, `lib/media-worker-client.ts` 399, `lib/notes-storage.ts` 387, `pages/notes.tsx` 351, `pages/dashboard.tsx` 349, `notes/spatial-notes-editor.tsx` 313, `pages/index.tsx` 235, `workers/mediaWorker.ts` 225, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `pages/privacy.tsx` 169, `pages/pricing.tsx` 163, `pages/documentation.tsx` 158, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
 6.  **Index used as key:** `pages/onboarding.tsx:89` (`components/ui/field.tsx:203` is generated).
