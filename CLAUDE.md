@@ -81,7 +81,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 
 *   **All source files are `kebab-case`**, matching the existing codebase and the shadcn generator (`components.json`): `auth-shell.tsx`, `use-notes-workspace.ts`, `notes-storage.ts`. `[REQUIRED]`
     *   Hook files are `use-<name>.ts`; the exported hook is `useCamelCase`.
-    *   Test files (when introduced) are `<name>.test.ts(x)` next to the file under test.
+    *   Test files are `<name>.test.ts(x)` next to the file under test.
 *   **Identifiers:**
 
     | Kind | Convention | Example |
@@ -107,19 +107,20 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 
 ## 4. Testing Mandates
 
-**Status: the test toolchain is not installed.** There is no Vitest, React Testing Library, or MSW in `package.json`, no `test` script, and no test files. `npm run test` does not exist; do not run it, cite it, or report tests as passing.
+**Toolchain:** Vitest + React Testing Library + `user-event` + `jest-dom` + MSW + `fake-indexeddb`. Config is the `test` block in `vite.config.ts`; global setup is `src/test/setup.ts`.
 
-Until the toolchain is added (first item in §13, needs explicit approval to install):
-*   Write code so it is testable: logic in pure functions and hooks, not JSX.
-*   Verify with the §6 checks, and for UI changes exercise the feature in `npm run dev`.
-*   In your report, state exactly what was and was not verified. Do not claim UI behaviour you did not observe.
+| Command | Purpose |
+| --- | --- |
+| `npm run test` | Run the suite once. |
+| `npm run test:watch` | Watch mode. |
+| `npm run test:coverage` | Run with V8 coverage and enforce thresholds. |
 
-Once the toolchain lands, these rules take effect `[TARGET]`:
-*   **No feature code is accepted without accompanying tests.**
-*   **Framework:** Vitest + React Testing Library.
-*   **Pattern:** test user behaviour, not implementation. Query by role or visible text (`getByRole`, `getByText`), never DOM structure or generic test IDs unless unavoidable.
-*   **Isolation:** no real network. IndexedDB via `fake-indexeddb`; HTTP (if any) via MSW.
-*   **Coverage:** custom hooks and pure utility functions require 100% logic coverage.
+*   **No feature code is accepted without accompanying tests.** `[REQUIRED]` A bug fix ships with a test that fails before the fix. Prove it: temporarily revert the fix and confirm the test goes red.
+*   **Placement and style:** co-locate as `<name>.test.ts(x)` next to the file under test. Import `describe`/`it`/`expect`/`vi` explicitly from `vitest` (no globals).
+*   **Pattern:** test user behaviour, not implementation. Query by role, label or visible text (`getByRole`, `getByLabelText`, `getByText`), never DOM structure or generic test IDs unless unavoidable. Drive the UI with `user-event`.
+*   **Isolation** `[ENFORCED]`: the setup file runs an MSW server with `onUnhandledRequest: "error"`, so a request without a handler fails the test; add handlers with `server.use(...)` from `src/test/server.ts`. IndexedDB is `fake-indexeddb` (auto-installed); `localStorage` and the `<html>` class are reset after every test. Stub `window.matchMedia` per test where needed (jsdom has none).
+*   **Coverage:** custom hooks require 100% logic coverage (`src/hooks/**` thresholds are `[ENFORCED]` by `test:coverage`). Pure utilities in `lib/` and `*-utils.ts` require the same `[REQUIRED]`; extend the thresholds in `vite.config.ts` as modules reach 100%. The text reporter hides fully covered files, so read the totals from `--coverage.reporter=json-summary` if a file seems missing.
+*   MSW's postinstall (browser service worker) is blocked by npm's install-scripts policy. It is only needed for in-browser mocking, not for these Node tests; do not approve it unless browser mocking is introduced.
 
 ## 5. Performance & Security
 
@@ -140,9 +141,9 @@ Once the toolchain lands, these rules take effect `[TARGET]`:
 | Typecheck | `npm run typecheck` | `tsc -b`. The root `tsconfig.json` is solution-style, so build mode (`-b`) is required; a bare `tsc --noEmit` checks zero files. |
 | Lint | `npm run lint` | `eslint .` |
 | Build | `npm run build` | `tsc -b && vite build` |
-| Test | — | Not available (§4). |
+| Test | `npm run test` | Vitest; see §4. |
 
-*   **Before reporting completion run:** `npm run typecheck && npm run lint && npm run build`. All three pass on a clean tree today; keep them clean.
+*   **Before reporting completion run:** `npm run typecheck && npm run lint && npm run test && npm run build`. All pass on a clean tree today; keep them clean.
 *   Node **>= 22.13** is required (`pdfjs-dist` v6).
 
 ## 7. Domain Model
@@ -179,7 +180,7 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 *   **Never run `npm audit fix --force`.** It downgrades `@excalidraw/excalidraw` to 0.17.6 (removing the `/types` and `index.css` subpaths `src/` imports) and bumps `pdfjs-dist` a major; Vite then fails to boot. `[REQUIRED]`
 *   Remaining audit advisories in the Excalidraw chain (`lodash-es`, `nanoid`, `@mermaid-js/parser`) are handled by the scoped `overrides` block in `package.json`. Extend that block; do not remove it.
 *   Pinned constraints: `@excalidraw/excalidraw` stays on `^0.18`; `pdfjs-dist` stays on v6 (fixes a high-severity malicious-PDF advisory; `destroy()` is on the loading task, not `PDFDocumentProxy`).
-*   After **any** dependency change run `npm run typecheck`, `npm run lint`, `npm run build`, and `npm audit`.
+*   After **any** dependency change run `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`, and `npm audit`; also confirm `npm ls @excalidraw/excalidraw pdfjs-dist nanoid lodash-es` still shows the pinned versions.
 *   Prefer what is already installed (`date-fns`, `zod`, `lucide-react`, `@dnd-kit`, `zustand`) over adding a new package. A new dependency needs a stated reason and explicit approval.
 *   Commit `package-lock.json` with `package.json`. Do not use `--force` or `--legacy-peer-deps`.
 
@@ -194,11 +195,11 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 ## 11. Definition of Done
 
 A change is done only when:
-1.  `npm run typecheck`, `npm run lint`, and `npm run build` pass.
+1.  `npm run typecheck`, `npm run lint`, `npm run test`, and `npm run build` pass.
 2.  No new violation of any §1 directive; touched files are no worse against §13.
 3.  No leftover `console.*`, commented-out code, or unowned TODOs.
 4.  Any new storage shape has a version bump and migration; any new external input has a Zod schema.
-5.  UI changes were exercised in the running app, or you state that they were not.
+5.  New or changed behaviour has tests (§4). UI changes were also exercised in the running app, or you state that they were not.
 6.  Docs stay true: if you changed the domain model, commands, or structure, this file or `Heirarchy.md` is updated in the same change.
 
 ## 12. Working Agreement for AI Agents
@@ -213,7 +214,7 @@ A change is done only when:
 
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
-1.  **No test toolchain.** Install Vitest, RTL, MSW, `fake-indexeddb`; add a `test` script.
+1.  **Test coverage is thin.** Only `lib/calendar-*`, both hooks, `calendar-shared`, `location-hierarchy` and `LoginForm` are tested. `lib/notes-storage.ts`, `lib/media-worker-client.ts`, `lib/notes-trace.ts`, the notes workspace hook, and most components are at 0%.
 5.  **Oversized files** (limits: components 150, hooks/lib 300): `notes/use-notes-workspace.ts` 954, `notes/notes-file-viewer.tsx` 475, `pages/calendar.tsx` 402, `lib/media-worker-client.ts` 399, `lib/notes-storage.ts` 387, `pages/notes.tsx` 351, `pages/dashboard.tsx` 349, `notes/spatial-notes-editor.tsx` 313, `pages/index.tsx` 235, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `pages/privacy.tsx` 169, `pages/pricing.tsx` 163, `pages/documentation.tsx` 158, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
 7.  **No formatter** (mixed tabs/spaces, quotes, semicolons). Adopt Prettier + `.editorconfig` and reformat in one dedicated commit.
 8.  **ESLint is not type-aware** (`recommended`, not `recommendedTypeChecked`); no import-order, `max-lines`, or `no-console` rules.
