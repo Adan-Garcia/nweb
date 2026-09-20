@@ -117,6 +117,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 
 *   **No feature code is accepted without accompanying tests.** `[REQUIRED]` A bug fix ships with a test that fails before the fix. Prove it: temporarily revert the fix and confirm the test goes red.
 *   **Placement and style:** co-locate as `<name>.test.ts(x)` next to the file under test. Import `describe`/`it`/`expect`/`vi` explicitly from `vitest` (no globals).
+*   **Type casts in tests:** avoid them. Where a fixture must stand in for a very large third-party type (e.g. Excalidraw's `AppState`), a single plain `as` on a minimal object is acceptable; never `as any` / `as unknown as`.
 *   **Pattern:** test user behaviour, not implementation. Query by role, label or visible text (`getByRole`, `getByLabelText`, `getByText`), never DOM structure or generic test IDs unless unavoidable. Drive the UI with `user-event`.
 *   **Isolation** `[ENFORCED]`: the setup file runs an MSW server with `onUnhandledRequest: "error"`, so a request without a handler fails the test; add handlers with `server.use(...)` from `src/test/server.ts`. IndexedDB is `fake-indexeddb` (auto-installed); `localStorage` and the `<html>` class are reset after every test. Stub `window.matchMedia` per test where needed (jsdom has none).
 *   **Coverage:** custom hooks require 100% logic coverage (`src/hooks/**` thresholds are `[ENFORCED]` by `test:coverage`). Pure utilities in `lib/` and `*-utils.ts` require the same `[REQUIRED]`; extend the thresholds in `vite.config.ts` as modules reach 100%. The text reporter hides fully covered files, so read the totals from `--coverage.reporter=json-summary` if a file seems missing.
@@ -214,7 +215,7 @@ A change is done only when:
 
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
-1.  **Test coverage is thin.** Only `lib/calendar-*`, `lib/notes-*-storage.ts`, `lib/blob-utils.ts`, `lib/image-utils.ts`, `lib/media-worker-client.ts`, both hooks, `calendar-shared`, `location-hierarchy` and `LoginForm` are tested. `lib/notes-trace.ts`, the notes workspace hook, and most components are at 0%.
+1.  **Test coverage is thin.** Only `lib/calendar-*`, `lib/notes-*-storage.ts`, `lib/blob-utils.ts`, `lib/image-utils.ts`, `lib/media-worker-client.ts`, both hooks, `calendar-shared`, `location-hierarchy` and `LoginForm` are tested. `lib/notes-trace.ts`, most components, and the notes page/editor UI are at 0%; the notes workspace hook has behavioural (characterization) tests only.
 5.  **Oversized files** (limits: components 150, hooks/lib 300): `notes/use-notes-workspace.ts` 954, `notes/notes-file-viewer.tsx` 475, `pages/calendar.tsx` 402, `pages/notes.tsx` 351, `pages/dashboard.tsx` 349, `notes/spatial-notes-editor.tsx` 313, `pages/index.tsx` 235, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `pages/privacy.tsx` 169, `pages/pricing.tsx` 163, `pages/documentation.tsx` 158, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
 7.  **No formatter** (mixed tabs/spaces, quotes, semicolons). Adopt Prettier + `.editorconfig` and reformat in one dedicated commit.
 8.  **ESLint is not type-aware** (`recommended`, not `recommendedTypeChecked`); no import-order, `max-lines`, or `no-console` rules.
