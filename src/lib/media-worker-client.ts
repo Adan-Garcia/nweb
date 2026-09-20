@@ -1,69 +1,12 @@
-import { notesTrace, notesTraceError } from "@/lib/notes-trace";
-
-type OptimizeImageRequest = {
-  id: number;
-  type: "optimize-image";
-  payload: {
-    buffer: ArrayBuffer;
-    mimeType: string;
-    quality?: number;
-  };
-};
-
-type CompressTextRequest = {
-  id: number;
-  type: "compress-text";
-  payload: {
-    text: string;
-  };
-};
-
-type DecompressTextRequest = {
-  id: number;
-  type: "decompress-text";
-  payload: {
-    buffer: ArrayBuffer;
-    algorithm: string;
-  };
-};
-
-type WorkerRequest =
-  | OptimizeImageRequest
-  | CompressTextRequest
-  | DecompressTextRequest;
-
-type WorkerResponse =
-  | {
-      id: number;
-      ok: true;
-      type: "optimize-image";
-      payload: {
-        buffer: ArrayBuffer;
-        mimeType: string;
-      };
-    }
-  | {
-      id: number;
-      ok: true;
-      type: "compress-text";
-      payload: {
-        algorithm: string;
-        buffer: ArrayBuffer;
-      };
-    }
-  | {
-      id: number;
-      ok: true;
-      type: "decompress-text";
-      payload: {
-        text: string;
-      };
-    }
-  | {
-      id: number;
-      ok: false;
-      error: string;
-    };
+import { convertImageBlobToWebp, renameToWebp } from "./image-utils";
+import type {
+  CompressTextRequest,
+  DecompressTextRequest,
+  OptimizeImageRequest,
+  WorkerRequest,
+  WorkerResponse,
+} from "./media-worker-protocol";
+import { notesTrace, notesTraceError } from "./notes-trace";
 
 type PendingRequest = {
   resolve: (value: WorkerResponse) => void;
@@ -74,68 +17,6 @@ export type TextCompressionResult = {
   algorithm: string;
   bytes: Uint8Array;
 };
-
-async function convertImageBlobToWebp(
-  blob: Blob,
-  quality: number,
-): Promise<Blob> {
-  if (!blob.type.startsWith("image/") || blob.type === "image/webp") {
-    return blob;
-  }
-
-  if (typeof document === "undefined") {
-    return blob;
-  }
-
-  if (typeof createImageBitmap === "function") {
-    const imageBitmap = await createImageBitmap(blob);
-
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = imageBitmap.width;
-      canvas.height = imageBitmap.height;
-
-      const context = canvas.getContext("2d");
-      if (!context) {
-        return blob;
-      }
-
-      context.drawImage(imageBitmap, 0, 0);
-
-      const webpBlob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(
-          (result) => {
-            resolve(result);
-          },
-          "image/webp",
-          quality,
-        );
-      });
-
-      notesTrace("media-worker-client", "main-thread-webp-conversion", {
-        sourceMimeType: blob.type,
-        sourceSize: blob.size,
-        resultMimeType: webpBlob?.type ?? blob.type,
-        resultSize: webpBlob?.size ?? blob.size,
-      });
-
-      return webpBlob ?? blob;
-    } finally {
-      imageBitmap.close();
-    }
-  }
-
-  return blob;
-}
-
-function renameToWebp(name: string): string {
-  const lastDotIndex = name.lastIndexOf(".");
-  if (lastDotIndex <= 0) {
-    return `${name}.webp`;
-  }
-
-  return `${name.slice(0, lastDotIndex)}.webp`;
-}
 
 export class MediaWorkerClient {
   private worker: Worker | null;

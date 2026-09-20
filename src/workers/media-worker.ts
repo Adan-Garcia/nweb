@@ -1,64 +1,9 @@
-type OptimizeImageRequest = {
-  id: number
-  type: "optimize-image"
-  payload: {
-    buffer: ArrayBuffer
-    mimeType: string
-    quality?: number
-  }
-}
-
-type CompressTextRequest = {
-  id: number
-  type: "compress-text"
-  payload: {
-    text: string
-  }
-}
-
-type DecompressTextRequest = {
-  id: number
-  type: "decompress-text"
-  payload: {
-    buffer: ArrayBuffer
-    algorithm: string
-  }
-}
-
-type WorkerRequest = OptimizeImageRequest | CompressTextRequest | DecompressTextRequest
-
-type WorkerResponse =
-  | {
-      id: number
-      ok: true
-      type: "optimize-image"
-      payload: {
-        buffer: ArrayBuffer
-        mimeType: string
-      }
-    }
-  | {
-      id: number
-      ok: true
-      type: "compress-text"
-      payload: {
-        algorithm: string
-        buffer: ArrayBuffer
-      }
-    }
-  | {
-      id: number
-      ok: true
-      type: "decompress-text"
-      payload: {
-        text: string
-      }
-    }
-  | {
-      id: number
-      ok: false
-      error: string
-    }
+import type {
+  DecompressTextRequest,
+  OptimizeImageRequest,
+  WorkerRequest,
+  WorkerResponse,
+} from "@/lib/media-worker-protocol"
 
 type WorkerScope = {
   postMessage: (message: WorkerResponse, transfer?: Transferable[]) => void
