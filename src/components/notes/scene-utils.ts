@@ -1,4 +1,4 @@
-import type { PersistedSceneFile } from "@/lib/notes-storage";
+import type { PersistedSceneFile } from "@/lib/notes-model";
 import type { SceneElements, SceneFiles } from "@/components/notes/types";
 import { notesTrace, notesTraceError } from "@/lib/notes-trace";
 

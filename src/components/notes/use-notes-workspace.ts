@@ -8,16 +8,18 @@ import type {
 
 import { createMediaWorkerClient } from "@/lib/media-worker-client";
 import { notesTrace, notesTraceError } from "@/lib/notes-trace";
+import { revokeObjectUrls } from "@/lib/blob-utils";
 import {
-  DEFAULT_NOTES_DOCUMENT_ID,
   listNotesDirectoryEntries,
-  loadNotesDocument,
-  revokeObjectUrls,
-  saveLinearDocumentPayload,
-  saveSpatialDocumentPayload,
   touchNotesDirectoryEntry,
   upsertNotesDirectoryEntry,
-} from "@/lib/notes-storage";
+} from "@/lib/notes-directory-storage";
+import {
+  loadNotesDocument,
+  saveLinearDocumentPayload,
+  saveSpatialDocumentPayload,
+} from "@/lib/notes-document-storage";
+import { DEFAULT_NOTES_DOCUMENT_ID } from "@/lib/notes-model";
 import {
   buildNotesDocumentId,
   createDefaultNotesLocation,

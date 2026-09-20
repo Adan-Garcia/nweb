@@ -79,7 +79,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 
 ## 3. Style & Naming Conventions
 
-*   **All source files are `kebab-case`**, matching the existing codebase and the shadcn generator (`components.json`): `auth-shell.tsx`, `use-notes-workspace.ts`, `notes-storage.ts`. `[REQUIRED]`
+*   **All source files are `kebab-case`**, matching the existing codebase and the shadcn generator (`components.json`): `auth-shell.tsx`, `use-notes-workspace.ts`, `notes-directory-storage.ts`. `[REQUIRED]`
     *   Hook files are `use-<name>.ts`; the exported hook is `useCamelCase`.
     *   Test files are `<name>.test.ts(x)` next to the file under test.
 *   **Identifiers:**
@@ -214,8 +214,8 @@ A change is done only when:
 
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
-1.  **Test coverage is thin.** Only `lib/calendar-*`, both hooks, `calendar-shared`, `location-hierarchy` and `LoginForm` are tested. `lib/notes-storage.ts`, `lib/media-worker-client.ts`, `lib/notes-trace.ts`, the notes workspace hook, and most components are at 0%.
-5.  **Oversized files** (limits: components 150, hooks/lib 300): `notes/use-notes-workspace.ts` 954, `notes/notes-file-viewer.tsx` 475, `pages/calendar.tsx` 402, `lib/media-worker-client.ts` 399, `lib/notes-storage.ts` 387, `pages/notes.tsx` 351, `pages/dashboard.tsx` 349, `notes/spatial-notes-editor.tsx` 313, `pages/index.tsx` 235, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `pages/privacy.tsx` 169, `pages/pricing.tsx` 163, `pages/documentation.tsx` 158, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
+1.  **Test coverage is thin.** Only `lib/calendar-*`, `lib/notes-*-storage.ts`, `lib/blob-utils.ts`, both hooks, `calendar-shared`, `location-hierarchy` and `LoginForm` are tested. `lib/media-worker-client.ts`, `lib/notes-trace.ts`, the notes workspace hook, and most components are at 0%.
+5.  **Oversized files** (limits: components 150, hooks/lib 300): `notes/use-notes-workspace.ts` 954, `notes/notes-file-viewer.tsx` 475, `pages/calendar.tsx` 402, `lib/media-worker-client.ts` 399, `pages/notes.tsx` 351, `pages/dashboard.tsx` 349, `notes/spatial-notes-editor.tsx` 313, `pages/index.tsx` 235, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `pages/privacy.tsx` 169, `pages/pricing.tsx` 163, `pages/documentation.tsx` 158, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
 7.  **No formatter** (mixed tabs/spaces, quotes, semicolons). Adopt Prettier + `.editorconfig` and reformat in one dedicated commit.
 8.  **ESLint is not type-aware** (`recommended`, not `recommendedTypeChecked`); no import-order, `max-lines`, or `no-console` rules.
 9.  **No route-level code splitting** (`App.tsx` eagerly imports Excalidraw/pdf.js pages).

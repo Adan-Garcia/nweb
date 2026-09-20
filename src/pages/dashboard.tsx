@@ -26,10 +26,8 @@ import {
 } from "@/components/ui/card";
 import { useThemeMode } from "@/hooks/use-theme-mode";
 import { loadCalendarEvents } from "@/lib/calendar-storage";
-import {
-  listNotesDirectoryEntries,
-  type NotesDirectoryEntry,
-} from "@/lib/notes-storage";
+import { listNotesDirectoryEntries } from "@/lib/notes-directory-storage";
+import type { NotesDirectoryEntry } from "@/lib/notes-model";
 
 import "../App.css";
 
