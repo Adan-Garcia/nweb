@@ -220,7 +220,6 @@ A change is done only when:
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
 1.  **Untested UI.** Coverage is ~90% lines, but no test exercises `notes/spatial-notes-pdf.ts` (pdf.js rendering), `notes/linear-notes-editor.tsx` (TipTap), `notes/spatial-notes-editor.tsx` / `spatial-notes-toolbar.tsx` (Excalidraw), or `main.tsx`; `use-notes-hydration.ts` and `use-notes-flush.ts` have untested error branches. These were smoke-tested by hand in a browser (notes, calendar, dashboard, marketing and onboarding pages), which is not repeatable.
-2.  **Dead shadcn scaffolding.** `app-sidebar.tsx` (+ `app-sidebar-data.ts`), `version-switcher.tsx`, `search-form.tsx`, `team-switcher.tsx`, `nav-main.tsx`, `nav-projects.tsx` and `nav-user.tsx` are generated sample blocks that nothing imports (the real navigation is `workspace-shell.tsx`). Delete them, or wire them up; do not let them accrete.
 3.  **No import-order lint rule.** The group order in §3 is not enforced; it needs `eslint-plugin-import` (or similar), which is a new dependency.
 4.  **Legacy plain CSS:** `App.css` (391 lines) and `pages/notes.css` (273 lines) should migrate to Tailwind utilities over time.
 5.  **Sign-up page shows sign-in copy.** `pages/signup.tsx` was copied from `signin.tsx`: its headline ("Pick up right where your notes and projects left off."), description ("Sign in to resume..."), benefit list and `formAriaLabel` ("Sign in form") all describe signing in, around the signup form. Needs the intended sign-up copy.
