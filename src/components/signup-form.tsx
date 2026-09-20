@@ -47,9 +47,9 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
     },
   })
 
-  const handleSignup = (values: SignupFormValues) => {
-    console.info("Signup submitted", values)
-  }
+  // No auth backend exists yet, so a valid submit is intentionally a no-op.
+  // Do not log the submitted values: they contain the password.
+  const handleSignup = () => {}
 
   return (
     <Card {...props}>

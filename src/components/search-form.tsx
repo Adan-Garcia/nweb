@@ -28,9 +28,8 @@ export function SearchForm({ ...props }: React.ComponentProps<"form">) {
     },
   })
 
-  const handleSearch = (values: SearchFormValues) => {
-    console.info("Search submitted", values)
-  }
+  // Search is not wired to a data source yet, so a valid submit is a no-op.
+  const handleSearch = () => {}
 
   return (
     <form {...props} noValidate onSubmit={handleSubmit(handleSearch)}>

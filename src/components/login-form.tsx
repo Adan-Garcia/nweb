@@ -46,9 +46,9 @@ export function LoginForm({
     },
   })
 
-  const handleLogin = (values: LoginFormValues) => {
-    console.info("Login submitted", values)
-  }
+  // No auth backend exists yet, so a valid submit is intentionally a no-op.
+  // Do not log the submitted values: they contain the password.
+  const handleLogin = () => {}
 
   return (
     <Card
