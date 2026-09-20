@@ -71,6 +71,8 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 
 ### 2.4 State management
 *   Default to local `useState` / `useReducer`. Prefer **derived state** over duplicated state.
+*   **Shared mutable, non-rendering state** (timers, "latest value" mirrors, in-flight request ids) lives in one session hook that returns a stable bundle of refs (`notes/use-notes-session.ts`), which sibling hooks receive as a parameter. React Compiler's `react-hooks/immutability` rule only allows mutating a ref that arrived as an argument if it is a local whose name ends in `Ref`, so destructure at the top of the hook (`const { pendingEditRef } = refs`) and list those locals in dependency arrays.
+*   **Derive, don't sync.** If a value can be computed from existing state, compute it; do not copy it into state from an effect (`react-hooks/set-state-in-effect` fails the build once the file is analysable).
 *   Shared UI state: composition or Context first. Zustand (installed, currently unused) only when state must be shared across unrelated trees; stores live in `src/stores/use-<name>-store.ts`. Keep global state minimal.
 
 ### 2.5 Routing
@@ -216,10 +218,11 @@ A change is done only when:
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
 1.  **Test coverage is thin.** Only `lib/calendar-*`, `lib/notes-*-storage.ts`, `lib/blob-utils.ts`, `lib/image-utils.ts`, `lib/media-worker-client.ts`, both hooks, `calendar-shared`, `location-hierarchy` and `LoginForm` are tested. `lib/notes-trace.ts`, most components, and the notes page/editor UI are at 0%; the notes workspace hook has behavioural (characterization) tests only.
-5.  **Oversized files** (limits: components 150, hooks/lib 300): `notes/use-notes-workspace.ts` 787 (was 954), `notes/notes-file-viewer.tsx` 475, `pages/calendar.tsx` 402, `pages/notes.tsx` 351, `pages/dashboard.tsx` 349, `notes/spatial-notes-editor.tsx` 313, `pages/index.tsx` 235, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `pages/privacy.tsx` 169, `pages/pricing.tsx` 163, `pages/documentation.tsx` 158, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
+5.  **Oversized files** (limits: components 150, hooks/lib 300): `notes/notes-file-viewer.tsx` 475, `pages/calendar.tsx` 402, `pages/notes.tsx` 351, `pages/dashboard.tsx` 349, `notes/spatial-notes-editor.tsx` 313, `pages/index.tsx` 235, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `pages/privacy.tsx` 169, `pages/pricing.tsx` 163, `pages/documentation.tsx` 158, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
 7.  **No formatter** (mixed tabs/spaces, quotes, semicolons). Adopt Prettier + `.editorconfig` and reformat in one dedicated commit.
 8.  **ESLint is not type-aware** (`recommended`, not `recommendedTypeChecked`); no import-order, `max-lines`, or `no-console` rules.
 9.  **No route-level code splitting** (`App.tsx` eagerly imports Excalidraw/pdf.js pages).
 11. **Zustand installed but unused.**
 13. **`README.md` is the unmodified Vite template.** Replace with real project docs.
 14. **Legacy plain CSS:** `App.css` (391 lines) and `pages/notes.css` (273 lines) should migrate to Tailwind utilities over time.
+15. **Same-millisecond edits skip the linear autosave debounce.** `setLinearContent` keys the debounce on `Date.now()`; two edits in one millisecond share a timestamp, so the second does not re-arm the timer and the first edit's content is saved. Unreachable by typing; pinned by a comment in `use-notes-workspace.test.ts`. Fix by using a monotonic counter instead of the timestamp.
