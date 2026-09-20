@@ -20,6 +20,7 @@ export function OnboardingPage() {
 
 	const onboardingSteps = [
 		{
+			id: "welcome",
 			title: "Welcome to Cuervo Planner",
 			description: "Let's set up your workspace",
 			icon: Sparkles,
@@ -27,12 +28,14 @@ export function OnboardingPage() {
 				"You've successfully created your account. Now let's personalize your experience and get you started.",
 		},
 		{
+			id: "create-wing",
 			title: "Create Your First Wing",
 			description: "Start building something amazing",
 			icon: Zap,
 			content: "Wings are the foundation of your work. Create your first wing to start organizing.",
 		},
 		{
+			id: "invite-flock",
 			title: "Invite Your Flock",
 			description: "Collaborate with others",
 			icon: Users,
@@ -40,6 +43,7 @@ export function OnboardingPage() {
 				"Add flock members, set permissions, and start collaborating in real-time in wings.",
 		},
 		{
+			id: "ready",
 			title: "You're All Set!",
 			description: "Ready to launch",
 			icon: CheckCircle2,
@@ -86,7 +90,7 @@ export function OnboardingPage() {
 							<div className="space-y-4">
 								{onboardingSteps.map((s, idx) => (
 									<button
-										key={idx}
+										key={s.id}
 										onClick={() => setCurrentStep(idx)}
 										className={`w-full text-left rounded-lg border-2 p-4 transition-all ${
 											idx === currentStep

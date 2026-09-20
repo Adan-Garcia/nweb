@@ -164,7 +164,7 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 
 ## 8. UI System (shadcn/ui + Tailwind v4)
 
-*   **`src/components/ui/**` is generated code.** Add or update primitives with the shadcn CLI (`npx shadcn@latest add <name>`, config in `components.json`, style `base-nova`). Do not hand-edit them for feature needs; wrap or compose them instead. (ESLint intentionally relaxes `react-refresh/only-export-components` there.) `[REQUIRED]`
+*   **`src/components/ui/**` is generated code.** Add or update primitives with the shadcn CLI (`npx shadcn@latest add <name>`, config in `components.json`, style `base-nova`). Do not hand-edit them for feature needs; wrap or compose them instead. (ESLint intentionally relaxes `react-refresh/only-export-components` there.) Generated files are exempt from the size and index-key rules (`ui/field.tsx` keys an error list by index). `[REQUIRED]`
 *   **Tailwind v4 is CSS-first:** configuration lives in `src/index.css` (`@theme inline`, `@custom-variant dark`). There is no `tailwind.config.js`; do not add one.
 *   **Class composition:** use `cn()` from `@/lib/utils` to merge classes; use `cva` for variant-driven components.
 *   **Use design tokens** (`bg-background`, `text-muted-foreground`, `border-border`, …). No hard-coded hex colours or arbitrary colour values in components. Dark mode goes through the token system.
@@ -215,7 +215,6 @@ Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
 1.  **No test toolchain.** Install Vitest, RTL, MSW, `fake-indexeddb`; add a `test` script.
 5.  **Oversized files** (limits: components 150, hooks/lib 300): `notes/use-notes-workspace.ts` 954, `notes/notes-file-viewer.tsx` 475, `pages/calendar.tsx` 402, `lib/media-worker-client.ts` 399, `lib/notes-storage.ts` 387, `pages/notes.tsx` 351, `pages/dashboard.tsx` 349, `notes/spatial-notes-editor.tsx` 313, `pages/index.tsx` 235, `workers/mediaWorker.ts` 225, `calendar/calendar-event-list-card.tsx` 221, `app-sidebar.tsx` 183, `pages/onboarding.tsx` 172, `pages/privacy.tsx` 169, `pages/pricing.tsx` 163, `pages/documentation.tsx` 158, `workspace-shell.tsx` 156. (Marketing pages are large mostly from inline copy; extract it to data modules.)
-6.  **Index used as key:** `pages/onboarding.tsx:89` (`components/ui/field.tsx:203` is generated).
 7.  **No formatter** (mixed tabs/spaces, quotes, semicolons). Adopt Prettier + `.editorconfig` and reformat in one dedicated commit.
 8.  **ESLint is not type-aware** (`recommended`, not `recommendedTypeChecked`); no import-order, `max-lines`, or `no-console` rules.
 9.  **No route-level code splitting** (`App.tsx` eagerly imports Excalidraw/pdf.js pages).
