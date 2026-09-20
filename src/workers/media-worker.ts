@@ -113,7 +113,7 @@ async function decompressTextFromBuffer(payload: DecompressTextRequest["payload"
   }
 }
 
-workerScope.onmessage = async (event: MessageEvent<WorkerRequest>) => {
+async function handleMessage(event: MessageEvent<WorkerRequest>) {
   const request = event.data
 
   try {
@@ -166,6 +166,10 @@ workerScope.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       error: error instanceof Error ? error.message : "Unknown worker error",
     })
   }
+}
+
+workerScope.onmessage = (event) => {
+  void handleMessage(event)
 }
 
 export {}

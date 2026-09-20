@@ -29,8 +29,9 @@ describe("useDocumentSwitchQueue", () => {
       await gate.promise
       log.push("first:end")
     })
-    const second = result.current("createOrOpenDocumentAtLocation", async () => {
+    const second = result.current("createOrOpenDocumentAtLocation", () => {
       log.push("second:start")
+      return Promise.resolve()
     })
 
     await Promise.resolve()
@@ -45,14 +46,13 @@ describe("useDocumentSwitchQueue", () => {
     const { result } = renderHook(() => useDocumentSwitchQueue())
 
     await expect(
-      result.current("openDocumentById", async () => {
-        throw new Error("boom")
-      }),
+      result.current("openDocumentById", () => Promise.reject(new Error("boom"))),
     ).rejects.toThrow("boom")
 
     let ran = false
-    await result.current("openDocumentById", async () => {
+    await result.current("openDocumentById", () => {
       ran = true
+      return Promise.resolve()
     })
     expect(ran).toBe(true)
   })

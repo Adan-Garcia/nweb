@@ -79,7 +79,9 @@ export function LoginForm({
         </FieldDescription>
       </CardHeader>
       <CardContent>
-        <form noValidate onSubmit={handleSubmit(handleLogin)}>
+        <form noValidate onSubmit={(event) => {
+          void handleSubmit(handleLogin)(event)
+        }}>
           <FieldGroup>
             <Field data-invalid={!!errors.email}>
               <FieldLabel htmlFor="email">Email</FieldLabel>

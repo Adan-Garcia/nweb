@@ -18,10 +18,12 @@ vi.mock("@excalidraw/excalidraw", () => ({
 
 import { usePdfImport } from "./use-pdf-import"
 
+type SceneUpdate = { elements: unknown[]; appState: { selectedElementIds: Record<string, true> } }
+
 function fakeApi() {
   const calls = {
     addFiles: vi.fn(),
-    updateScene: vi.fn(),
+    updateScene: vi.fn<(scene: SceneUpdate) => void>(),
     setToast: vi.fn(),
   }
   const api = {
@@ -63,8 +65,9 @@ describe("usePdfImport", () => {
     renderPdfPagesToPng.mockResolvedValue([page(1, 3), page(2, 3)])
     const { result, addFiles, updateScene, setToast } = setup()
 
-    await act(async () => {
+    await act(() => {
       result.current.handlePdfInputChange(changeEvent(pdf()))
+      return Promise.resolve()
     })
 
     await waitFor(() => expect(setToast).toHaveBeenCalledWith({ message: "Inserted 2 pages (1-2)." }))
@@ -81,8 +84,9 @@ describe("usePdfImport", () => {
   it("rejects files that are not PDFs without rendering", async () => {
     const { result, setToast } = setup()
 
-    await act(async () => {
+    await act(() => {
       result.current.handlePdfInputChange(changeEvent(new File(["x"], "photo.png", { type: "image/png" })))
+      return Promise.resolve()
     })
 
     expect(setToast).toHaveBeenCalledWith({ message: "Please choose a PDF file." })
@@ -93,8 +97,9 @@ describe("usePdfImport", () => {
     renderPdfPagesToPng.mockResolvedValue([page(1, 1)])
     const { result, addFiles } = setup()
 
-    await act(async () => {
+    await act(() => {
       result.current.handlePdfInputChange(changeEvent(new File(["%PDF"], "Notes.PDF")))
+      return Promise.resolve()
     })
 
     await waitFor(() => expect(addFiles).toHaveBeenCalled())
@@ -104,8 +109,9 @@ describe("usePdfImport", () => {
     renderPdfPagesToPng.mockResolvedValue(null)
     const { result, addFiles, setToast } = setup()
 
-    await act(async () => {
+    await act(() => {
       result.current.handlePdfInputChange(changeEvent(pdf()))
+      return Promise.resolve()
     })
     await waitFor(() => expect(renderPdfPagesToPng).toHaveBeenCalled())
 
@@ -115,13 +121,12 @@ describe("usePdfImport", () => {
   })
 
   it("says so, and recovers, when rendering fails", async () => {
-    renderPdfPagesToPng.mockImplementation(async () => {
-      throw new Error("bad pdf")
-    })
+    renderPdfPagesToPng.mockImplementation(() => Promise.reject(new Error("bad pdf")))
     const { result, setToast } = setup()
 
-    await act(async () => {
+    await act(() => {
       result.current.handlePdfInputChange(changeEvent(pdf()))
+      return Promise.resolve()
     })
 
     await waitFor(() =>
@@ -139,8 +144,9 @@ describe("usePdfImport", () => {
     expect(renderPdfPagesToPng).not.toHaveBeenCalled()
 
     ref.current = null
-    await act(async () => {
+    await act(() => {
       result.current.handlePdfInputChange(changeEvent(pdf()))
+      return Promise.resolve()
     })
     expect(renderPdfPagesToPng).not.toHaveBeenCalled()
   })

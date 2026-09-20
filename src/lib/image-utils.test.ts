@@ -4,8 +4,8 @@ import { convertImageBlobToWebp, renameToWebp } from "./image-utils"
 
 const png = () => new Blob(["png-bytes"], { type: "image/png" })
 
-const originalGetContext = HTMLCanvasElement.prototype.getContext
-const originalToBlob = HTMLCanvasElement.prototype.toBlob
+const originalGetContext = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, "getContext")
+const originalToBlob = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, "toBlob")
 
 // jsdom has no canvas; replace the two methods the converter uses (no type casts needed).
 function stubCanvas({ context, blob }: { context: { drawImage: () => void } | null; blob: Blob | null }) {
@@ -30,8 +30,8 @@ describe("renameToWebp", () => {
 describe("convertImageBlobToWebp", () => {
   afterEach(() => {
     vi.unstubAllGlobals()
-    Object.defineProperty(HTMLCanvasElement.prototype, "getContext", { configurable: true, value: originalGetContext })
-    Object.defineProperty(HTMLCanvasElement.prototype, "toBlob", { configurable: true, value: originalToBlob })
+    if (originalGetContext) Object.defineProperty(HTMLCanvasElement.prototype, "getContext", originalGetContext)
+    if (originalToBlob) Object.defineProperty(HTMLCanvasElement.prototype, "toBlob", originalToBlob)
   })
 
   it("returns non-images and existing webp untouched", async () => {

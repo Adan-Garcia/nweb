@@ -46,7 +46,9 @@ export function EventOverlay({
           <CardTitle>{editingEventId === null ? "Add event" : "Edit event"}</CardTitle>
         </CardHeader>
         <CardContent>
-          <form noValidate onSubmit={handleSubmit(onSubmit)}>
+          <form noValidate onSubmit={(event) => {
+              void handleSubmit(onSubmit)(event)
+            }}>
             <FieldGroup>
               <Field data-invalid={!!errors.title}>
                 <FieldLabel htmlFor="event-title">Title</FieldLabel>

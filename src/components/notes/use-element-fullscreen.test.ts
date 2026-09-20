@@ -9,8 +9,9 @@ function setFullscreenElement(element: Element | null) {
 
 function fakeElement() {
   const element = document.createElement("section")
-  const requestFullscreen = vi.fn(async () => {
+  const requestFullscreen = vi.fn(() => {
     setFullscreenElement(element)
+    return Promise.resolve()
   })
   Object.defineProperty(element, "requestFullscreen", { configurable: true, value: requestFullscreen })
   return { element, requestFullscreen }
@@ -29,14 +30,19 @@ describe("useElementFullscreen", () => {
     })
     expect(requestFullscreen).toHaveBeenCalledOnce()
 
-    act(() => document.dispatchEvent(new Event("fullscreenchange")))
+    act(() => {
+      document.dispatchEvent(new Event("fullscreenchange"))
+    })
     expect(result.current.isFullscreen).toBe(true)
   })
 
   it("exits fullscreen when the element is already fullscreen", async () => {
     const { element } = fakeElement()
     setFullscreenElement(element)
-    const exitFullscreen = vi.fn(async () => setFullscreenElement(null))
+    const exitFullscreen = vi.fn(() => {
+      setFullscreenElement(null)
+      return Promise.resolve()
+    })
     Object.defineProperty(document, "exitFullscreen", { configurable: true, value: exitFullscreen })
     const { result } = renderHook(() => useElementFullscreen({ current: element }))
 
@@ -52,7 +58,9 @@ describe("useElementFullscreen", () => {
     const { result } = renderHook(() => useElementFullscreen({ current: element }))
 
     setFullscreenElement(document.body)
-    act(() => document.dispatchEvent(new Event("fullscreenchange")))
+    act(() => {
+      document.dispatchEvent(new Event("fullscreenchange"))
+    })
 
     expect(result.current.isFullscreen).toBe(false)
   })

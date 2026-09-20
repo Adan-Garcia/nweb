@@ -31,7 +31,7 @@ This document defines the architectural, stylistic, and operational rules for th
     *   `JSON.parse(raw) as unknown` immediately followed by narrowing or a Zod parse.
     *   Branded/opaque third-party types (e.g. Excalidraw `BinaryFileData["id"]`), confined to a single adapter module.
     *   Forbidden: `as unknown as T` (one legacy instance in `workers/media-worker.ts`), and `unknown` used to bypass a type error.
-*   **NO monolithic components.** `[REQUIRED]` A component file over **150 lines** must be split into single-responsibility sub-components. Hooks and `lib/` modules over **300 lines** must be split by responsibility.
+*   **NO monolithic components.** `[ENFORCED]` by `max-lines` in `eslint.config.js`: a component file (`.tsx`) over **150 lines** must be split into single-responsibility sub-components; hooks, `lib/` modules and workers (`.ts`) over **300 lines** must be split by responsibility. shadcn primitives (`components/ui/`) and tests are exempt.
 *   **NO inline side-effects.** `[ENFORCED]` All side effects live in `useEffect` (or event handlers) with complete dependency arrays. `react-hooks/exhaustive-deps` is never silenced with `eslint-disable`; the React Compiler-derived rules in `eslint-plugin-react-hooks` v7 are fixed, not disabled.
 *   **NO prop drilling.** `[REQUIRED]` If a prop crosses more than 2 component levels, use composition (`children`), Context, or a Zustand store.
 *   **NO array index as `key`.** `[REQUIRED]` Use a unique, stable ID.
@@ -101,7 +101,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
     *   Group order: external packages, then `@/…`, then `./…`, then side-effect/style imports. `[TARGET]` (needs an import-order lint rule)
 *   **Exports:** named exports only, except `App.tsx`.
 *   **Comments:** explain *why*, not *what*. No commented-out code. TODOs need an owner or issue: `// TODO(name): …`.
-*   **Logging:** no `console.*` in committed code except the sanctioned `lib/notes-trace.ts` tracer. Remove debug output before finishing. `[REQUIRED]`
+*   **Logging:** no `console.*` in committed code except the sanctioned `lib/notes-trace.ts` tracer. `[ENFORCED]` by `no-console`.
 *   **Formatting:** no formatter is configured and the repo mixes tabs/spaces, quote styles and semicolons. Until one lands `[TARGET: Prettier + .editorconfig]`:
     *   Match the file you are editing.
     *   Do not reformat lines you are not otherwise changing. No whitespace-only diffs.
@@ -143,7 +143,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | --- | --- | --- |
 | Dev server | `npm run dev` | |
 | Typecheck | `npm run typecheck` | `tsc -b`. The root `tsconfig.json` is solution-style, so build mode (`-b`) is required; a bare `tsc --noEmit` checks zero files. |
-| Lint | `npm run lint` | `eslint .` |
+| Lint | `npm run lint` | `eslint .`; **type-aware** (`recommendedTypeChecked`), so it needs the tsconfigs and takes a few seconds. |
 | Build | `npm run build` | `tsc -b && vite build` |
 | Test | `npm run test` | Vitest; see §4. |
 
@@ -221,7 +221,7 @@ Pre-existing; not blockers for unrelated work (§0). Highest value first.
 1.  **Test coverage is thin.** Only `lib/calendar-*`, `lib/notes-*-storage.ts`, `lib/blob-utils.ts`, `lib/image-utils.ts`, `lib/media-worker-client.ts`, both hooks, `calendar-shared`, `location-hierarchy` and `LoginForm` are tested. `lib/notes-trace.ts`, `notes-tree.ts`/`NotesFileViewer` (tested), most other components, and the notes page/editor UI are at 0%; the notes workspace hook has behavioural (characterization) tests only.
 5.  **Dead shadcn scaffolding.** `app-sidebar.tsx` (+ `app-sidebar-data.ts`), `version-switcher.tsx`, `search-form.tsx`, `team-switcher.tsx`, `nav-main.tsx`, `nav-projects.tsx` and `nav-user.tsx` are generated sample blocks that nothing imports (the real navigation is `workspace-shell.tsx`). Delete them, or wire them up; do not let them accrete.
 7.  **No formatter** (mixed tabs/spaces, quotes, semicolons). Adopt Prettier + `.editorconfig` and reformat in one dedicated commit.
-8.  **ESLint is not type-aware** (`recommended`, not `recommendedTypeChecked`); no import-order, `max-lines`, or `no-console` rules.
+8.  **No import-order lint rule.** The group order in §3 is not enforced; it needs `eslint-plugin-import` (or similar), which is a new dependency.
 9.  **No route-level code splitting** (`App.tsx` eagerly imports Excalidraw/pdf.js pages).
 11. **Zustand installed but unused.**
 13. **`README.md` is the unmodified Vite template.** Replace with real project docs.

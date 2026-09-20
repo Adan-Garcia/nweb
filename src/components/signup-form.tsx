@@ -60,7 +60,9 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form noValidate onSubmit={handleSubmit(handleSignup)}>
+        <form noValidate onSubmit={(event) => {
+          void handleSubmit(handleSignup)(event)
+        }}>
           <FieldGroup>
             <Field data-invalid={!!errors.name}>
               <FieldLabel htmlFor="name">Full Name</FieldLabel>

@@ -32,7 +32,9 @@ export function SearchForm({ ...props }: React.ComponentProps<"form">) {
   const handleSearch = () => {}
 
   return (
-    <form {...props} noValidate onSubmit={handleSubmit(handleSearch)}>
+    <form {...props} noValidate onSubmit={(event) => {
+        void handleSubmit(handleSearch)(event)
+      }}>
       <SidebarGroup className="py-0">
         <SidebarGroupContent className="relative">
           <Label htmlFor="search" className="sr-only">

@@ -11,7 +11,7 @@ import type { PersistedSceneFile } from "./notes-model"
 // jsdom's Blob is cloned into a plain object by fake-indexeddb's structuredClone,
 // so the real Blob -> data URL conversion is covered in blob-utils.test.ts instead.
 vi.mock("./blob-utils", () => ({
-  blobToDataUrl: vi.fn(async () => "data:mock"),
+  blobToDataUrl: vi.fn(() => Promise.resolve("data:mock")),
 }))
 
 function sceneFile(id: string, text: string): PersistedSceneFile {

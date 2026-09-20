@@ -53,9 +53,9 @@ export function notesTraceError(
     payload === undefined
       ? { error: errorDetails }
       : {
-          ...((typeof payload === "object" && payload !== null
+          ...(typeof payload === "object" && payload !== null
             ? payload
-            : { payload }) as object),
+            : { payload }),
           error: errorDetails,
         };
 
