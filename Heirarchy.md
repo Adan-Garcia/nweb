@@ -18,7 +18,9 @@ User = Flock Member
                 The path bar still navigates by nest, so a note in two nests is reachable under both.
     
                 5. Twigs (Tasks such as homeworks/exams /essays, etc..)
-                6. Feathers are (Notes) made in json to store your notes for a class
+                6. Feathers are (Notes) for a class: TipTap rich-text HTML, an Excalidraw
+                   scene, or both. Neither half is markdown, and what is stored is the
+                   compressed payload rather than either one as text.
                     7. pebbles (files) such as pdfs,images, and other data
                 
 
@@ -31,3 +33,11 @@ row. A feather points at its branch and lists its nests; a twig and a pebble do 
 
 Only the feather's own title is stored on the feather. Everything else the UI shows as a
 path is resolved from the records at read time (`src/lib/workspace-tree.ts`).
+
+With a workspace passphrase set, the one display name on each of those records — a wing,
+flight, branch or nest's `name`, a feather's `feather`, a twig's `title`, a pebble's
+`name` — is stored encrypted, and the row says which cipher wrote it. The storage modules
+seal on write and open on read, so nothing above `src/lib/` ever sees a sealed name. What
+is deliberately left readable is when things happen: a twig's `dueDate`, `dueTime` and
+`status`, and every timestamp. A server that held nothing but these rows could schedule a
+reminder and still not know what it was for.

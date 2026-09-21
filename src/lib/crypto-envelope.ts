@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
+import { createKdfParams, deriveKey, type KdfParams, kdfParamsSchema } from "./kdf";
 
 /**
  * AES-GCM under a key derived from a passphrase, with everything needed to open it again
@@ -18,21 +19,17 @@ import { base64ToBytes, bytesToBase64 } from "./base64";
  */
 export const ENCRYPTED_FORMAT = "cuervo-planner-encrypted";
 
-/** OWASP's 2023 floor for PBKDF2-HMAC-SHA256. Recorded per envelope, so it can be raised. */
-export const PBKDF2_ITERATIONS = 600_000;
-
-const SALT_BYTES = 16;
 const IV_BYTES = 12;
 
 export const encryptedEnvelopeSchema = z.object({
   format: z.literal(ENCRYPTED_FORMAT),
+  /**
+   * Still 1 with Argon2id. The reader is driven by `kdf.name`, which was the point of
+   * naming it in the file: a new KDF is a new value in a field that already exists, so
+   * the shape of the envelope has not changed and neither has what opens it.
+   */
   version: z.literal(1),
-  kdf: z.object({
-    name: z.literal("PBKDF2"),
-    hash: z.literal("SHA-256"),
-    iterations: z.number().int().positive(),
-    salt: z.string(),
-  }),
+  kdf: kdfParamsSchema,
   cipher: z.literal("AES-GCM"),
   iv: z.string(),
   data: z.string(),
@@ -40,47 +37,14 @@ export const encryptedEnvelopeSchema = z.object({
 
 export type EncryptedEnvelope = z.infer<typeof encryptedEnvelopeSchema>;
 
-/**
- * PBKDF2 rather than Argon2id, which would be the stronger choice against an attacker with
- * GPUs. PBKDF2 is what WebCrypto implements natively; Argon2 would mean shipping another
- * WASM blob. The KDF is named in the envelope, so adding Argon2 later is a new `kdf.name`
- * and not a migration.
- */
-export async function deriveKeyFromPassphrase({
-  passphrase,
-  salt,
-  iterations,
-}: {
-  passphrase: string;
-  salt: Uint8Array;
-  iterations: number;
-}): Promise<CryptoKey> {
-  const baseKey = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(passphrase),
-    "PBKDF2",
-    false,
-    ["deriveKey"],
-  );
-
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: new Uint8Array(salt), iterations, hash: "SHA-256" },
-    baseKey,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
-}
-
 /** A fresh salt and IV every time: reusing an IV under one key breaks AES-GCM outright. */
 export async function sealWithPassphrase(
   plaintext: string,
   passphrase: string,
-  iterations = PBKDF2_ITERATIONS,
+  kdf: KdfParams = createKdfParams(),
 ): Promise<EncryptedEnvelope> {
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
   const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
-  const key = await deriveKeyFromPassphrase({ passphrase, salt, iterations });
+  const key = await deriveKey(passphrase, kdf);
 
   const data = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv },
@@ -91,7 +55,7 @@ export async function sealWithPassphrase(
   return {
     format: ENCRYPTED_FORMAT,
     version: 1,
-    kdf: { name: "PBKDF2", hash: "SHA-256", iterations, salt: bytesToBase64(salt) },
+    kdf,
     cipher: "AES-GCM",
     iv: bytesToBase64(iv),
     data: bytesToBase64(new Uint8Array(data)),
@@ -108,11 +72,7 @@ export async function openWithPassphrase(
   passphrase: string,
 ): Promise<string | null> {
   try {
-    const key = await deriveKeyFromPassphrase({
-      passphrase,
-      salt: base64ToBytes(envelope.kdf.salt),
-      iterations: envelope.kdf.iterations,
-    });
+    const key = await deriveKey(passphrase, envelope.kdf);
 
     const plaintext = await crypto.subtle.decrypt(
       { name: "AES-GCM", iv: base64ToBytes(envelope.iv) },

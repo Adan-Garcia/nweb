@@ -11,9 +11,10 @@
  *     falls back to the cache when there is none. That is what lets a new deploy be picked
  *     up rather than being pinned to whatever was cached first.
  *
- * The trade-off worth knowing: a route whose chunk has never been fetched is not in the
- * cache, so opening it for the first time while offline still fails. Everything already
- * visited works, including a cold start with no network.
+ * A route whose chunk has never been fetched would not be in the cache either, so the app
+ * asks the browser to import the pages it has not opened once it is idle (see
+ * `lib/route-warmup.ts`). Those requests arrive here like any other and are cached the
+ * same way, which is why this file needs no precache manifest to cover them.
  */
 
 const SHELL_CACHE = "cuervo-shell-v1";

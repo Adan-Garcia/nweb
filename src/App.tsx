@@ -1,14 +1,20 @@
-import { type ComponentType, lazy, Suspense } from "react";
+import { type ComponentType, lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { RouteFallback } from "@/components/route-fallback";
+import { type RouteLoader, warmRoutes } from "@/lib/route-warmup";
 import { IndexPage } from "@/pages/index";
+
+/** Every route's importer, so the ones nobody opened can be fetched for offline use. */
+const routeLoaders: RouteLoader[] = [];
 
 /** Loads a page's named export on demand, so its dependencies stay out of the entry bundle. */
 function lazyPage<Name extends string>(
   load: () => Promise<Record<Name, ComponentType>>,
   name: Name,
 ) {
+  routeLoaders.push(load);
+
   return lazy(async () => ({ default: (await load())[name] }));
 }
 
@@ -28,6 +34,10 @@ const NotesPage = lazyPage(() => import("@/pages/notes"), "NotesPage");
 const SettingsPage = lazyPage(() => import("@/pages/settings"), "SettingsPage");
 
 export default function App() {
+  useEffect(() => {
+    warmRoutes(routeLoaders);
+  }, []);
+
   return (
     <BrowserRouter>
       <Suspense fallback={<RouteFallback />}>

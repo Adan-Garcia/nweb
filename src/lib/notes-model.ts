@@ -31,6 +31,11 @@ export type NotesDirectoryEntry = {
    * "not yet created here". Entries written before this field existed read back as null.
    */
   deletedAt: number | null;
+  /**
+   * Which cipher wrote `feather`. Absent means plaintext, as it does on every other named
+   * row. The timestamps beside it are never sealed — see `sealed-text.ts`.
+   */
+  encryption?: CipherName;
 };
 
 export type SceneFileRef = {

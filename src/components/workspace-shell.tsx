@@ -4,6 +4,7 @@ import { LockScreen } from "@/components/lock-screen";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { WorkspaceSidebar } from "@/components/workspace-sidebar";
 import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
+import { collectTombstonesOnce } from "@/lib/tombstones";
 
 type WorkspaceShellProps = {
   children: React.ReactNode;
@@ -13,6 +14,18 @@ type WorkspaceShellProps = {
 
 export function WorkspaceShell({ children, isDark, onToggleTheme }: WorkspaceShellProps) {
   const lock = useWorkspaceLock();
+
+  /**
+   * Housekeeping, once a load: tombstones past the retention window are dropped. It runs
+   * here rather than at startup because the workspace is what has them, and only after
+   * the lock is open — a sweep reads no names, but there is no reason for it to race the
+   * unlock either.
+   */
+  React.useEffect(() => {
+    if (lock.state !== "locked") {
+      void collectTombstonesOnce();
+    }
+  }, [lock.state]);
 
   if (lock.state === "locked") {
     return (

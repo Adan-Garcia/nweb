@@ -9,10 +9,12 @@ Every row was checked against the code, not against the README.
 ## Where the app is now
 
 A front-end-only app, and an honest one. Notes, tasks, files and the whole Wing → Flight →
-Branch → Nest → Feather hierarchy are real records in IndexedDB. There is a calendar, a
-board, a dashboard and in-app notifications. It installs as a PWA and starts offline. Notes
-are Brotli-compressed, and can be encrypted behind a passphrase. Backups export and import,
-optionally encrypted.
+Branch → Nest → Feather hierarchy are real records in IndexedDB, and all of it can now be
+renamed, recoloured and deleted from Settings. There is a calendar, a board, a dashboard
+and in-app notifications. It installs as a PWA and starts offline. Notes are
+Brotli-compressed, and a passphrase encrypts their content **and** the names the workspace
+is listed by, under a key derived with Argon2id. Backups export and import, optionally
+encrypted.
 
 There is still **no server**, so there is no account, no sync, no sharing and nothing to
 pay for. The site says so.
@@ -21,42 +23,26 @@ pay for. The site says so.
 
 # Part A. Still missing, and buildable with no backend
 
-## A1. Encryption: the half that is not covered
+## A1. Encryption: what is left
 
-The workspace lock encrypts note content — the text, the drawings, and the bytes of every
-image and PDF. It does **not** encrypt the rows the app lists and sorts by.
+The workspace lock now encrypts note content — the text, the drawings, the bytes of every
+image and PDF — and every display name: note titles, course names, task titles, file names.
+A passphrase can be set, changed in one pass, and removed. Dates and times are left
+readable by design, which is a rule rather than a gap: `CLAUDE.md` §5 and `sealed-text.ts`
+say why.
 
 | Gap | Where | Why it is not done |
 | --- | --- | --- |
-| Note titles, course names, task titles and due dates are readable with the workspace locked | `notes-directory`, `twigs`, `wings`/`flights`/`branches`/`nests` | These are read with `getAll()` and filtered in JS, so encrypting them is possible without indexes — but every list, sort and lookup would have to decrypt first. It is a change to how the app reads, not to how one payload is written. The settings card and the privacy page both say so today. |
-| Media blobs are re-encrypted one row at a time | `workspace-rekey.ts` | Setting a passphrase on a large workspace rewrites every image serially, with no progress and no resume. A failure partway leaves some rows converted; the caller ordering means the recoverable state is the readable one, but a user with a gigabyte of PDFs will sit on a spinner. |
-| PBKDF2, not Argon2id | `crypto-envelope.ts` | PBKDF2-SHA256 at 600,000 iterations is WebCrypto's best native option. Argon2id would be meaningfully stronger against GPU attack and needs a WASM dependency. The KDF name is recorded in every envelope and in the lock record, so adding it later is a new value, not a migration. |
-| No "change passphrase" | — | You can set one and remove one. Changing it means remove then set, which decrypts everything and re-encrypts it. A direct rekey would be one pass instead of two. |
+| The rekey has no progress and no resume | `workspace-rekey.ts` | Setting, changing or removing a passphrase rewrites every row serially. A failure partway leaves some rows converted; the caller ordering means the recoverable state is the one the old key opens, but a user with a gigabyte of PDFs still sits on a spinner with nothing to look at. |
+| Restore is replace-only | `workspace-restore.ts` | Applying a backup clears every store first. There is no merge, so restoring onto a device that has been used since loses what it did. A merge needs the same conflict rules sync will need, so it is waiting on B2 rather than being separately hard. |
 
-## A2. Entities: storage without UI
-
-`entity-storage.ts` and `entity-delete.ts` expose rename, recolour and cascading delete for
-wings, flights, branches and nests, all covered by tests. **Nothing on screen calls them.**
-The notes path bar can only add. A workspace editor — most naturally on the settings page —
-is what turns that storage into a feature.
-
-## A3. `NotesFileViewer` still has no render path
-
-`NotesFileViewer`, `NotesTreeView`, `NotesNoteButton`, `NotesTreeGroup` and `notes-tree.ts`
-render nothing: no page has mounted them since `d03aa1a`. They were migrated to the entity
-model rather than left broken, and their tests pass, but they reach no user. Decide: wire
-the sidebar up, or delete them.
-
-## A4. Smaller things
+## A2. Smaller things
 
 | Gap | Where | Note |
 | --- | --- | --- |
-| `saveSpatialDocumentPayload` deletes shared media by id | `notes-document-storage.ts` | `softDeleteNote`, `softDeletePebble` and the entity cascade all count references before dropping a blob. The save path does not: when a file leaves one scene it goes even if another note draws it. Same fix, same helper, not yet applied there. |
-| Tombstones are never collected | everywhere | Deletes drop the bytes, so a tombstone is a few bytes, but nothing ever removes the marker rows — for notes, and now for every entity, twig and pebble. They accumulate for the life of the database. |
-| A route never visited is not cached | `public/sw.js` | The service worker caches what it serves and does not control the page that registered it, so opening a route for the first time while offline still fails. From the second visit on, everything touched works. |
-| Feathers are called markdown | `documentation-content.ts:27` | They are TipTap HTML plus an Excalidraw scene. `Heirarchy.md` says JSON. Neither is markdown. Fix the doc or add a markdown export. |
-| No "About" page | `marketing-nav.ts` | The nav has no About link now, which is honest. If one is wanted, it has to be written. |
-| Zustand is installed and unused | `package.json` | Kept on purpose for cross-tree state. Nothing needs it yet. |
+| The tree can only open notes | `notes-file-viewer.tsx` | The sidebar is a toggle beside the path bar now and lists every saved note. Renaming, moving and deleting still happen elsewhere, and which groups are expanded is component state, so it resets on reload. |
+| Tombstone collection is a startup guess | `tombstones.ts` | Markers older than ninety days are swept once per load from `WorkspaceShell`. The window was chosen before any sync exists to need it, and a workspace nobody opens never sweeps. |
+| Route warm-up is best effort | `route-warmup.ts`, `public/sw.js` | The unvisited page chunks are imported on idle so the worker caches them. A first visit closed before it goes idle still leaves routes that will not open offline. |
 
 ---
 
@@ -87,11 +73,11 @@ passphrase on this browser, with no recovery.
 | Fast syncing across all devices | `landing-benefits.tsx` (marked Coming soon) | **Absent.** |
 | "Your data will sync once you're back online" | `landing-benefits.tsx` | **Absent.** |
 | Real-time sync, Supabase, optimistic concurrency | `documentation-content.ts`, `Todo.md` section 2 | **Absent.** |
-| Encrypted sync (zero-knowledge envelope) | `Todo.md` section 3 | The cipher half exists. The server storing only ciphertext is this. |
+| Encrypted sync (zero-knowledge envelope) | `Todo.md` section 3 | The client half is done. Every row's content and name is sealed before it is stored, and each one records which cipher wrote it, so a server could hold exactly these rows and read none of them. The server storing them is what is missing. |
 
-**The prerequisite is already met:** every record now has a UUID, `updatedAt` and a
-`deletedAt` tombstone, which is what makes a merge and a delete safe. That was the point of
-doing the entity work first.
+**The prerequisites are already met:** every record has a UUID, `updatedAt` and a
+`deletedAt` tombstone, which is what makes a merge and a delete safe — and its dates are
+in the clear, which is what would let a server schedule a reminder it cannot read.
 
 **No-server stopgap:** the export/import file moves data between devices by hand. It is a
 backup, not sync, and the site should not call it sync.
@@ -102,8 +88,8 @@ backup, not sync, and the site should not call it sync.
 | --- | --- | --- |
 | Share notes and homework | `landing-benefits.tsx` (Coming soon), `unlogged.tsx` | **Absent.** |
 | Invite Your Flock: members, permissions, real-time collaboration | `onboarding-steps.ts` | **Absent.** The step is text only. |
-| A user belongs to many wings but owns exactly one | `Heirarchy.md`, `documentation-content.ts` | **Half.** Several local wings work. Membership and ownership need users. |
-| Key exchange, RLS, revocation, key rotation | `documentation-content.ts`, `Todo.md` section 4 | **Absent.** Needs a server to hold public keys and enforce access. |
+| A user belongs to many wings but owns exactly one | `Heirarchy.md`, `documentation-content.ts` | **Half.** Several local wings work, and can now be renamed and deleted. Membership and ownership need users. |
+| Key exchange, RLS, revocation, key rotation | `documentation-content.ts`, `Todo.md` section 4 | **Absent.** Needs a server to hold public keys and enforce access. A shared workspace also needs a key per wing rather than one per browser, which the cipher seam allows but does not yet do. |
 
 ## B4. Paid tiers
 
@@ -117,26 +103,25 @@ billing and support tooling, which is outside the app.
 
 | Feature | Done, no backend | Still needs the backend |
 | --- | --- | --- |
-| **Encryption** | Passphrase-derived AES-GCM on note content, plus the app lock and encrypted backups. | Keypairs, envelope keys, key exchange, revocation, and storing only ciphertext on a server (B2, B3). |
-| **Wings** | Several local wings as real records. | Membership and ownership across users (B3). |
+| **Encryption** | Argon2id-derived AES-GCM over note content and every display name, the app lock, change-passphrase, and encrypted backups. | Keypairs, envelope keys, key exchange, revocation, and storing only ciphertext on a server (B2, B3). |
+| **Wings** | Several local wings as real records, editable from Settings. | Membership and ownership across users (B3). |
 | **Sharing** | Export/import a file to send someone a copy. | Live shared workspaces, permissions, real-time edits (B3). |
-| **Notifications** | The in-app bell: overdue, due today, due this week. | Push and email when the app is closed. |
+| **Notifications** | The in-app bell: overdue, due today, due this week. | Push and email when the app is closed — which is why due dates are stored in the clear. |
 | **Onboarding steps** | "Create your first wing" could create a local wing. | Invites (B3). |
-| **Settings** | Theme, backup, workspace lock. | Account, email, billing, devices (B1). |
+| **Settings** | Theme, backup, workspace lock, workspace editor. | Account, email, billing, devices (B1). |
 | **Backups** | Manual export, optionally encrypted. | Automatic cloud backups, a paid-tier feature (B4). |
 
 ---
 
 # Part D. Order of work
 
-1. **A2, the workspace editor** — rename and delete already work in storage and are
-   invisible. The largest gap between what the code does and what a user can reach.
-2. **A3** — wire the file viewer up or delete it. It has been dead since `d03aa1a`.
-3. **A1** — encrypt the titles, if the lock is meant to mean what most people will read it
-   to mean. Decide this before anyone relies on it.
-4. **A4** — the shared-media save path, then tombstone collection.
-5. **Then the backend, as one project:** accounts (B1), sync (B2), encrypted sync,
-   sharing (B3), paid tiers (B4).
+1. **The backend, as one project:** accounts (B1), sync (B2), encrypted sync, sharing
+   (B3), paid tiers (B4). Everything above it that could be built without a server has
+   been.
+2. **Rekey progress**, if anyone reports the spinner. It is a real wait on a large
+   workspace and the only place the app asks for patience without saying how much.
+3. **A merge-style restore**, alongside sync rather than before it: both need the same
+   conflict rules, and writing them twice would be writing them differently.
 
 CI is in place (`.github/workflows/ci.yml`), so each of these is gated on the same checks
 from the first commit rather than from whenever someone remembers to run them.

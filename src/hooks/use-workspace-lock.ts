@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  changeWorkspacePassphrase,
   createWorkspaceLock,
   getWorkspaceLockState,
   lockWorkspace,
@@ -78,6 +79,30 @@ export function useWorkspaceLock() {
     [refresh],
   );
 
+  /** One pass from the old key to the new one, so nothing is readable in between. */
+  const change = useCallback(
+    async (currentPassphrase: string, nextPassphrase: string) => {
+      setIsWorking(true);
+      setError(null);
+
+      try {
+        if (await changeWorkspacePassphrase(currentPassphrase, nextPassphrase)) {
+          await refresh();
+          return true;
+        }
+
+        setError("That passphrase is not the one this workspace is locked with.");
+        return false;
+      } catch {
+        setError("Could not change the passphrase. The old one still opens this workspace.");
+        return false;
+      } finally {
+        setIsWorking(false);
+      }
+    },
+    [refresh],
+  );
+
   const remove = useCallback(
     async (passphrase: string) => {
       setIsWorking(true);
@@ -98,5 +123,5 @@ export function useWorkspaceLock() {
     [refresh],
   );
 
-  return { state, error, isWorking, unlock, lock, create, remove, refresh };
+  return { state, error, isWorking, unlock, lock, create, change, remove, refresh };
 }

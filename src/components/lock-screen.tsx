@@ -42,8 +42,8 @@ export function LockScreen({ error, isWorking, onUnlock }: LockScreenProps) {
             This workspace is locked
           </h1>
           <CardDescription>
-            Your notes, drawings and files are encrypted on this device. Enter the passphrase to
-            read them.
+            Your notes, drawings, files and titles are encrypted on this device. Enter the
+            passphrase to read them.
           </CardDescription>
         </CardHeader>
         <CardContent>

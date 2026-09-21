@@ -4,7 +4,7 @@
 
 A local-first homework planner and note-taking app for students: a calendar, a dashboard, and a hybrid notes workspace that combines a linear rich-text editor with an infinite spatial canvas.
 
-> **Status: early beta, front end only.** There is no backend. Everything — notes, tasks, files and the workspace hierarchy — is stored in the browser (IndexedDB). The sign-in and sign-up forms validate input but do not authenticate, and the sync and sharing described on the marketing pages are the project's direction, not yet implemented. Encryption is implemented: set a passphrase in Settings and note content is encrypted on this device, though note titles and the course structure stay readable.
+> **Status: early beta, front end only.** There is no backend. Everything — notes, tasks, files and the workspace hierarchy — is stored in the browser (IndexedDB). The sign-in and sign-up forms validate input but do not authenticate, and the sync and sharing described on the marketing pages are the project's direction, not yet implemented. Encryption is implemented: set a passphrase in Settings and note content *and* the names the workspace is listed by — note titles, course names, task titles — are encrypted on this device under an Argon2id-derived key. Due dates and times stay readable on purpose, so that a future server holding only ciphertext could still drive a reminder.
 
 ## Stack
 

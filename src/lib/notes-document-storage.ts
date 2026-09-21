@@ -154,7 +154,10 @@ export async function saveSpatialDocumentPayload({
             ]),
     })),
   );
-  const transaction = database.transaction(["notes-documents", "notes-media"], "readwrite");
+  const transaction = database.transaction(
+    ["notes-documents", "notes-media", "pebbles"],
+    "readwrite",
+  );
 
   const documentStore = transaction.objectStore("notes-documents");
   const mediaStore = transaction.objectStore("notes-media");
@@ -200,12 +203,42 @@ export async function saveSpatialDocumentPayload({
 
   const nextSceneFileIds = new Set(nextSceneFiles.map((file) => file.id));
   const previousSceneFileIds = new Set(existingDocument.sceneFiles.map((file) => file.id));
+  const droppedFileIds = [...previousSceneFileIds].filter((id) => !nextSceneFileIds.has(id));
   const deletedFileIds: string[] = [];
 
-  for (const previousId of previousSceneFileIds) {
-    if (!nextSceneFileIds.has(previousId)) {
-      await mediaStore.delete(previousId);
-      deletedFileIds.push(previousId);
+  /**
+   * A file that has left this scene only loses its bytes if nothing else points at them.
+   * Excalidraw derives an image's id from its contents, so the same picture dropped into
+   * two notes really is one row: deleting it because one scene stopped drawing it would
+   * leave the other note rendering a hole. The same count guards every other delete path.
+   *
+   * This document's own stored row is skipped, because it still lists what is being
+   * replaced — it is written below, once the counting is done.
+   */
+  if (droppedFileIds.length) {
+    const stillReferenced = new Set<string>();
+
+    for (const otherDocument of await documentStore.getAll()) {
+      if (otherDocument.id === documentId) {
+        continue;
+      }
+
+      for (const sceneFile of otherDocument.sceneFiles) {
+        stillReferenced.add(sceneFile.id);
+      }
+    }
+
+    for (const pebble of await transaction.objectStore("pebbles").getAll()) {
+      if (!pebble.deletedAt) {
+        stillReferenced.add(pebble.mediaId);
+      }
+    }
+
+    for (const droppedId of droppedFileIds) {
+      if (!stillReferenced.has(droppedId)) {
+        await mediaStore.delete(droppedId);
+        deletedFileIds.push(droppedId);
+      }
     }
   }
 

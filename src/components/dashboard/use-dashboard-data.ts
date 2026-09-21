@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { isDatedTwig } from "@/components/calendar/calendar-shared";
 import { computeDashboardMetrics } from "@/components/dashboard/dashboard-metrics";
 import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
+import { isLockedError } from "@/lib/cipher";
 import { listNotesDirectoryEntries } from "@/lib/notes-directory-storage";
 import type { NotesDirectoryEntry } from "@/lib/notes-model";
 import type { Twig } from "@/lib/twig-model";
@@ -29,6 +30,10 @@ export function useDashboardData() {
         if (isMounted) {
           setNotesEntries(entries);
           setTwigs(nextTwigs);
+        }
+      } catch (error) {
+        if (!isLockedError(error)) {
+          throw error;
         }
       } finally {
         if (isMounted) {

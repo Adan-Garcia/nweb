@@ -1,11 +1,18 @@
+import { decryptWith, getActiveCipher } from "./cipher";
 import { getNotesDb } from "./notes-db";
 import { type Pebble } from "./pebble-model";
+import { openRow, openRows, sealRow } from "./sealed-text";
 
+/** A file's name is sealed like every other; its type, size and dates are not. */
 export async function listPebbles(): Promise<Pebble[]> {
   const database = await getNotesDb();
   const rows = await database.getAll("pebbles");
+  const live = await openRows(
+    rows.filter((pebble) => !pebble.deletedAt),
+    "name",
+  );
 
-  return rows.filter((pebble) => !pebble.deletedAt).sort((a, b) => b.createdAt - a.createdAt);
+  return live.sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /**
@@ -32,20 +39,6 @@ export async function createPebble({
   const now = Date.now();
   const id = mediaId ?? crypto.randomUUID();
 
-  const transaction = database.transaction(["pebbles", "notes-media"], "readwrite");
-  const mediaStore = transaction.objectStore("notes-media");
-  const existingMedia = await mediaStore.get(id);
-
-  if (!existingMedia) {
-    await mediaStore.put({
-      id,
-      blob,
-      mimeType: blob.type,
-      created: now,
-      updatedAt: now,
-    });
-  }
-
   const pebble: Pebble = {
     id: crypto.randomUUID(),
     branchId,
@@ -60,7 +53,34 @@ export async function createPebble({
     deletedAt: null,
   };
 
-  await transaction.objectStore("pebbles").put(pebble);
+  // Everything that needs the cipher happens before the transaction opens: awaiting
+  // anything that is not an IndexedDB request lets the transaction auto-commit, and the
+  // puts below would then fail with TransactionInactiveError in a real browser.
+  const cipher = getActiveCipher();
+  const sealedPebble = await sealRow(pebble, "name");
+  const sealedBlob =
+    cipher.name === "none"
+      ? blob
+      : new Blob([Uint8Array.from(await cipher.encrypt(new Uint8Array(await blob.arrayBuffer())))]);
+
+  const transaction = database.transaction(["pebbles", "notes-media"], "readwrite");
+  const mediaStore = transaction.objectStore("notes-media");
+  const existingMedia = await mediaStore.get(id);
+
+  if (!existingMedia) {
+    await mediaStore.put({
+      id,
+      blob: sealedBlob,
+      // The stored blob holds ciphertext once sealed, so `mimeType` is what it will be
+      // when opened rather than what the blob itself carries — as in the scene path.
+      mimeType: blob.type,
+      created: now,
+      updatedAt: now,
+      encryption: cipher.name,
+    });
+  }
+
+  await transaction.objectStore("pebbles").put(sealedPebble);
   await transaction.done;
 
   return pebble;
@@ -78,11 +98,24 @@ export async function findPebbleByMediaId(
   );
 }
 
+/** Opened with whatever sealed it, so a caller gets the file and not its ciphertext. */
 export async function loadPebbleBlob(pebble: Pebble): Promise<Blob | null> {
   const database = await getNotesDb();
   const media = await database.get("notes-media", pebble.mediaId);
 
-  return media?.blob ?? null;
+  if (!media) {
+    return null;
+  }
+
+  const sealedWith = media.encryption ?? "none";
+
+  if (sealedWith === "none") {
+    return media.blob;
+  }
+
+  const opened = await decryptWith(new Uint8Array(await media.blob.arrayBuffer()), sealedWith);
+
+  return new Blob([Uint8Array.from(opened)], { type: media.mimeType });
 }
 
 export async function updatePebble(
@@ -90,14 +123,16 @@ export async function updatePebble(
   changes: Partial<Pick<Pebble, "name" | "nestIds" | "branchId">>,
 ): Promise<Pebble | null> {
   const database = await getNotesDb();
-  const existing = await database.get("pebbles", id);
+  const stored = await database.get("pebbles", id);
 
-  if (!existing || existing.deletedAt) {
+  if (!stored || stored.deletedAt) {
     return null;
   }
 
+  const existing = await openRow(stored, "name");
   const next: Pebble = { ...existing, ...changes, updatedAt: Date.now() };
-  await database.put("pebbles", next);
+
+  await database.put("pebbles", await sealRow(next, "name"));
   return next;
 }
 

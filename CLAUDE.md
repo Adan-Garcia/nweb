@@ -39,7 +39,7 @@ This document defines the architectural, stylistic, and operational rules for th
 
 ## 2. Architecture & System Boundaries
 
-The app is **local-first**: there is no backend API today. Persistence is IndexedDB (`idb`), with `localStorage` holding only the theme; heavy work runs in a Web Worker. The workspace hierarchy is a set of entity stores (`wings`, `flights`, `branches`, `nests`, `twigs`, `pebbles`) alongside the note stores, all keyed by UUID and carrying `createdAt` / `updatedAt` / `deletedAt`.
+The app is **local-first**: there is no backend API today. Persistence is IndexedDB (`idb`); `localStorage` holds only what the first paint needs before an async read could answer — the theme, the workspace-lock hint, and which way the notes page is navigated — and never user content. Heavy work runs in a Web Worker. The workspace hierarchy is a set of entity stores (`wings`, `flights`, `branches`, `nests`, `twigs`, `pebbles`) alongside the note stores, all keyed by UUID and carrying `createdAt` / `updatedAt` / `deletedAt`.
 
 ### 2.1 Layers and dependency direction
 Imports flow **downward only**. A layer never imports from a layer above it. `[REQUIRED]`
@@ -63,7 +63,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   Pure functions (formatting, hierarchy math, parsing) live in `*-utils.ts` / `lib/` so they are testable without React.
 
 ### 2.3 Data access and persistence
-*   Components **never** touch `indexedDB`, `localStorage`, `Worker`, or `fetch` directly. `[REQUIRED]` Go through a `lib/*-storage.ts` module or a `lib/*-client.ts` worker client. (Legacy exception: `hooks/use-theme-mode.ts` reads `localStorage`.)
+*   Components **never** touch `indexedDB`, `localStorage`, `Worker`, or `fetch` directly. `[REQUIRED]` Go through a `lib/*-storage.ts` module or a `lib/*-client.ts` worker client (`lib/notes-navigation.ts` and `lib/workspace-lock.ts`'s hint are the `localStorage` seams). (Legacy exception: `hooks/use-theme-mode.ts` reads `localStorage`.)
 *   **IndexedDB schema changes** must bump `NOTES_DB_VERSION` (or the relevant version constant) and add a migration in the `upgrade` callback. Never edit a shipped store shape in place. `[REQUIRED]`
 *   **Data read from storage is untrusted.** Validate with a Zod schema before use; do not trust a cast. `[REQUIRED]` Define the schema once in `lib/` and infer the type from it (`lib/entity-model.ts` → `Wing`, `Flight`, `Branch`, `Nest`; `lib/twig-model.ts` → `Twig`).
 *   **Workers** are constructed via `new Worker(new URL("../workers/x.ts", import.meta.url), { type: "module" })` inside a `lib/*-client.ts` file, so Vite bundles them. Move CPU-heavy work (image optimization, compression, PDF processing) off the main thread. The request/response contract lives once in `lib/media-worker-protocol.ts` (types only) and is imported by both the client and the worker; never redeclare it.
@@ -142,7 +142,8 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   **Encryption goes through the cipher seam** (`lib/cipher.ts`). `[REQUIRED]` Storage modules ask for the active cipher and run their payload through it; they never branch on whether encryption is on. Every document row records which cipher wrote it, so a database can hold a mix and nothing has to be rewritten at once. Two rules when touching it:
     *   **Seal before opening an IndexedDB transaction, never inside one.** Awaiting anything that is not an IDB request lets the transaction auto-commit, and the puts after it fail with `TransactionInactiveError` in a real browser (fake-indexeddb is lenient and will not catch this).
     *   **An encrypted row that cannot be read is an error, not a fallback.** Returning the raw bytes would hand the editor ciphertext and autosave would write it back as the note.
-*   **Crypto primitives are WebCrypto only** — AES-GCM with a PBKDF2-SHA256 key, no dependency. The KDF name and its parameters travel inside every envelope (`lib/crypto-envelope.ts`), so raising the iteration count or moving to Argon2 is a new value, not a migration. Say "encrypted on this device"; the key is in JS memory while the data is readable and the code using it is served from the same origin, so it protects a file that leaves the device and a copied profile directory, not a compromised bundle or an XSS bug.
+*   **Crypto is AES-GCM from WebCrypto, under a key derived by Argon2id** (`hash-wasm`, the one crypto dependency — WebCrypto has no Argon2). The KDF's name and parameters travel inside every envelope and inside the lock record (`lib/kdf.ts`), so a workspace locked under PBKDF2 still opens with it and raising a cost is a new value rather than a migration. New key material is always Argon2id. Say "encrypted on this device"; the key is in JS memory while the data is readable and the code using it is served from the same origin, so it protects a file that leaves the device and a copied profile directory, not a compromised bundle or an XSS bug.
+*   **The lock covers content and names, and deliberately not dates.** `lib/sealed-text.ts` is the seam for the one display field a row is listed by (`feather`, `name`, `title`); `lib/cipher.ts` is the seam for payloads. A twig's `dueDate`, `dueTime`, `status` and every timestamp stay in the clear on purpose, so a future server holding nothing but ciphertext can still drive a reminder. `[REQUIRED]` Storage modules seal on write and open on read: a row leaves `lib/*-storage.ts` in plaintext and with no `encryption` marker, and a row that cannot be opened is an error, never its ciphertext.
 *   **Vite assets:** import static assets (images, SVGs) through Vite's module system; do not reference `public/` paths directly from components. The exception is what the browser fetches by URL rather than the bundler: `manifest.webmanifest`, `sw.js` and the PWA icons live in `public/` and are referenced from `index.html`.
 *   **The service worker (`public/sw.js`) is hand-written and takes no build step.** `[REQUIRED]` It needs no precache manifest because everything under `/assets/` is content-hashed (cached forever, served cache-first) while the HTML document is not (network-first, so a deploy is picked up). Do not add `vite-plugin-pwa` to replace it without a reason; it would be a new dependency for something that already works. Registration goes through `lib/service-worker.ts`, production only — in dev a cache would serve yesterday's modules back after an edit.
 *   **Bundle weight:** every route except the landing page is loaded on demand through `lazyPage()` in `App.tsx`, which kept the entry chunk at ~230 kB instead of ~2.1 MB. New pages must be added the same way; do not import a page eagerly into `App.tsx`. `[REQUIRED]`
@@ -202,7 +203,8 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 *   **`brotli-wasm`** is there because no browser exposes Brotli through `CompressionStream`. Its ESM entry loads the `.wasm` by fetching a URL relative to the module, which Vite rewrites but Node cannot resolve for a `file:` URL — so `vite.config.ts` aliases the package to its own Node build **for tests only**. Keep that alias if the package is upgraded. The WASM is behind a dynamic `import()` in `lib/text-compression.ts`, so it is fetched on the first save and never on a path that does not compress.
 *   After **any** dependency change run `npm run format:check`, `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`, and `npm audit`; also confirm `npm ls @excalidraw/excalidraw pdfjs-dist nanoid lodash-es` still shows the pinned versions.
 *   Playwright downloads its own browser to `~/.cache/ms-playwright` (`npx playwright install chromium`); the browser revision is tied to the `@playwright/test` version, so re-run that command after upgrading it.
-*   Prefer what is already installed (`date-fns`, `zod`, `lucide-react`, `@dnd-kit`, `zustand`) over adding a new package. A new dependency needs a stated reason and explicit approval.
+*   `hash-wasm` is there for Argon2id and nothing else: it carries its WASM inline, so unlike `brotli-wasm` it needs no Vite alias and no fetch at runtime.
+*   Prefer what is already installed (`date-fns`, `zod`, `lucide-react`, `@dnd-kit`, `zustand`, `hash-wasm`) over adding a new package. A new dependency needs a stated reason and explicit approval.
 *   Commit `package-lock.json` with `package.json`. Do not use `--force` or `--legacy-peer-deps`.
 
 ## 10. Git & Review Hygiene
@@ -236,25 +238,21 @@ A change is done only when:
 Pre-existing; not blockers for unrelated work (§0). `FEATURES-GAP.md` is the full list and
 the reasoning; this is the short form for someone editing the code.
 
-1.  **Rename and delete have storage but no UI.** `entity-storage.ts` and
-    `entity-delete.ts` expose rename, recolour and cascading delete for every level of the
-    hierarchy, with tests. Nothing on screen calls them; the path bar can only add.
-2.  **`NotesFileViewer` has no render path.** It and the modules under it (`NotesTreeView`,
-    `NotesNoteButton`, `NotesTreeGroup`, `notes-tree.ts`) render nowhere, and have not since
-    `d03aa1a`. They were migrated to the entity model rather than left broken. Decide
-    whether to wire the sidebar up or delete it; do not add features to it meanwhile.
-3.  **The lock does not cover titles.** Note titles, course names, task titles and due
-    dates stay readable with the workspace locked, because they are what the app lists and
-    sorts by. The settings card and the privacy page both say so. Closing it means every
-    list decrypting before it filters.
-4.  **`saveSpatialDocumentPayload` still deletes shared media by id.** `softDeleteNote`,
-    `softDeletePebble` and the entity cascade all count references across `notes-documents`
-    and `pebbles` before dropping a blob. The save path does not: when a file leaves one
-    scene it goes even if another note draws it.
-5.  **Tombstones are never collected.** Deletes drop the bytes, so a tombstone is a few
-    bytes, but nothing removes the marker rows — for notes, and for every entity, twig and
-    pebble. They accumulate for the life of the database.
-6.  **A route never visited is not cached offline.** The service worker caches what it
-    serves and does not control the page that registered it, so opening a route for the
-    first time with no network still fails. From the second visit on, everything the user
-    has touched works.
+1.  **The rekey has no progress and no resume.** Setting, changing or removing a
+    passphrase rewrites every document, media blob and name one row at a time
+    (`workspace-rekey.ts`). A workspace with a gigabyte of PDFs sits on a spinner, and a
+    failure partway leaves some rows converted — recoverable, because both callers order
+    their work so the old key still opens what has not moved, but not resumable.
+2.  **Backups are all-or-nothing.** `restoreWorkspaceBackup` clears every store and writes
+    the file's contents. There is no merge, so restoring on a device that has since been
+    used loses whatever it did in the meantime.
+3.  **Tombstone collection only runs when the workspace is opened.**
+    `collectTombstonesOnce` runs from `WorkspaceShell`, so a workspace nobody opens never
+    sweeps, and the ninety-day window is a guess made before any sync exists to need it.
+4.  **Route warm-up is best-effort.** `lib/route-warmup.ts` imports the unvisited page
+    chunks on idle so the service worker caches them. A first visit that is closed before
+    it goes idle still leaves routes that will not open offline.
+5.  **`NotesFileViewer` shows notes but cannot act on them.** The tree opens a note and
+    nothing else: renaming, moving and deleting from it all go through the path bar or the
+    settings editor. Its groups are also expanded from component state, so the shape is
+    forgotten on reload.

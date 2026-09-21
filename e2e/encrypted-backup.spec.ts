@@ -35,7 +35,7 @@ test.describe("an encrypted backup", () => {
     expect(JSON.parse(contents)).toMatchObject({
       format: "cuervo-planner-encrypted",
       cipher: "AES-GCM",
-      kdf: { name: "PBKDF2", iterations: 600000 },
+      kdf: { name: "Argon2id", memorySize: 65536, iterations: 3, parallelism: 1 },
     });
 
     await expect(page.getByRole("status")).toContainText("encrypted");

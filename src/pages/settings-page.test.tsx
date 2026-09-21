@@ -3,9 +3,24 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resetActiveCipher } from "@/lib/cipher";
 import { getNotesDb } from "@/lib/notes-db";
+import { createWorkspaceLock, unlockWorkspace } from "@/lib/workspace-lock";
 
 import { SettingsPage } from "./settings";
+
+// 64 MiB and three passes is what ships. The parameters travel in the lock record, so the
+// cheap ones are used to unlock as well.
+vi.mock("@/lib/kdf", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/kdf")>()),
+  createKdfParams: () => ({
+    name: "Argon2id",
+    memorySize: 1024,
+    iterations: 1,
+    parallelism: 1,
+    salt: btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))),
+  }),
+}));
 
 function renderPage() {
   return render(
@@ -54,10 +69,15 @@ beforeEach(async () => {
   await database.clear("notes-directory");
   await database.clear("notes-documents");
   await database.clear("notes-media");
+  await database.clear("workspace-keys");
+  await database.clear("wings");
+  window.localStorage.clear();
+  resetActiveCipher();
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  resetActiveCipher();
 });
 
 describe("SettingsPage", () => {
@@ -122,6 +142,48 @@ describe("SettingsPage", () => {
     );
     const database = await getNotesDb();
     expect(await database.count("notes-directory")).toBe(0);
+  });
+
+  it("wires the workspace editor to storage", async () => {
+    const database = await getNotesDb();
+    await database.clear("wings");
+    await database.put("wings", {
+      id: "wing-1",
+      name: "My Wing",
+      createdAt: 1,
+      updatedAt: 1,
+      deletedAt: null,
+    });
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Rename My Wing" }));
+    const field = screen.getByLabelText("New name for My Wing");
+    await userEvent.clear(field);
+    await userEvent.type(field, "Second Year");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(async () => {
+      expect((await database.get("wings", "wing-1"))?.name).toBe("Second Year");
+    });
+  });
+
+  it("changes the workspace passphrase from the lock card", async () => {
+    // Creating the lock leaves the workspace unlocked, which is the state the card offers
+    // a change from — and the state the settings page is reachable in at all.
+    await createWorkspaceLock("correct horse");
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Change the passphrase" }));
+    await userEvent.type(screen.getByLabelText("Current passphrase"), "correct horse");
+    await userEvent.type(screen.getByLabelText("New passphrase"), "battery staple");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Re-encrypt with the new passphrase" }),
+    );
+
+    await waitFor(async () => {
+      expect(await unlockWorkspace("battery staple")).toBe(true);
+    });
+    expect(await unlockWorkspace("correct horse")).toBe(false);
   });
 
   it("reports a file it cannot read as text", async () => {

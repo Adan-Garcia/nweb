@@ -1,16 +1,21 @@
+import { z } from "zod";
+
 /**
  * The seam between "bytes the app produced" and "bytes that go into IndexedDB".
  *
  * Storage modules ask for the active cipher and run their payload through it; they never
- * know whether anything happened. Today the active cipher is the plaintext one, so nothing
- * does. When the app lock ships, unlocking swaps in an AES-GCM cipher and every write from
- * that moment is encrypted — without a single storage module changing.
+ * know whether anything happened. Before a passphrase exists the active cipher is the
+ * plaintext one, so nothing does; unlocking swaps in an AES-GCM cipher and every write
+ * from that moment is encrypted — without a single storage module changing.
  *
- * Each row records which cipher wrote it (`NotesDocumentRecord.encryption`), so a database
- * can hold a mix and still be readable. That is what makes turning this on a decision the
- * user takes rather than a migration that has to rewrite everything at once.
+ * Each row records which cipher wrote it (`NotesDocumentRecord.encryption`, and
+ * `encryption` on every named row — see `sealed-text.ts`), so a database can hold a mix
+ * and still be readable. That is what makes turning this on a decision the user takes
+ * rather than a migration that has to rewrite everything at once.
  */
-export type CipherName = "none" | "aes-gcm";
+export const cipherNameSchema = z.enum(["none", "aes-gcm"]);
+
+export type CipherName = z.infer<typeof cipherNameSchema>;
 
 export type Cipher = {
   readonly name: CipherName;
@@ -75,6 +80,18 @@ export function setActiveCipher(cipher: Cipher) {
 /** Drops the key from memory. Anything written while locked would be plaintext. */
 export function resetActiveCipher() {
   activeCipher = plaintextCipher;
+}
+
+/**
+ * Whether a failure is only "the workspace is locked".
+ *
+ * A page calls its data hook before it renders the shell, and the shell is what decides to
+ * show the lock screen instead of the page — so the load starts either way and finds rows
+ * it has no key for. That is nothing to load, not a fault: the user is looking at the lock
+ * screen. Anything else still throws.
+ */
+export function isLockedError(error: unknown): boolean {
+  return error instanceof CipherUnavailableError;
 }
 
 export class CipherUnavailableError extends Error {

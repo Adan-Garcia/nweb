@@ -22,7 +22,8 @@ export const POLICY_SECTIONS: PolicySection[] = [
     items: [
       "Your notes are stored in this browser's IndexedDB, and your calendar events in its local storage. Both stay on this device.",
       "Until you set a passphrase, notes are compressed but not encrypted, so anyone who can open this browser profile can read them.",
-      "Set one in Settings and the text of every note, the drawings and the files are encrypted with AES-GCM under a key derived from it. Note titles, course names and due dates stay readable.",
+      "Set one in Settings and the text of every note, the drawings, the files and the names — note titles, course names, task titles — are encrypted with AES-GCM under a key derived from it with Argon2id.",
+      "Due dates and times are deliberately left readable. That is what lets a reminder know something is due at nine without anything being able to read what it is, and it is the one thing the lock does not cover.",
       "Nothing can reset that passphrase: there is no account and no server. Forget it and the notes cannot be recovered.",
       "Clearing your browser's site data deletes everything, and there is no copy anywhere else.",
     ],

@@ -131,7 +131,8 @@ describe("PrivacyPage", () => {
     // Plain about the default: no passphrase means no encryption.
     expect(container.textContent).toMatch(/not encrypted/i);
     // And plain about the limit of the lock, now that there is one.
-    expect(container.textContent).toMatch(/titles, course names and due dates stay readable/i);
+    expect(container.textContent).toMatch(/note titles, course names, task titles/i);
+    expect(container.textContent).toMatch(/due dates and times are deliberately left readable/i);
     expect(container.textContent).toMatch(/cannot be recovered/i);
     // Still nothing about the things that would need a server.
     expect(container.textContent).not.toMatch(/key exchange|row-level|zero-knowledge/i);

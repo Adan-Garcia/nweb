@@ -8,8 +8,8 @@ import {
   encryptWorkspaceBackup,
   type ParsedBackupFile,
   parseWorkspaceBackup,
-  restoreWorkspaceBackup,
 } from "@/lib/workspace-backup";
+import { restoreWorkspaceBackup } from "@/lib/workspace-restore";
 
 export type BackupStatus =
   | { kind: "idle" }

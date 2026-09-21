@@ -1,5 +1,6 @@
 import { getNotesDb } from "./notes-db";
 import type { NotesDirectoryEntry, NotesDocumentMode } from "./notes-model";
+import { openRow, openRows, sealRow } from "./sealed-text";
 
 /**
  * Fills in fields added after a row was written. Entries stored before `deletedAt` or
@@ -15,10 +16,14 @@ function normalizeEntry(entry: NotesDirectoryEntry): NotesDirectoryEntry {
   };
 }
 
+/** Sorted by `updatedAt`, which is never sealed, so the order costs no decrypt at all. */
 export async function listNotesDirectoryEntries(): Promise<NotesDirectoryEntry[]> {
   const database = await getNotesDb();
   const rawEntries = await database.getAll("notes-directory");
-  const entries = rawEntries.map(normalizeEntry).filter((entry) => !entry.deletedAt);
+  const entries = await openRows(
+    rawEntries.map(normalizeEntry).filter((entry) => !entry.deletedAt),
+    "feather",
+  );
 
   return entries.sort((a, b) => b.updatedAt - a.updatedAt);
 }
@@ -26,6 +31,10 @@ export async function listNotesDirectoryEntries(): Promise<NotesDirectoryEntry[]
 /**
  * The live note with this title in this branch, or null. A title is only unique inside a
  * branch, and nests are tags rather than a level, so they are not part of the lookup.
+ *
+ * Every candidate is opened before it is compared. A sealed title cannot be matched as
+ * stored: AES-GCM takes a fresh IV each time, so the same title seals to different bytes
+ * on every write, which is exactly what stops a store of ciphertext being a lookup table.
  */
 export async function findNotesDirectoryEntry({
   branchId,
@@ -36,11 +45,14 @@ export async function findNotesDirectoryEntry({
 }): Promise<NotesDirectoryEntry | null> {
   const database = await getNotesDb();
   const rawEntries = await database.getAll("notes-directory");
-  const match = rawEntries
-    .map(normalizeEntry)
-    .find((entry) => !entry.deletedAt && entry.branchId === branchId && entry.feather === feather);
+  const candidates = await openRows(
+    rawEntries
+      .map(normalizeEntry)
+      .filter((entry) => !entry.deletedAt && entry.branchId === branchId),
+    "feather",
+  );
 
-  return match ?? null;
+  return candidates.find((entry) => entry.feather === feather) ?? null;
 }
 
 /**
@@ -71,7 +83,7 @@ export async function createNotesDirectoryEntry({
     deletedAt: null,
   };
 
-  await database.put("notes-directory", entry);
+  await database.put("notes-directory", await sealRow(entry, "feather"));
   return entry;
 }
 
@@ -103,7 +115,7 @@ export async function upsertNotesDirectoryEntry({
     deletedAt: existing?.deletedAt ?? null,
   };
 
-  await database.put("notes-directory", nextRecord);
+  await database.put("notes-directory", await sealRow(nextRecord, "feather"));
   return nextRecord;
 }
 
@@ -123,9 +135,10 @@ export async function renameNotesDirectoryEntry(
     ...normalizeEntry(existing),
     feather,
     updatedAt: Date.now(),
+    encryption: undefined,
   };
 
-  await database.put("notes-directory", next);
+  await database.put("notes-directory", await sealRow(next, "feather"));
   return next;
 }
 
@@ -141,6 +154,8 @@ export async function setNotesDirectoryEntryPlacement(
     return null;
   }
 
+  // The title is not part of a move, so the stored row keeps the sealed one it already
+  // had and only the copy handed back is opened.
   const next: NotesDirectoryEntry = {
     ...normalizeEntry(existing),
     ...placement,
@@ -148,7 +163,7 @@ export async function setNotesDirectoryEntryPlacement(
   };
 
   await database.put("notes-directory", next);
-  return next;
+  return openRow(next, "feather");
 }
 
 export async function touchNotesDirectoryEntry(

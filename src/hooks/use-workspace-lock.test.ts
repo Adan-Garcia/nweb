@@ -9,10 +9,17 @@ import { useWorkspaceLock } from "./use-workspace-lock";
 
 const PASSPHRASE = "correct horse battery";
 
-// The shipped 600,000 iterations would make each of these take seconds.
-vi.mock("@/lib/crypto-envelope", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/crypto-envelope")>()),
-  PBKDF2_ITERATIONS: 100,
+// The shipped Argon2id cost — 64 MiB, three passes — would make each of these take a
+// second. The parameters travel in the lock record, so unlocking uses the cheap ones too.
+vi.mock("@/lib/kdf", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/kdf")>()),
+  createKdfParams: () => ({
+    name: "Argon2id",
+    memorySize: 1024,
+    iterations: 1,
+    parallelism: 1,
+    salt: btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))),
+  }),
 }));
 
 beforeEach(async () => {
@@ -110,6 +117,45 @@ describe("useWorkspaceLock", () => {
       expect(await result.current.remove(PASSPHRASE)).toBe(true);
     });
     expect(result.current.state).toBe("unset");
+  });
+
+  it("changes the passphrase, and reports a wrong current one", async () => {
+    const { result } = await mount();
+    await act(async () => {
+      await result.current.create(PASSPHRASE);
+    });
+
+    await act(async () => {
+      expect(await result.current.change("wrong", "second passphrase")).toBe(false);
+    });
+    expect(result.current.error).toMatch(/not the one this workspace is locked with/);
+
+    await act(async () => {
+      expect(await result.current.change(PASSPHRASE, "second passphrase")).toBe(true);
+    });
+    expect(result.current.state).toBe("unlocked");
+    expect(result.current.error).toBeNull();
+
+    await act(async () => {
+      await result.current.lock();
+      expect(await result.current.unlock("second passphrase")).toBe(true);
+    });
+    expect(result.current.state).toBe("unlocked");
+  });
+
+  it("says the old passphrase still works when a change fails outright", async () => {
+    const { result } = await mount();
+    await act(async () => {
+      await result.current.create(PASSPHRASE);
+    });
+
+    // An empty new passphrase is one Argon2id refuses, so the derivation throws rather
+    // than returning a wrong-passphrase answer.
+    await act(async () => {
+      expect(await result.current.change(PASSPHRASE, "")).toBe(false);
+    });
+
+    expect(result.current.error).toMatch(/old one still opens this workspace/);
   });
 
   it("paints locked on the first render when the hint says so, without waiting", async () => {

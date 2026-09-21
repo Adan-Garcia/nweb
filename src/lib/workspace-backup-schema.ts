@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { calendarEventSchema } from "./calendar-event";
+import { cipherNameSchema } from "./cipher";
 import { branchSchema, flightSchema, nestSchema, wingSchema } from "./entity-model";
 import { pebbleSchema } from "./pebble-model";
 import { twigSchema } from "./twig-model";
@@ -14,6 +15,11 @@ import { legacyDirectoryEntrySchema } from "./workspace-migrate";
  * notes pointing at a branch instead of repeating their path. A version 1 file still
  * restores — its string paths are converted on the way in, the same way the database
  * upgrade converts them.
+ *
+ * Still 2 now that a backup is always written in the clear and sealed as a whole file
+ * instead: nothing about the shape changed. The reader accepts an `encryption` marker on a
+ * row because a build between the lock shipping and this one could write one, and reading
+ * that file as though it were plaintext would restore ciphertext as the note.
  */
 export const WORKSPACE_BACKUP_VERSION = 2;
 
@@ -30,6 +36,7 @@ const directoryEntrySchema = z.object({
   createdAt: z.number(),
   updatedAt: z.number(),
   deletedAt: z.number().nullable().default(null),
+  encryption: cipherNameSchema.optional(),
 });
 
 const sceneFileRefSchema = z.object({
@@ -46,6 +53,7 @@ const documentSchema = z.object({
   sceneCompressionAlgorithm: z.string().nullable(),
   sceneFiles: z.array(sceneFileRefSchema),
   updatedAt: z.number(),
+  encryption: cipherNameSchema.optional(),
 });
 
 const mediaSchema = z.object({
@@ -54,6 +62,7 @@ const mediaSchema = z.object({
   mimeType: z.string(),
   created: z.number(),
   updatedAt: z.number(),
+  encryption: cipherNameSchema.optional(),
 });
 
 const workspaceSchema = z

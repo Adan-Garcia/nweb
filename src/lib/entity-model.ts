@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { cipherNameSchema } from "./cipher";
+
 /**
  * The shared spine of every workspace record. UUID ids, `updatedAt` and a `deletedAt`
  * tombstone are on every entity from the start: retrofitting them once a user has data is
@@ -10,6 +12,12 @@ export const entityBaseSchema = z.object({
   createdAt: z.number(),
   updatedAt: z.number(),
   deletedAt: z.number().nullable().default(null),
+  /**
+   * Which cipher wrote this row's one display name — `name` here, `title` on a twig. Rows
+   * written before the lock covered names read back `undefined`, which means plaintext.
+   * Only the name is affected: everything else in the row is stored as it always was.
+   */
+  encryption: cipherNameSchema.optional(),
 });
 
 /** Academic terms, in the order they fall inside one calendar year. */

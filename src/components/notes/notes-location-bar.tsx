@@ -2,10 +2,12 @@ import { NotesCreateNoteDialog } from "@/components/notes/create-note-dialog";
 import { NotesCreateSegmentDialog } from "@/components/notes/create-segment-dialog";
 import { NotesDeleteNoteControl } from "@/components/notes/delete-note-control";
 import { NotesLocationSegmentDropdown } from "@/components/notes/location-segment-dropdown";
+import { NotesNavigationToggle } from "@/components/notes/notes-navigation-toggle";
 import { SEGMENT_CONFIGS } from "@/components/notes/notes-segment-config";
 import type { NotesDirectoryEntry } from "@/components/notes/types";
 import type { NotesLocationPicker } from "@/components/notes/use-notes-location-picker";
 import { Card, CardContent } from "@/components/ui/card";
+import type { NotesNavigationMode } from "@/lib/notes-navigation";
 import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type NotesLocationBarProps = {
@@ -15,6 +17,8 @@ type NotesLocationBarProps = {
   activeEntry: NotesDirectoryEntry | null;
   isStorageReady: boolean;
   isHydratingDocument: boolean;
+  navigationMode: NotesNavigationMode;
+  onChooseNavigation: (mode: NotesNavigationMode) => void;
   onDeleteDocument: (documentId: string) => void;
 };
 
@@ -26,6 +30,8 @@ export function NotesLocationBar({
   activeEntry,
   isStorageReady,
   isHydratingDocument,
+  navigationMode,
+  onChooseNavigation,
   onDeleteDocument,
 }: NotesLocationBarProps) {
   const { createNote, segmentModal } = picker;
@@ -50,6 +56,8 @@ export function NotesLocationBar({
             }}
           />
         ))}
+
+        <NotesNavigationToggle navigationMode={navigationMode} onChoose={onChooseNavigation} />
 
         <p className="text-xs text-muted-foreground">{autoSaveLabel}</p>
 

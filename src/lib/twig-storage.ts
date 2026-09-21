@@ -1,4 +1,5 @@
 import { getNotesDb } from "./notes-db";
+import { openRow, openRows, sealRow } from "./sealed-text";
 import {
   BOARD_ORDER_STEP,
   compareTwigsByBoardOrder,
@@ -18,11 +19,20 @@ export type TwigDraft = {
   featherId?: string | null;
 };
 
+/**
+ * Titles come back in plaintext; everything the board and the calendar sort and filter by
+ * — status, board order, due date and time — was never sealed, so a list is one decrypt
+ * per row and no more.
+ */
 export async function listTwigs(): Promise<Twig[]> {
   const database = await getNotesDb();
   const rows = await database.getAll("twigs");
+  const live = await openRows(
+    rows.filter((twig) => !twig.deletedAt),
+    "title",
+  );
 
-  return rows.filter((twig) => !twig.deletedAt).sort(compareTwigsByBoardOrder);
+  return live.sort(compareTwigsByBoardOrder);
 }
 
 /** New tasks land at the end of their column, clear of everything already ordered. */
@@ -58,7 +68,7 @@ export async function createTwig(draft: TwigDraft): Promise<Twig> {
     deletedAt: null,
   };
 
-  await database.put("twigs", twig);
+  await database.put("twigs", await sealRow(twig, "title"));
   return twig;
 }
 
@@ -67,14 +77,18 @@ export async function updateTwig(
   changes: Partial<Omit<Twig, "id" | "createdAt" | "deletedAt">>,
 ): Promise<Twig | null> {
   const database = await getNotesDb();
-  const existing = await database.get("twigs", id);
+  const stored = await database.get("twigs", id);
 
-  if (!existing || existing.deletedAt) {
+  if (!stored || stored.deletedAt) {
     return null;
   }
 
+  // Opened before the change is applied, so a caller that changes the due date and not the
+  // title does not have to know that one of the two is sealed and the other is not.
+  const existing = await openRow(stored, "title");
   const next: Twig = { ...existing, ...changes, updatedAt: Date.now() };
-  await database.put("twigs", next);
+
+  await database.put("twigs", await sealRow(next, "title"));
   return next;
 }
 
@@ -151,7 +165,7 @@ export async function moveTwig({
 
   if (resolved !== "renumber") {
     const next: Twig = { ...moving, status, boardOrder: resolved, updatedAt: now };
-    await database.put("twigs", next);
+    await database.put("twigs", await sealRow(next, "title"));
     return [next];
   }
 
@@ -165,8 +179,12 @@ export async function moveTwig({
     updatedAt: now,
   }));
 
+  // Sealed before the transaction opens, never inside it: a transaction held across a
+  // non-IndexedDB await commits itself, and the puts after it fail in a real browser.
+  const sealed = await Promise.all(changed.map((twig) => sealRow(twig, "title")));
   const transaction = database.transaction("twigs", "readwrite");
-  await Promise.all(changed.map((twig) => transaction.store.put(twig)));
+
+  await Promise.all(sealed.map((twig) => transaction.store.put(twig)));
   await transaction.done;
 
   return changed;

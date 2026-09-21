@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { TwigFormValues } from "@/components/calendar/calendar-shared";
 import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
+import { isLockedError } from "@/lib/cipher";
 import type { Twig, TwigStatus } from "@/lib/twig-model";
 import { createTwig, listTwigs, softDeleteTwig, updateTwig } from "@/lib/twig-storage";
 import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
@@ -38,6 +39,10 @@ export function useCalendarTwigs() {
         if (isMounted) {
           setTwigs(nextTwigs);
           setSnapshot(nextSnapshot);
+        }
+      } catch (error) {
+        if (!isLockedError(error)) {
+          throw error;
         }
       } finally {
         if (isMounted) {

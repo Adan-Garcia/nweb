@@ -10,6 +10,7 @@ function setup(overrides: Partial<Parameters<typeof LockCard>[0]> = {}) {
     error: null,
     isWorking: false,
     onCreate: vi.fn(),
+    onChange: vi.fn(),
     onRemove: vi.fn(),
     onLock: vi.fn(),
     ...overrides,
@@ -30,9 +31,8 @@ describe("LockCard", () => {
   it("says what the lock covers and what it does not, rather than implying everything", () => {
     setup();
 
-    expect(
-      screen.getByText(/note titles, course names and due dates stay readable/i),
-    ).toBeVisible();
+    expect(screen.getByText(/note titles, course names, task titles/i)).toBeVisible();
+    expect(screen.getByText(/due dates and times stay readable/i)).toBeVisible();
   });
 
   it("warns that nothing can reset the passphrase before it is chosen", async () => {
@@ -105,6 +105,48 @@ describe("LockCard", () => {
 
     expect(screen.queryByLabelText("Confirm the passphrase")).not.toBeInTheDocument();
     expect(onRemove).not.toHaveBeenCalled();
+  });
+
+  it("offers to change the passphrase once one is set, and not before", async () => {
+    const user = userEvent.setup();
+    const { onChange } = setup({ state: "unlocked" });
+
+    await user.click(screen.getByRole("button", { name: "Change the passphrase" }));
+    await user.type(screen.getByLabelText("Current passphrase"), "correct horse");
+    await user.type(screen.getByLabelText("New passphrase"), "battery staple");
+    await user.click(screen.getByRole("button", { name: "Re-encrypt with the new passphrase" }));
+
+    expect(onChange).toHaveBeenCalledWith("correct horse", "battery staple");
+  });
+
+  it("does not offer to change a passphrase that does not exist yet", () => {
+    setup();
+
+    expect(screen.queryByRole("button", { name: "Change the passphrase" })).not.toBeInTheDocument();
+  });
+
+  it("will not change to or from an empty passphrase", async () => {
+    const user = userEvent.setup();
+    const { onChange } = setup({ state: "unlocked" });
+
+    await user.click(screen.getByRole("button", { name: "Change the passphrase" }));
+    await user.type(screen.getByLabelText("Current passphrase"), "correct horse");
+
+    expect(
+      screen.getByRole("button", { name: "Re-encrypt with the new passphrase" }),
+    ).toBeDisabled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("backs out of changing the passphrase", async () => {
+    const user = userEvent.setup();
+    const { onChange } = setup({ state: "unlocked" });
+
+    await user.click(screen.getByRole("button", { name: "Change the passphrase" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByLabelText("Current passphrase")).not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("shows an error where it can be read", () => {

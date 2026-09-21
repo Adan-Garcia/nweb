@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -67,5 +68,96 @@ describe("NotesPage", () => {
       "href",
       "/dashboard",
     );
+  });
+
+  it("navigates by the path bar until the tree is asked for", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/notes"]}>
+        <NotesPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("button", { name: "My Wing" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("complementary", { name: "Notes file viewer" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tree" }));
+
+    const viewer = await screen.findByRole("complementary", { name: "Notes file viewer" });
+    expect(viewer).toBeVisible();
+    // The path bar does not go away: the tree is another way in, not a replacement.
+    expect(screen.getByRole("button", { name: "My Wing" })).toBeInTheDocument();
+  });
+
+  it("lists a saved note in the tree and opens it from there", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/notes"]}>
+        <NotesPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole("button", { name: "My Wing" });
+    await user.click(screen.getByRole("button", { name: "Tree" }));
+
+    const viewer = await screen.findByRole("complementary", { name: "Notes file viewer" });
+    expect(within(viewer).getByRole("list", { name: "Saved notes" })).toBeInTheDocument();
+    expect(await within(viewer).findByText("Untitled note")).toBeVisible();
+
+    // Opening from the tree lands on the same note the path bar was already showing.
+    await user.click(within(viewer).getByRole("button", { name: /Untitled note/ }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Untitled note" })).toBeInTheDocument();
+    });
+  });
+
+  it("saves the open note from the tree", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/notes"]}>
+        <NotesPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole("button", { name: "My Wing" });
+    await user.click(screen.getByRole("button", { name: "Tree" }));
+
+    const viewer = await screen.findByRole("complementary", { name: "Notes file viewer" });
+    const saveNow = within(viewer).getByRole("button", { name: "Save Active Note" });
+    await waitFor(() => {
+      expect(saveNow).toBeEnabled();
+    });
+
+    await user.click(saveNow);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Autosaved at/)).toBeInTheDocument();
+    });
+  });
+
+  it("remembers the choice for the next visit", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/notes"]}>
+        <NotesPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole("button", { name: "My Wing" });
+    await user.click(screen.getByRole("button", { name: "Tree" }));
+    await screen.findByRole("complementary", { name: "Notes file viewer" });
+    unmount();
+
+    render(
+      <MemoryRouter initialEntries={["/notes"]}>
+        <NotesPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("complementary", { name: "Notes file viewer" }),
+    ).toBeInTheDocument();
   });
 });

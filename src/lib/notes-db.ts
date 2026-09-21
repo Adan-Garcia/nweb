@@ -22,8 +22,14 @@ const NOTES_DB_NAME = "cuervo-notes";
  *
  * 5 added `workspace-keys`, which holds the KDF parameters and the verifier for the app
  * lock. One row, and no content: losing it costs the passphrase, not the notes.
+ *
+ * 6 let the lock cover the names a workspace is listed by. Every named row — notes,
+ * wings, flights, branches, nests, twigs, pebbles — may now carry an `encryption` marker
+ * saying which cipher wrote its one display field. Like 3, this rewrites no rows: a row
+ * without the marker is plaintext, which is what every row written before this one is,
+ * and turning the lock on is what converts them.
  */
-export const NOTES_DB_VERSION = 5;
+export const NOTES_DB_VERSION = 6;
 
 export interface NotesDbSchema extends DBSchema {
   "notes-documents": {

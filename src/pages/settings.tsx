@@ -1,6 +1,8 @@
 import { BackupCard } from "@/components/settings/backup-card";
 import { LockCard } from "@/components/settings/lock-card";
 import { useWorkspaceBackup } from "@/components/settings/use-workspace-backup";
+import { useWorkspaceEditor } from "@/components/settings/use-workspace-editor";
+import { WorkspaceEditorCard } from "@/components/settings/workspace-editor-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { useThemeMode } from "@/hooks/use-theme-mode";
@@ -11,6 +13,7 @@ export function SettingsPage() {
   const { status, needsPassphrase, exportWorkspace, importWorkspace, unlockImport, cancelImport } =
     useWorkspaceBackup();
   const lock = useWorkspaceLock();
+  const editor = useWorkspaceEditor();
 
   return (
     <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
@@ -28,9 +31,12 @@ export function SettingsPage() {
             error={lock.error}
             isWorking={lock.isWorking}
             onCreate={(passphrase) => void lock.create(passphrase)}
+            onChange={(current, next) => void lock.change(current, next)}
             onRemove={(passphrase) => void lock.remove(passphrase)}
             onLock={() => void lock.lock()}
           />
+
+          <WorkspaceEditorCard {...editor} />
 
           <BackupCard
             status={status}

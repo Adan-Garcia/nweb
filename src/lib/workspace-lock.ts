@@ -7,17 +7,16 @@ import {
   resetActiveCipher,
   setActiveCipher,
 } from "./cipher";
-import { deriveKeyFromPassphrase, PBKDF2_ITERATIONS } from "./crypto-envelope";
+import { createKdfParams, deriveKey, type KdfParams } from "./kdf";
 import { getNotesDb } from "./notes-db";
 import {
   LOCK_VERIFIER_PLAINTEXT,
   WORKSPACE_LOCK_ID,
   type WorkspaceLockRecord,
+  workspaceLockRecordSchema,
   type WorkspaceLockState,
 } from "./workspace-lock-model";
 import { rewriteStoredContent } from "./workspace-rekey";
-
-const SALT_BYTES = 16;
 
 /**
  * A synchronous hint that a passphrase exists, so the first paint can show the lock screen
@@ -55,10 +54,26 @@ function writeLockHint(isSet: boolean) {
   }
 }
 
+/**
+ * Parsed rather than trusted, like everything else read back from storage. A row that does
+ * not describe a KDF this build knows how to run is no key at all, and reporting "no
+ * passphrase" for it would quietly write the next note in plaintext beside the locked ones.
+ */
 async function readLockRecord(): Promise<WorkspaceLockRecord | undefined> {
   const database = await getNotesDb();
+  const stored = await database.get("workspace-keys", WORKSPACE_LOCK_ID);
 
-  return database.get("workspace-keys", WORKSPACE_LOCK_ID);
+  if (!stored) {
+    return undefined;
+  }
+
+  const parsed = workspaceLockRecordSchema.safeParse(stored);
+
+  if (!parsed.success) {
+    throw new Error("The workspace lock record is not one this version can read.");
+  }
+
+  return parsed.data;
 }
 
 export async function isWorkspaceLockSet(): Promise<boolean> {
@@ -74,14 +89,22 @@ export async function getWorkspaceLockState(): Promise<WorkspaceLockState> {
   return getActiveCipher().name === "aes-gcm" ? "unlocked" : "locked";
 }
 
-async function cipherFor(passphrase: string, record: WorkspaceLockRecord): Promise<Cipher> {
-  const key = await deriveKeyFromPassphrase({
-    passphrase,
-    salt: base64ToBytes(record.kdf.salt),
-    iterations: record.kdf.iterations,
-  });
+async function cipherFor(passphrase: string, kdf: KdfParams): Promise<Cipher> {
+  return createAesGcmCipher(await deriveKey(passphrase, kdf));
+}
 
-  return createAesGcmCipher(key);
+/** The row that proves a passphrase, written once the content it protects is already sealed. */
+async function writeLockRecord(cipher: Cipher, kdf: KdfParams, createdAt: number) {
+  const verifier = await cipher.encrypt(new TextEncoder().encode(LOCK_VERIFIER_PLAINTEXT));
+  const database = await getNotesDb();
+
+  await database.put("workspace-keys", {
+    id: WORKSPACE_LOCK_ID,
+    kdf,
+    verifier: bytesToBase64(verifier),
+    createdAt,
+    updatedAt: Date.now(),
+  });
 }
 
 /**
@@ -97,35 +120,43 @@ export async function createWorkspaceLock(passphrase: string): Promise<void> {
     throw new Error("This workspace already has a passphrase.");
   }
 
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
-  const key = await deriveKeyFromPassphrase({
-    passphrase,
-    salt,
-    iterations: PBKDF2_ITERATIONS,
-  });
-  const cipher = createAesGcmCipher(key);
+  const kdf = createKdfParams();
+  const cipher = await cipherFor(passphrase, kdf);
 
   await rewriteStoredContent({ from: plaintextCipher, to: cipher });
-
-  const verifier = await cipher.encrypt(new TextEncoder().encode(LOCK_VERIFIER_PLAINTEXT));
-  const now = Date.now();
-  const database = await getNotesDb();
-
-  await database.put("workspace-keys", {
-    id: WORKSPACE_LOCK_ID,
-    kdf: {
-      name: "PBKDF2",
-      hash: "SHA-256",
-      iterations: PBKDF2_ITERATIONS,
-      salt: bytesToBase64(salt),
-    },
-    verifier: bytesToBase64(verifier),
-    createdAt: now,
-    updatedAt: now,
-  });
+  await writeLockRecord(cipher, kdf, Date.now());
 
   writeLockHint(true);
   setActiveCipher(cipher);
+}
+
+/**
+ * Moves the workspace from one passphrase to another in a single pass.
+ *
+ * Remove-then-set would do it in two, and would leave every note in plaintext on disk in
+ * between — a window where a crash, or anyone reading the profile directory, gets the lot.
+ * Rewriting straight from the old cipher to the new one never writes a readable row. The
+ * new record is written last, so a failure partway leaves the old passphrase the one that
+ * opens whatever has not been converted yet.
+ */
+export async function changeWorkspacePassphrase(
+  currentPassphrase: string,
+  nextPassphrase: string,
+): Promise<boolean> {
+  const record = await readLockRecord();
+
+  if (!record || !(await unlockWorkspace(currentPassphrase))) {
+    return false;
+  }
+
+  const kdf = createKdfParams();
+  const next = await cipherFor(nextPassphrase, kdf);
+
+  await rewriteStoredContent({ from: getActiveCipher(), to: next });
+  await writeLockRecord(next, kdf, record.createdAt);
+
+  setActiveCipher(next);
+  return true;
 }
 
 /**
@@ -140,20 +171,22 @@ export async function unlockWorkspace(passphrase: string): Promise<boolean> {
     return false;
   }
 
-  const cipher = await cipherFor(passphrase, record);
-
+  // The derivation is inside the try as well: a passphrase a KDF will not even accept —
+  // an empty one, which Argon2id rejects outright — is a wrong passphrase like any other,
+  // and the caller has nothing different to do about it.
   try {
+    const cipher = await cipherFor(passphrase, record.kdf);
     const opened = await cipher.decrypt(base64ToBytes(record.verifier));
 
     if (new TextDecoder().decode(opened) !== LOCK_VERIFIER_PLAINTEXT) {
       return false;
     }
+
+    setActiveCipher(cipher);
+    return true;
   } catch {
     return false;
   }
-
-  setActiveCipher(cipher);
-  return true;
 }
 
 /** Drops the key. The content stays encrypted and unreadable until the next unlock. */

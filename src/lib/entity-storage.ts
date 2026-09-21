@@ -10,6 +10,7 @@ import {
   type Wing,
 } from "./entity-model";
 import { getNotesDb } from "./notes-db";
+import { openRow, openRows, type SealedRow, sealRow } from "./sealed-text";
 
 /** Fields added after a row was written read back `undefined`, which is not `null`. */
 function live<T extends { deletedAt: number | null }>(rows: T[]): T[] {
@@ -21,31 +22,38 @@ function stamps() {
   return { createdAt: now, updatedAt: now, deletedAt: null };
 }
 
+/**
+ * Names are sealed on the way in and opened on the way out, so every caller above this
+ * module works in plaintext and none of them knows the lock exists. Sorting happens after
+ * the names are open: ciphertext sorts by its IV, which is to say at random.
+ */
 export async function listWings(): Promise<Wing[]> {
   const database = await getNotesDb();
-  return live(await database.getAll("wings")).sort((a, b) => a.name.localeCompare(b.name));
+  const wings = await openRows(live(await database.getAll("wings")), "name");
+
+  return wings.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function listFlights(): Promise<Flight[]> {
   const database = await getNotesDb();
-  return live(await database.getAll("flights"));
+  return openRows(live(await database.getAll("flights")), "name");
 }
 
 export async function listBranches(): Promise<Branch[]> {
   const database = await getNotesDb();
-  return live(await database.getAll("branches"));
+  return openRows(live(await database.getAll("branches")), "name");
 }
 
 export async function listNests(): Promise<Nest[]> {
   const database = await getNotesDb();
-  return live(await database.getAll("nests"));
+  return openRows(live(await database.getAll("nests")), "name");
 }
 
 export async function createWing(name: string): Promise<Wing> {
   const database = await getNotesDb();
   const wing: Wing = { id: crypto.randomUUID(), name, ...stamps() };
 
-  await database.put("wings", wing);
+  await database.put("wings", await sealRow(wing, "name"));
   return wing;
 }
 
@@ -73,7 +81,7 @@ export async function createFlight(input: {
     ...stamps(),
   };
 
-  await database.put("flights", flight);
+  await database.put("flights", await sealRow(flight, "name"));
   return flight;
 }
 
@@ -95,7 +103,7 @@ export async function createBranch(input: {
     ...stamps(),
   };
 
-  await database.put("branches", branch);
+  await database.put("branches", await sealRow(branch, "name"));
   return branch;
 }
 
@@ -108,8 +116,19 @@ export async function createNest(input: { branchId: string; name: string }): Pro
     ...stamps(),
   };
 
-  await database.put("nests", nest);
+  await database.put("nests", await sealRow(nest, "name"));
   return nest;
+}
+
+/**
+ * The row a rename produces: the new name in plaintext, and no cipher marker, because
+ * this is the object handed back to the caller. `sealRow` puts both on the stored copy.
+ */
+function renamed<T extends SealedRow & { name: string; updatedAt: number }>(
+  existing: T,
+  name: string,
+): T {
+  return { ...existing, name, updatedAt: Date.now(), encryption: undefined };
 }
 
 /**
@@ -124,8 +143,8 @@ export async function renameWing(id: string, name: string): Promise<Wing | null>
     return null;
   }
 
-  const next: Wing = { ...existing, name, updatedAt: Date.now() };
-  await database.put("wings", next);
+  const next = renamed(existing, name);
+  await database.put("wings", await sealRow(next, "name"));
   return next;
 }
 
@@ -138,8 +157,10 @@ export async function renameFlight(id: string, name: string): Promise<Flight | n
     return null;
   }
 
-  const next: Flight = { ...existing, name, ...parseFlightName(name), updatedAt: Date.now() };
-  await database.put("flights", next);
+  // Term and year are parsed from the plaintext name and stored beside the sealed one:
+  // they are what a flight sorts by, and a sort cannot open anything.
+  const next: Flight = { ...renamed(existing, name), ...parseFlightName(name) };
+  await database.put("flights", await sealRow(next, "name"));
   return next;
 }
 
@@ -151,11 +172,12 @@ export async function renameBranch(id: string, name: string): Promise<Branch | n
     return null;
   }
 
-  const next: Branch = { ...existing, name, updatedAt: Date.now() };
-  await database.put("branches", next);
+  const next = renamed(existing, name);
+  await database.put("branches", await sealRow(next, "name"));
   return next;
 }
 
+/** The colour is not a name, so the stored row keeps whatever sealed name it already had. */
 export async function setBranchColor(id: string, color: BranchColor): Promise<Branch | null> {
   const database = await getNotesDb();
   const existing = await database.get("branches", id);
@@ -166,7 +188,7 @@ export async function setBranchColor(id: string, color: BranchColor): Promise<Br
 
   const next: Branch = { ...existing, color, updatedAt: Date.now() };
   await database.put("branches", next);
-  return next;
+  return openRow(next, "name");
 }
 
 export async function renameNest(id: string, name: string): Promise<Nest | null> {
@@ -177,7 +199,7 @@ export async function renameNest(id: string, name: string): Promise<Nest | null>
     return null;
   }
 
-  const next: Nest = { ...existing, name, updatedAt: Date.now() };
-  await database.put("nests", next);
+  const next = renamed(existing, name);
+  await database.put("nests", await sealRow(next, "name"));
   return next;
 }

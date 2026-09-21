@@ -4,9 +4,10 @@
 // object with no arrayBuffer(), which the export has to read. Node's Blob survives the
 // round trip intact, so this is the environment that matches a real browser. The
 // legacy-calendar half needs window.localStorage, which node has no business providing.
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { bytesToBase64 } from "./base64";
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "./cipher";
 import { getNotesDb } from "./notes-db";
 import { listNotesDirectoryEntries } from "./notes-directory-storage";
 import { listTwigs } from "./twig-storage";
@@ -16,8 +17,9 @@ import {
   encryptWorkspaceBackup,
   type ParsedBackupFile,
   parseWorkspaceBackup,
-  restoreWorkspaceBackup,
 } from "./workspace-backup";
+import { createWorkspaceLock } from "./workspace-lock";
+import { restoreWorkspaceBackup } from "./workspace-restore";
 import { loadWorkspaceSnapshot } from "./workspace-storage";
 
 function createLocalStorageStub() {
@@ -425,5 +427,72 @@ describe("parsing a backup file", () => {
     expect(backup.notes.directory).toEqual([]);
     expect(backup.twigs).toEqual([]);
     expect(backup.workspace.wings).toEqual([]);
+  });
+});
+
+describe("a backup and the workspace lock", () => {
+  afterEach(() => {
+    resetActiveCipher();
+  });
+
+  async function lockedCipher() {
+    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
+      "encrypt",
+      "decrypt",
+    ]);
+
+    return createAesGcmCipher(key);
+  }
+
+  it("writes the file in the clear, because the workspace key never leaves this browser", async () => {
+    await seed();
+    await createWorkspaceLock("correct horse battery");
+
+    const backup = await createWorkspaceBackup();
+
+    // A file carrying rows sealed with the workspace key could only ever be restored on
+    // this device: nothing else can derive it. The envelope is what protects the file.
+    expect(backup.workspace.wings[0].name).toBe("Home");
+    expect(backup.twigs[0].title).toBe(TWIG.title);
+    expect(backup.notes.directory[0]).toMatchObject({ feather: ENTRY.feather });
+    expect(JSON.stringify(backup)).not.toContain("aes-gcm");
+  });
+
+  it("seals what it restores, so a file does not leave readable rows in a locked workspace", async () => {
+    await seed();
+    const file = JSON.stringify(await createWorkspaceBackup());
+
+    const database = await getNotesDb();
+    await Promise.all(STORES.map((name) => database.clear(name)));
+    setActiveCipher(await lockedCipher());
+
+    await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(file)));
+
+    const [storedWing] = await database.getAll("wings");
+    expect(storedWing.name).not.toBe("Home");
+    expect(storedWing.encryption).toBe("aes-gcm");
+    // And it reads back through the storage layer, which is what opens it.
+    expect((await loadWorkspaceSnapshot()).wings[0].name).toBe("Home");
+  });
+
+  it("refuses a file whose rows were sealed by a key this browser has not got", async () => {
+    await seed();
+    setActiveCipher(await lockedCipher());
+    const sealedFile = {
+      ...plainBackup(parseWorkspaceBackup(JSON.stringify(await createWorkspaceBackup()))),
+    };
+    resetActiveCipher();
+
+    // A build between the lock shipping and this one could write such a file. Restoring it
+    // as though it were plaintext would store ciphertext as the course name.
+    await expect(
+      restoreWorkspaceBackup({
+        ...sealedFile,
+        workspace: {
+          ...sealedFile.workspace,
+          wings: [{ ...WING, name: "gibberish", encryption: "aes-gcm" as const }],
+        },
+      }),
+    ).rejects.toThrow(/not unlocked/);
   });
 });

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Lock, LockOpen } from "lucide-react";
 
 import { BackupPassphraseField } from "@/components/settings/backup-passphrase-field";
-import { Button } from "@/components/ui/button";
+import { ChangePassphraseField } from "@/components/settings/change-passphrase-field";
+import { type LockAction, LockActions } from "@/components/settings/lock-actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { WorkspaceLockState } from "@/lib/workspace-lock-model";
 
@@ -11,6 +11,7 @@ type LockCardProps = {
   error: string | null;
   isWorking: boolean;
   onCreate: (passphrase: string) => void;
+  onChange: (currentPassphrase: string, nextPassphrase: string) => void;
   onRemove: (passphrase: string) => void;
   onLock: () => void;
 };
@@ -19,8 +20,16 @@ type LockCardProps = {
  * What the honest version of "Device Level Encryption" looks like: a passphrase on this
  * browser, and a plain statement of what it does and does not cover.
  */
-export function LockCard({ state, error, isWorking, onCreate, onRemove, onLock }: LockCardProps) {
-  const [pendingAction, setPendingAction] = useState<"create" | "remove" | null>(null);
+export function LockCard({
+  state,
+  error,
+  isWorking,
+  onCreate,
+  onChange,
+  onRemove,
+  onLock,
+}: LockCardProps) {
+  const [pendingAction, setPendingAction] = useState<LockAction | null>(null);
 
   return (
     <Card>
@@ -33,40 +42,15 @@ export function LockCard({ state, error, isWorking, onCreate, onRemove, onLock }
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <div className="flex flex-wrap gap-3">
-          {state === "unset" ? (
-            <Button
-              type="button"
-              disabled={isWorking}
-              aria-pressed={pendingAction === "create"}
-              onClick={() => {
-                setPendingAction((current) => (current === "create" ? null : "create"));
-              }}
-            >
-              <Lock className="size-4" />
-              Set a passphrase
-            </Button>
-          ) : (
-            <>
-              <Button type="button" variant="outline" disabled={isWorking} onClick={onLock}>
-                <Lock className="size-4" />
-                Lock now
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isWorking}
-                aria-pressed={pendingAction === "remove"}
-                onClick={() => {
-                  setPendingAction((current) => (current === "remove" ? null : "remove"));
-                }}
-              >
-                <LockOpen className="size-4" />
-                Remove the passphrase
-              </Button>
-            </>
-          )}
-        </div>
+        <LockActions
+          state={state}
+          pendingAction={pendingAction}
+          isWorking={isWorking}
+          onToggle={(action) => {
+            setPendingAction((current) => (current === action ? null : action));
+          }}
+          onLock={onLock}
+        />
 
         {pendingAction === "create" ? (
           <BackupPassphraseField
@@ -77,6 +61,19 @@ export function LockCard({ state, error, isWorking, onCreate, onRemove, onLock }
             isDisabled={isWorking}
             onSubmit={(passphrase) => {
               onCreate(passphrase);
+              setPendingAction(null);
+            }}
+            onCancel={() => {
+              setPendingAction(null);
+            }}
+          />
+        ) : null}
+
+        {pendingAction === "change" ? (
+          <ChangePassphraseField
+            isDisabled={isWorking}
+            onSubmit={(currentPassphrase, nextPassphrase) => {
+              onChange(currentPassphrase, nextPassphrase);
               setPendingAction(null);
             }}
             onCancel={() => {
@@ -109,9 +106,11 @@ export function LockCard({ state, error, isWorking, onCreate, onRemove, onLock }
         ) : null}
 
         <p className="m-0 text-sm text-muted-foreground">
-          What this covers: the text of every note, the drawings, and the files. What it does not:
-          note titles, course names and due dates stay readable, and nothing protects against a
-          browser extension or a compromised page while the workspace is unlocked.
+          What this covers: the text of every note, the drawings, the files, and the names the
+          workspace is listed by — note titles, course names, task titles. What it does not: due
+          dates and times stay readable, so that a reminder can still know when something is due
+          without being able to read what it is. Nothing protects against a browser extension or a
+          compromised page while the workspace is unlocked.
         </p>
       </CardContent>
     </Card>

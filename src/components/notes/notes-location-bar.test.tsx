@@ -87,6 +87,8 @@ function Harness({
       activeEntry={hasActiveEntry ? seeded.entries[0] : null}
       isStorageReady
       isHydratingDocument={false}
+      navigationMode="path"
+      onChooseNavigation={() => undefined}
       onDeleteDocument={onDeleteDocument}
     />
   );

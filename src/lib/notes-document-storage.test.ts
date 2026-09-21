@@ -122,6 +122,65 @@ describe("notes document storage", () => {
     expect(Object.keys(loaded?.sceneFiles ?? {})).toEqual(["keep"]);
   });
 
+  it("keeps a picture another note still draws, when this one stops drawing it", async () => {
+    const shared = sceneFile("shared", "s");
+    await saveSpatialDocumentPayload({
+      documentId: "doc-one",
+      compressionAlgorithm: "gzip",
+      compressed: new Uint8Array([1]),
+      files: [shared],
+    });
+    await saveSpatialDocumentPayload({
+      documentId: "doc-two",
+      compressionAlgorithm: "gzip",
+      compressed: new Uint8Array([1]),
+      files: [shared],
+    });
+
+    // The first note loses it. Excalidraw ids an image by its contents, so both notes
+    // were drawing one row, and dropping it here would blank the second.
+    await saveSpatialDocumentPayload({
+      documentId: "doc-one",
+      compressionAlgorithm: "gzip",
+      compressed: new Uint8Array([1]),
+      files: [],
+    });
+
+    expect(Object.keys((await loadNotesDocument("doc-two"))?.sceneFiles ?? {})).toEqual(["shared"]);
+  });
+
+  it("keeps a picture a pebble still lists, when the note that held it stops", async () => {
+    const database = await getNotesDb();
+    await saveSpatialDocumentPayload({
+      documentId: "doc-pebbled",
+      compressionAlgorithm: "gzip",
+      compressed: new Uint8Array([1]),
+      files: [sceneFile("filed", "f")],
+    });
+    await database.put("pebbles", {
+      id: "pebble-1",
+      branchId: "branch-1",
+      nestIds: [],
+      name: "Lecture slides",
+      mimeType: "text/plain",
+      size: 1,
+      mediaId: "filed",
+      featherId: null,
+      createdAt: 1,
+      updatedAt: 1,
+      deletedAt: null,
+    });
+
+    await saveSpatialDocumentPayload({
+      documentId: "doc-pebbled",
+      compressionAlgorithm: "gzip",
+      compressed: new Uint8Array([1]),
+      files: [],
+    });
+
+    expect(await database.get("notes-media", "filed")).toBeDefined();
+  });
+
   it("drops referenced media once it is neither in the payload nor stored before", async () => {
     await saveSpatialDocumentPayload({
       documentId: "doc-unknown-ref",

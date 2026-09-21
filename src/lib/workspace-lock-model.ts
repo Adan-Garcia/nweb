@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { kdfParamsSchema } from "./kdf";
+
 /**
  * The one row that says a workspace is locked, and how to derive its key.
  *
@@ -14,12 +16,12 @@ export const LOCK_VERIFIER_PLAINTEXT = "cuervo-planner-lock-v1";
 
 export const workspaceLockRecordSchema = z.object({
   id: z.literal(WORKSPACE_LOCK_ID),
-  kdf: z.object({
-    name: z.literal("PBKDF2"),
-    hash: z.literal("SHA-256"),
-    iterations: z.number().int().positive(),
-    salt: z.string(),
-  }),
+  /**
+   * The same self-describing parameters a backup envelope carries. A workspace locked
+   * before Argon2id shipped still records PBKDF2 and still opens with it; the two are told
+   * apart by `name`, and nothing has to be rewritten for a lock to move between them.
+   */
+  kdf: kdfParamsSchema,
   verifier: z.string(),
   createdAt: z.number(),
   updatedAt: z.number(),
