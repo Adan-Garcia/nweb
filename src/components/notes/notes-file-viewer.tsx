@@ -16,6 +16,8 @@ type NotesFileViewerProps = {
   isStorageReady: boolean;
   isBusy: boolean;
   onOpenDocument: (documentId: string) => void;
+  onRenameDocument: (documentId: string, feather: string) => void;
+  onDeleteDocument: (documentId: string) => void;
   onSaveNow: () => void;
 };
 
@@ -28,6 +30,8 @@ export function NotesFileViewer({
   isStorageReady,
   isBusy,
   onOpenDocument,
+  onRenameDocument,
+  onDeleteDocument,
   onSaveNow,
 }: NotesFileViewerProps) {
   const currentPath = formatLocationPath(segmentLabels(snapshot, entries, activeSelection));
@@ -38,8 +42,8 @@ export function NotesFileViewer({
         <CardHeader>
           <CardTitle>File Viewer</CardTitle>
           <CardDescription>
-            Open notes by Wing / Flight / Branch / Nest / Feather. Renaming any of those renames it
-            everywhere at once.
+            Open, rename or delete a note. Renaming a wing, flight, branch or nest instead is on the
+            settings page, and renames it everywhere at once.
           </CardDescription>
         </CardHeader>
 
@@ -66,6 +70,8 @@ export function NotesFileViewer({
             activeSelection={activeSelection}
             isBusy={isBusy}
             onOpenDocument={onOpenDocument}
+            onRenameDocument={onRenameDocument}
+            onDeleteDocument={onDeleteDocument}
           />
         </CardContent>
       </Card>

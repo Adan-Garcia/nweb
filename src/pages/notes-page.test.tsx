@@ -107,7 +107,7 @@ describe("NotesPage", () => {
     expect(await within(viewer).findByText("Untitled note")).toBeVisible();
 
     // Opening from the tree lands on the same note the path bar was already showing.
-    await user.click(within(viewer).getByRole("button", { name: /Untitled note/ }));
+    await user.click(within(viewer).getByRole("button", { name: "Open Untitled note" }));
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Untitled note" })).toBeInTheDocument();
     });
@@ -134,6 +134,36 @@ describe("NotesPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Autosaved at/)).toBeInTheDocument();
+    });
+  });
+
+  it("renames and deletes a note from the tree", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/notes"]}>
+        <NotesPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole("button", { name: "My Wing" });
+    await user.click(screen.getByRole("button", { name: "Tree" }));
+    const viewer = await screen.findByRole("complementary", { name: "Notes file viewer" });
+
+    await user.click(within(viewer).getByRole("button", { name: "Rename Untitled note" }));
+    const field = within(viewer).getByLabelText("New name for Untitled note");
+    await user.clear(field);
+    await user.type(field, "Lecture one");
+    await user.click(within(viewer).getByRole("button", { name: "Save the new name" }));
+
+    expect(await within(viewer).findByRole("button", { name: "Open Lecture one" })).toBeVisible();
+
+    await user.click(within(viewer).getByRole("button", { name: "Delete Lecture one" }));
+    await user.click(within(viewer).getByRole("button", { name: "Delete Lecture one for good" }));
+
+    await waitFor(() => {
+      expect(
+        within(viewer).queryByRole("button", { name: "Open Lecture one" }),
+      ).not.toBeInTheDocument();
     });
   });
 

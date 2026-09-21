@@ -62,6 +62,12 @@ export function NotesPage() {
               onOpenDocument={(documentId) => {
                 void workspace.openDocumentById(documentId);
               }}
+              onRenameDocument={(documentId, feather) => {
+                void workspace.renameDocument(documentId, feather);
+              }}
+              onDeleteDocument={(documentId) => {
+                void workspace.deleteDocument(documentId);
+              }}
               onSaveNow={() => {
                 void workspace.saveActiveDocumentNow();
               }}
