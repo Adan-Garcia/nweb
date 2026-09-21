@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 
 import { notesTrace } from "@/lib/notes-trace";
 
-type SwitchContext = "openDocumentById" | "createOrOpenDocumentAtLocation";
+type SwitchContext = "openDocumentById" | "createOrOpenDocumentAtLocation" | "deleteDocument";
 
 /**
  * Serializes document switches: each operation starts only after the previous

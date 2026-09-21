@@ -15,6 +15,7 @@ import { useDocumentSwitchQueue } from "@/components/notes/use-document-switch-q
 import { useLinearAutosave } from "@/components/notes/use-linear-autosave";
 import { useLinearNoteState } from "@/components/notes/use-linear-note-state";
 import { useNotesBootstrap } from "@/components/notes/use-notes-bootstrap";
+import { useNotesDelete } from "@/components/notes/use-notes-delete";
 import { useNotesFlush } from "@/components/notes/use-notes-flush";
 import { useNotesHydration } from "@/components/notes/use-notes-hydration";
 import { useNotesImageIngest } from "@/components/notes/use-notes-image-ingest";
@@ -113,6 +114,18 @@ export function useNotesWorkspace() {
     refreshDirectoryEntries,
   });
 
+  /** Makes an existing entry the active note. Shared by opening one and by what follows a delete. */
+  const openEntry = useCallback(
+    async (entry: NotesDirectoryEntry) => {
+      setActiveLocation(toLocation(entry));
+      setSelectedCreatedMode(entry.createdMode);
+      setMode(entry.createdMode);
+      setActiveDocumentId(entry.id);
+      await hydrateDocument(entry.id, entry.createdMode);
+    },
+    [hydrateDocument],
+  );
+
   const openDocumentById = useCallback(
     async (documentId: string) => {
       if (!documentId) {
@@ -125,18 +138,18 @@ export function useNotesWorkspace() {
         const entry = directoryEntries.find((candidate) => candidate.id === documentId);
 
         if (entry) {
-          setActiveLocation(toLocation(entry));
-          setSelectedCreatedMode(entry.createdMode);
-          setMode(entry.createdMode);
+          await openEntry(entry);
+          return;
         }
 
         setActiveDocumentId(documentId);
-        await hydrateDocument(documentId, entry?.createdMode);
+        await hydrateDocument(documentId);
       });
     },
     [
       directoryEntries,
       hydrateDocument,
+      openEntry,
       persistActiveDocumentBeforeSwitch,
       runInDocumentSwitchQueue,
     ],
@@ -189,6 +202,15 @@ export function useNotesWorkspace() {
     [],
   );
 
+  const { deleteDocument } = useNotesDelete({
+    refs,
+    activeDocumentId,
+    clearPendingLinearEdit,
+    refreshDirectoryEntries,
+    openEntry,
+    runInDocumentSwitchQueue,
+  });
+
   useNotesBootstrap({ hydrateDocument, applyInitialEntries, markStorageReady });
 
   return {
@@ -210,6 +232,7 @@ export function useNotesWorkspace() {
     spatialHostRef: refs.spatialHostRef,
     createOrOpenDocumentAtLocation,
     openDocumentById,
+    deleteDocument,
     refreshDirectoryEntries,
     saveActiveDocumentNow,
     handleSpatialChange,

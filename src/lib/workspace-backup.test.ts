@@ -8,6 +8,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { saveCalendarEvents } from "./calendar-storage";
 import { getNotesDb } from "./notes-db";
+import { listNotesDirectoryEntries } from "./notes-directory-storage";
 import {
   createWorkspaceBackup,
   parseWorkspaceBackup,
@@ -105,6 +106,25 @@ describe("workspace backup", () => {
     );
     expect(backup.notes.media[0].data).toBe(bytesToBase64(new Uint8Array([9, 8, 7])));
     expect(backup.calendar).toEqual([EVENT]);
+  });
+
+  it("carries deleted notes through as tombstones, still hidden from the app", async () => {
+    await seed();
+    const database = await getNotesDb();
+    const tombstone = { ...ENTRY, id: "deleted-note", feather: "Dropped", deletedAt: 5 };
+    await database.put("notes-directory", tombstone);
+
+    const backup = await createWorkspaceBackup();
+
+    // The marker travels: without it a restore could not tell a note that was deleted
+    // from one that never existed, and every deletion since the backup would come back.
+    expect(backup.notes.directory).toContainEqual(tombstone);
+
+    await clearAll();
+    await restoreWorkspaceBackup(backup);
+
+    expect(await database.get("notes-directory", "deleted-note")).toEqual(tombstone);
+    expect((await listNotesDirectoryEntries()).map((entry) => entry.id)).toEqual([ENTRY.id]);
   });
 
   it("round-trips through JSON back into an empty workspace", async () => {

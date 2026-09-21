@@ -14,7 +14,14 @@ function encodeOptional(bytes: Uint8Array | null): string | null {
   return bytes ? bytesToBase64(bytes) : null;
 }
 
-/** Reads every store into one plain object that can be written to a file and read back. */
+/**
+ * Reads every store into one plain object that can be written to a file and read back.
+ *
+ * Deleted notes are included, as tombstones. They cost a few bytes each and carry no
+ * content, and leaving them out would mean a restore could not tell a note that was
+ * deleted from one that never existed — under any future merge-style restore, every
+ * deletion made since the backup would come back.
+ */
 export async function createWorkspaceBackup(now = new Date()): Promise<WorkspaceBackup> {
   const database = await getNotesDb();
   const [directory, documents, media] = await Promise.all([

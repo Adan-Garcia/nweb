@@ -1,23 +1,29 @@
 import { NotesCreateNoteDialog } from "@/components/notes/create-note-dialog";
 import { NotesCreateSegmentDialog } from "@/components/notes/create-segment-dialog";
+import { NotesDeleteNoteControl } from "@/components/notes/delete-note-control";
 import { NotesLocationSegmentDropdown } from "@/components/notes/location-segment-dropdown";
 import { SEGMENT_CONFIGS } from "@/components/notes/notes-segment-config";
+import type { NotesDirectoryEntry } from "@/components/notes/types";
 import type { NotesLocationPicker } from "@/components/notes/use-notes-location-picker";
 import { Card, CardContent } from "@/components/ui/card";
 
 type NotesLocationBarProps = {
   picker: NotesLocationPicker;
   autoSaveLabel: string;
+  activeEntry: NotesDirectoryEntry | null;
   isStorageReady: boolean;
   isHydratingDocument: boolean;
+  onDeleteDocument: (documentId: string) => void;
 };
 
 /** The path picker across the top of the notes page, plus its dialogs. */
 export function NotesLocationBar({
   picker,
   autoSaveLabel,
+  activeEntry,
   isStorageReady,
   isHydratingDocument,
+  onDeleteDocument,
 }: NotesLocationBarProps) {
   const { draftLocation, createNote, segmentModal } = picker;
 
@@ -43,6 +49,12 @@ export function NotesLocationBar({
         ))}
 
         <p className="text-xs text-muted-foreground">{autoSaveLabel}</p>
+
+        <NotesDeleteNoteControl
+          activeEntry={activeEntry}
+          isDisabled={!isStorageReady || isHydratingDocument}
+          onDelete={onDeleteDocument}
+        />
 
         <NotesCreateNoteDialog
           isOpen={createNote.isOpen}

@@ -11,10 +11,19 @@ export async function openNotes(page: Page) {
   await expect(page.getByText("Autosave unavailable")).toBeHidden();
 }
 
-/** Adds a note through the location bar (the last path segment's "Add Note..." menu item). */
-export async function createNote(page: Page, name: string, mode: "linear" | "spatial") {
+/**
+ * Adds a note through the location bar (the last path segment's "Add Note..." menu item).
+ * `openFrom` is the note already open, since that is what the menu's trigger is labelled
+ * with; it only needs passing when creating a second note in one test.
+ */
+export async function createNote(
+  page: Page,
+  name: string,
+  mode: "linear" | "spatial",
+  openFrom = "Untitled note",
+) {
   // The last path button shows the current note's name.
-  await page.getByRole("button", { name: "Untitled note" }).click();
+  await page.getByRole("button", { name: openFrom }).click();
   await page.getByRole("menuitem", { name: "Add Note..." }).click();
   await page.getByPlaceholder("Enter note").fill(name);
   await page.getByRole("button", { name: "Add Note" }).click();

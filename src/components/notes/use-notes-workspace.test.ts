@@ -451,3 +451,117 @@ describe("useNotesWorkspace: guards and races", () => {
     await expect(opening).resolves.toBeUndefined();
   });
 });
+
+describe("useNotesWorkspace: deleting a note", () => {
+  it("opens the most recent surviving note when the open one is deleted", async () => {
+    const { result } = await mountReady();
+    const firstId = result.current.activeDocumentId ?? "";
+    await act(async () => {
+      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+    });
+    const secondId = result.current.activeDocumentId ?? "";
+
+    await act(async () => {
+      await result.current.deleteDocument(secondId);
+    });
+
+    expect(result.current.directoryEntries.map((entry) => entry.id)).toEqual([firstId]);
+    expect(result.current.activeDocumentId).toBe(firstId);
+  });
+
+  it("leaves the open note where it is when a different note is deleted", async () => {
+    const { result } = await mountReady();
+    const firstId = result.current.activeDocumentId ?? "";
+    await act(async () => {
+      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+    });
+    const secondId = result.current.activeDocumentId ?? "";
+
+    await act(async () => {
+      await result.current.deleteDocument(firstId);
+    });
+
+    expect(result.current.activeDocumentId).toBe(secondId);
+    expect(result.current.activeLocation).toEqual(otherLocation);
+  });
+
+  it("hands back an empty note when the last one is deleted", async () => {
+    const { result } = await mountReady();
+    const onlyId = result.current.activeDocumentId ?? "";
+
+    await act(async () => {
+      await result.current.deleteDocument(onlyId);
+    });
+
+    // A workspace with nothing in it is the state a fresh install is in, so it gets the
+    // same starting note rather than an editor with no note open.
+    expect(result.current.directoryEntries).toHaveLength(1);
+    expect(result.current.activeDocumentId).not.toBe(onlyId);
+    expect(result.current.activeDocumentId).not.toBeNull();
+    expect(result.current.linearContent).toContain("Lecture Notes");
+  });
+
+  it("ignores an empty document id and a note that is already gone", async () => {
+    const { result } = await mountReady();
+    const onlyId = result.current.activeDocumentId ?? "";
+
+    await act(async () => {
+      await result.current.deleteDocument("");
+    });
+    expect(result.current.activeDocumentId).toBe(onlyId);
+
+    await act(async () => {
+      await result.current.deleteDocument(onlyId);
+    });
+    const replacementId = result.current.activeDocumentId;
+
+    await act(async () => {
+      await result.current.deleteDocument(onlyId);
+    });
+    expect(result.current.activeDocumentId).toBe(replacementId);
+    expect(result.current.directoryEntries).toHaveLength(1);
+  });
+
+  it("does not let a debounced text edit write the deleted note back", async () => {
+    const { result, documents, spies } = await mountReady();
+    const doomedId = result.current.activeDocumentId ?? "";
+
+    act(() => result.current.setLinearContent("<p>typed a moment before deleting</p>"));
+
+    // Storage slower than the 700ms autosave debounce, which is the window where a timer
+    // armed before the delete fires after the row is already gone and writes it back.
+    spies.listEntries.mockImplementationOnce(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      return [];
+    });
+
+    await act(async () => {
+      await result.current.deleteDocument(doomedId);
+    });
+
+    expect(spies.saveLinear).not.toHaveBeenCalled();
+    expect(await documents.loadNotesDocument(doomedId)).toBeNull();
+  });
+
+  it("does not let a debounced canvas edit write the deleted note back", async () => {
+    const { result, documents, spies } = await mountReady();
+    const doomedId = result.current.activeDocumentId ?? "";
+
+    sceneVersion = 7;
+    act(() => result.current.handleSpatialChange([], appState, {}));
+
+    // Same window, against the 500ms canvas debounce. That timer persists a snapshot it
+    // captured up front and re-checks nothing, so only cancelling it stops the write.
+    spies.listEntries.mockImplementationOnce(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      return [];
+    });
+
+    await act(async () => {
+      await result.current.deleteDocument(doomedId);
+    });
+
+    expect(spies.saveSpatial).not.toHaveBeenCalled();
+    expect(await documents.loadNotesDocument(doomedId)).toBeNull();
+  });
+});

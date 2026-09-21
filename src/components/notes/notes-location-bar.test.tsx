@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -25,14 +25,20 @@ const entry = (feather: string): NotesDirectoryEntry => ({
   deletedAt: null,
 });
 
+type HarnessProps = {
+  openDocumentById: (id: string) => Promise<void>;
+  createOrOpenDocumentAtLocation: (location: NotesHierarchyLocation) => Promise<void>;
+  onDeleteDocument: (documentId: string) => void;
+  activeEntry?: NotesDirectoryEntry | null;
+};
+
 // Wires the bar to the real picker hook, as the notes page does.
 function Harness({
   openDocumentById,
   createOrOpenDocumentAtLocation,
-}: {
-  openDocumentById: (id: string) => Promise<void>;
-  createOrOpenDocumentAtLocation: (location: NotesHierarchyLocation) => Promise<void>;
-}) {
+  onDeleteDocument,
+  activeEntry = entry("Notes A"),
+}: HarnessProps) {
   const picker = useNotesLocationPicker({
     mode: "linear",
     directoryEntries: [entry("Notes A"), entry("Notes B")],
@@ -46,22 +52,27 @@ function Harness({
     <NotesLocationBar
       picker={picker}
       autoSaveLabel="Autosave enabled"
+      activeEntry={activeEntry}
       isStorageReady
       isHydratingDocument={false}
+      onDeleteDocument={onDeleteDocument}
     />
   );
 }
 
-function setup() {
+function setup(overrides: Partial<HarnessProps> = {}) {
   const openDocumentById = vi.fn(() => Promise.resolve());
   const createOrOpenDocumentAtLocation = vi.fn(() => Promise.resolve());
+  const onDeleteDocument = vi.fn();
   render(
     <Harness
       openDocumentById={openDocumentById}
       createOrOpenDocumentAtLocation={createOrOpenDocumentAtLocation}
+      onDeleteDocument={onDeleteDocument}
+      {...overrides}
     />,
   );
-  return { openDocumentById, createOrOpenDocumentAtLocation };
+  return { openDocumentById, createOrOpenDocumentAtLocation, onDeleteDocument };
 }
 
 describe("NotesLocationBar", () => {
@@ -81,6 +92,30 @@ describe("NotesLocationBar", () => {
     await user.click(await screen.findByRole("menuitem", { name: "Notes B" }));
 
     expect(openDocumentById).toHaveBeenCalledWith("id-Notes B");
+  });
+
+  it("deletes the open note only after the path is confirmed", async () => {
+    const user = userEvent.setup();
+    const { onDeleteDocument } = setup();
+
+    await user.click(screen.getByRole("button", { name: "Delete Note" }));
+
+    // The path is spelled out, because the trigger only ever says "Delete Note".
+    expect(await screen.findByText("Home / Fall / Math / Unit 1 / Notes A")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Keep Note" }));
+    expect(onDeleteDocument).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Delete Note" }));
+    const confirmation = await screen.findByRole("dialog");
+    await user.click(within(confirmation).getByRole("button", { name: "Delete Note" }));
+
+    expect(onDeleteDocument).toHaveBeenCalledWith("id-Notes A");
+  });
+
+  it("cannot delete anything while no note is open", () => {
+    setup({ activeEntry: null });
+    expect(screen.getByRole("button", { name: "Delete Note" })).toBeDisabled();
   });
 
   it("walks through adding a new note: name it, pick a type, create it", async () => {

@@ -21,7 +21,9 @@ Approved on 2026-09-20 and shipped so far:
 | A6 LICENSE and repo link | **Done.** MIT, declared in `package.json`, linked from a new site footer. | `cf6c593` |
 | A1 dead controls | **Done.** Inert buttons and `href="#"` links removed or pointed somewhere real. | `37b9af4` |
 | A4 export/import | **Done.** Dated JSON backup of notes, media and calendar, restored through a Zod-validated schema, driven from a new settings page. | `7902ae4` |
-| A2 data model | Next, and the largest. Needs `NOTES_DB_VERSION` 2 to 3. | |
+| A2 data model, step 1: stable note ids | **Done.** Notes carry a UUID instead of an id built from their path, so a course can be renamed. Adds a `deletedAt` tombstone. `NOTES_DB_VERSION` 2 to 3, rewriting no rows. | `7fd9346` |
+| A2 data model, step 2: delete a note | **Done.** Deletes the note that is open, behind a confirmation, from the notes path bar. Tombstones the entry and drops the document and its media. | this commit |
+| A2 data model, the rest | Next, and the largest part: Wing/Flight/Branch as real records with rename, Twigs, Pebbles, real wings, calendar events pointing at a Branch. | |
 | Notifications, drag and drop, kanban | After A2. | |
 | A3 PWA | After that. | |
 | Crypto seam, then the app lock | Separate version bump, last of the storage work. Confirmed: on by default, no reset. | |
@@ -35,6 +37,21 @@ Two decisions taken while building the above, both worth knowing:
 - **The encrypted export waits for the cipher.** The backup is plaintext today. The
   plaintext-or-encrypted choice at export time arrives with the crypto seam, since it needs the
   same code.
+- **Backups carry tombstones.** Deleted notes travel in the export file as markers with no content.
+  Dropping them would mean a restore could not tell a note that was deleted from one that never
+  existed, so under any future merge-style restore every deletion since the backup would come back.
+
+Two things found while building the delete, both logged in CLAUDE.md section 13 rather than fixed
+here:
+
+- **A second file viewer exists and nothing renders it.** `NotesFileViewer` and the five modules
+  under it are around 400 lines with their own tests, and have had no render path since they were
+  written. The delete went into the path bar instead, which is the only notes chrome the page
+  actually shows. This is the same class of problem as A1, found in components rather than controls.
+- **Shared images are deleted with the note that referenced them.** Excalidraw derives an image's id
+  from its contents, so the same picture dropped into two notes is one stored row. Deleting either
+  note removes it. The save path has had this gap since it was written; closing it needs a reference
+  count across documents.
 
 ## How this file is organised
 

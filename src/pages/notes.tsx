@@ -14,14 +14,21 @@ export function NotesPage() {
   const workspace = useNotesWorkspace();
   const picker = useNotesLocationPicker(workspace);
 
+  const activeEntry =
+    workspace.directoryEntries.find((entry) => entry.id === workspace.activeDocumentId) ?? null;
+
   return (
     <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
       <div className="mx-auto max-w-8xl px-4 py-6 sm:px-6 lg:px-8">
         <NotesLocationBar
           picker={picker}
           autoSaveLabel={getAutoSaveLabel(workspace)}
+          activeEntry={activeEntry}
           isStorageReady={workspace.isStorageReady}
           isHydratingDocument={workspace.isHydratingDocument}
+          onDeleteDocument={(documentId) => {
+            void workspace.deleteDocument(documentId);
+          }}
         />
 
         <div className="min-w-0">
