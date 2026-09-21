@@ -1,13 +1,16 @@
 import { BackupCard } from "@/components/settings/backup-card";
+import { LockCard } from "@/components/settings/lock-card";
 import { useWorkspaceBackup } from "@/components/settings/use-workspace-backup";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { useThemeMode } from "@/hooks/use-theme-mode";
+import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
 
 export function SettingsPage() {
   const { isDark, toggleTheme } = useThemeMode();
   const { status, needsPassphrase, exportWorkspace, importWorkspace, unlockImport, cancelImport } =
     useWorkspaceBackup();
+  const lock = useWorkspaceLock();
 
   return (
     <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
@@ -20,6 +23,15 @@ export function SettingsPage() {
         </div>
 
         <div className="grid gap-6">
+          <LockCard
+            state={lock.state}
+            error={lock.error}
+            isWorking={lock.isWorking}
+            onCreate={(passphrase) => void lock.create(passphrase)}
+            onRemove={(passphrase) => void lock.remove(passphrase)}
+            onLock={() => void lock.lock()}
+          />
+
           <BackupCard
             status={status}
             needsPassphrase={needsPassphrase}
@@ -34,8 +46,8 @@ export function SettingsPage() {
               <CardTitle>Account</CardTitle>
               <CardDescription>
                 There is no account yet. Cuervo Planner has no server, so nothing you write is
-                uploaded and there is nothing to sign in to. Accounts, sync and a passphrase lock
-                are planned.
+                uploaded and there is nothing to sign in to. The workspace lock above is a lock on
+                this browser, not an account. Accounts and sync are planned.
               </CardDescription>
             </CardHeader>
             <CardContent>

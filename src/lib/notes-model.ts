@@ -68,6 +68,11 @@ export type NotesMediaRecord = {
   mimeType: string;
   created: number;
   updatedAt: number;
+  /**
+   * Which cipher wrote `blob`. When it is not "none" the blob holds ciphertext and
+   * `mimeType` is what it will be once opened, not what the blob itself contains.
+   */
+  encryption?: CipherName;
 };
 
 export type LoadedSceneFile = {

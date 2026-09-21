@@ -21,7 +21,9 @@ export const POLICY_SECTIONS: PolicySection[] = [
     icon: HardDrive,
     items: [
       "Your notes are stored in this browser's IndexedDB, and your calendar events in its local storage. Both stay on this device.",
-      "Notes are compressed to save space. They are not encrypted, so anyone who can open this browser profile can read them.",
+      "Until you set a passphrase, notes are compressed but not encrypted, so anyone who can open this browser profile can read them.",
+      "Set one in Settings and the text of every note, the drawings and the files are encrypted with AES-GCM under a key derived from it. Note titles, course names and due dates stay readable.",
+      "Nothing can reset that passphrase: there is no account and no server. Forget it and the notes cannot be recovered.",
       "Clearing your browser's site data deletes everything, and there is no copy anywhere else.",
     ],
   },
@@ -38,7 +40,7 @@ export const POLICY_SECTIONS: PolicySection[] = [
     title: "What is not built yet",
     icon: Map,
     items: [
-      "Accounts, sync between devices, encryption at rest, and sharing are on the roadmap and are not implemented today.",
+      "Accounts, sync between devices and sharing are on the roadmap and are not implemented today.",
       "Until they exist, no part of this app can promise them, whatever a feature list elsewhere might suggest.",
       "This page will be rewritten before any of them ship. The planned order is on the documentation page.",
     ],
@@ -59,8 +61,8 @@ export const PLAIN_LANGUAGE_STEPS: BreakdownStep[] = [
   },
   {
     step: "2",
-    title: "It is not locked",
-    copy: "Your notes are compressed, not encrypted. Anyone who can open this browser profile can read them.",
+    title: "You can lock it",
+    copy: "Without a passphrase your notes are compressed, not encrypted, and anyone who can open this browser profile can read them. Set one and the content is encrypted on this device.",
   },
   {
     step: "3",

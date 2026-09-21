@@ -22,7 +22,7 @@ export function PrivacyPage() {
           <p className="mt-3 text-sm text-muted-foreground">Last updated: September 20, 2026</p>
         </div>
 
-        <PlainLanguageBreakdown intro="Short version: everything stays in this browser, nothing is encrypted, and it is the only copy." />
+        <PlainLanguageBreakdown intro="Short version: everything stays in this browser, it is encrypted only if you set a passphrase, and it is the only copy." />
 
         <div className="grid gap-5 md:grid-cols-2">
           {POLICY_SECTIONS.map((section) => (

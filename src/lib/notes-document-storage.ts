@@ -53,7 +53,23 @@ export async function loadNotesDocument(
       continue;
     }
 
-    const dataUrl = await blobToDataUrl(mediaRecord.blob);
+    // Only a sealed blob is read back as bytes. Leaving the plaintext path alone keeps it
+    // a straight blob-to-data-URL, which is both less work and what the stored Blob can
+    // always do, sealed or not.
+    const sealedWith = mediaRecord.encryption ?? "none";
+    const blob =
+      sealedWith === "none"
+        ? mediaRecord.blob
+        : new Blob(
+            [
+              Uint8Array.from(
+                await decryptWith(new Uint8Array(await mediaRecord.blob.arrayBuffer()), sealedWith),
+              ),
+            ],
+            { type: mediaRecord.mimeType },
+          );
+
+    const dataUrl = await blobToDataUrl(blob);
 
     sceneFiles[fileRef.id] = {
       id: fileRef.id,
@@ -127,6 +143,17 @@ export async function saveSpatialDocumentPayload({
   // with TransactionInactiveError in a real browser.
   const cipher = getActiveCipher();
   const sealed = await cipher.encrypt(compressed);
+  const sealedFiles = await Promise.all(
+    files.map(async (file) => ({
+      ...file,
+      blob:
+        cipher.name === "none"
+          ? file.blob
+          : new Blob([
+              Uint8Array.from(await cipher.encrypt(new Uint8Array(await file.blob.arrayBuffer()))),
+            ]),
+    })),
+  );
   const transaction = database.transaction(["notes-documents", "notes-media"], "readwrite");
 
   const documentStore = transaction.objectStore("notes-documents");
@@ -143,13 +170,14 @@ export async function saveSpatialDocumentPayload({
 
   const nextSceneFiles: SceneFileRef[] = [];
 
-  for (const file of files) {
+  for (const file of sealedFiles) {
     await mediaStore.put({
       id: file.id,
       blob: file.blob,
       mimeType: file.mimeType,
       created: file.created,
       updatedAt: Date.now(),
+      encryption: cipher.name,
     });
 
     nextSceneFiles.push({

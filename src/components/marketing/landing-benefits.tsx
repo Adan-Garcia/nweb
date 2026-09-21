@@ -47,9 +47,8 @@ const BENEFITS: Benefit[] = [
   },
   {
     icon: LockKeyhole,
-    title: "Device level encryption",
-    copy: "Lock your notes on this device behind a passphrase.",
-    comingSoon: true,
+    title: "Lock it on this device",
+    copy: "Set a passphrase and your notes, drawings and files are encrypted in this browser. Titles stay readable.",
   },
   {
     icon: RefreshCw,

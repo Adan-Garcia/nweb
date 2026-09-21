@@ -1,7 +1,9 @@
 import * as React from "react";
 
+import { LockScreen } from "@/components/lock-screen";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { WorkspaceSidebar } from "@/components/workspace-sidebar";
+import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
 
 type WorkspaceShellProps = {
   children: React.ReactNode;
@@ -10,6 +12,18 @@ type WorkspaceShellProps = {
 };
 
 export function WorkspaceShell({ children, isDark, onToggleTheme }: WorkspaceShellProps) {
+  const lock = useWorkspaceLock();
+
+  if (lock.state === "locked") {
+    return (
+      <LockScreen
+        error={lock.error}
+        isWorking={lock.isWorking}
+        onUnlock={(passphrase) => void lock.unlock(passphrase)}
+      />
+    );
+  }
+
   return (
     <SidebarProvider>
       <WorkspaceSidebar isDark={isDark} onToggleTheme={onToggleTheme} />

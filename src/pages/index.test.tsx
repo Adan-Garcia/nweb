@@ -36,7 +36,7 @@ describe("IndexPage", () => {
       "Free Beta",
       "Works in any browser",
       "Offline first",
-      "Device level encryption",
+      "Lock it on this device",
       "Fast syncing",
       "Easy sharing",
     ]) {
@@ -58,10 +58,20 @@ describe("IndexPage", () => {
     render(<IndexPage />);
     const benefits = screen.getByLabelText("Features and benefits of using Cuervo Planner");
 
-    expect(within(benefits).getAllByText("Coming soon")).toHaveLength(3);
-    for (const title of ["Device level encryption", "Fast syncing", "Easy sharing"]) {
+    expect(within(benefits).getAllByText("Coming soon")).toHaveLength(2);
+    for (const title of ["Fast syncing", "Easy sharing"]) {
       expect(within(benefits).getByText(title).textContent).toContain("Coming soon");
     }
+  });
+
+  it("no longer calls the lock coming soon, and does not oversell it either", () => {
+    render(<IndexPage />);
+    const benefits = screen.getByLabelText("Features and benefits of using Cuervo Planner");
+
+    const lock = within(benefits).getByText("Lock it on this device");
+    expect(lock.textContent).not.toContain("Coming soon");
+    // The old wording promised more than a browser can give.
+    expect(benefits.textContent).not.toMatch(/Device level encryption/i);
   });
 
   it("has the same links in the desktop nav and the mobile menu, including the calendar", () => {

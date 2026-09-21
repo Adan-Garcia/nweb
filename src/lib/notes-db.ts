@@ -5,6 +5,7 @@ import { migrateStringPathsToEntities } from "./notes-db-upgrade";
 import type { NotesDirectoryEntry, NotesDocumentRecord, NotesMediaRecord } from "./notes-model";
 import type { Pebble } from "./pebble-model";
 import type { Twig } from "./twig-model";
+import type { WorkspaceLockRecord } from "./workspace-lock-model";
 
 const NOTES_DB_NAME = "cuervo-notes";
 
@@ -18,8 +19,11 @@ const NOTES_DB_NAME = "cuervo-notes";
  * carries its nests as tags instead of repeating five strings. Calendar events moved out
  * of `localStorage` and became twigs. Unlike 3, this one does rewrite rows, so the
  * migration runs inside the upgrade transaction and is all-or-nothing.
+ *
+ * 5 added `workspace-keys`, which holds the KDF parameters and the verifier for the app
+ * lock. One row, and no content: losing it costs the passphrase, not the notes.
  */
-export const NOTES_DB_VERSION = 4;
+export const NOTES_DB_VERSION = 5;
 
 export interface NotesDbSchema extends DBSchema {
   "notes-documents": {
@@ -58,6 +62,10 @@ export interface NotesDbSchema extends DBSchema {
     key: string;
     value: Pebble;
   };
+  "workspace-keys": {
+    key: string;
+    value: WorkspaceLockRecord;
+  };
 }
 
 const STORE_NAMES = [
@@ -70,6 +78,7 @@ const STORE_NAMES = [
   "nests",
   "twigs",
   "pebbles",
+  "workspace-keys",
 ] as const;
 
 let dbPromise: Promise<IDBPDatabase<NotesDbSchema>> | null = null;

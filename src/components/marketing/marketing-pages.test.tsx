@@ -125,10 +125,16 @@ describe("PrivacyPage", () => {
     expect(screen.getAllByRole("list")).toHaveLength(4);
   });
 
-  it("says plainly that nothing is encrypted and nothing is collected", () => {
+  it("says what the lock does and does not cover, without overselling it", () => {
     const { container } = render(<PrivacyPage />);
+
+    // Plain about the default: no passphrase means no encryption.
     expect(container.textContent).toMatch(/not encrypted/i);
-    expect(container.textContent).not.toMatch(/AES-GCM|key exchange|row-level/i);
+    // And plain about the limit of the lock, now that there is one.
+    expect(container.textContent).toMatch(/titles, course names and due dates stay readable/i);
+    expect(container.textContent).toMatch(/cannot be recovered/i);
+    // Still nothing about the things that would need a server.
+    expect(container.textContent).not.toMatch(/key exchange|row-level|zero-knowledge/i);
   });
 
   it("explains local-first storage in three plain steps", () => {
