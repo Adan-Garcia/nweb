@@ -26,7 +26,7 @@ Approved on 2026-09-20 and shipped so far:
 | A2 data model, the rest | **Done.** Wings, flights, branches and nests are records with UUIDs, timestamps and tombstones, and rename/recolour/cascading-delete storage. Notes point at a branch and carry nests as tags. Twigs replaced calendar events and moved into IndexedDB. Pebbles list files as their own entity. `NOTES_DB_VERSION` 3 to 4, converting every string path and every stored event in one transaction; backup format 1 to 2, still restoring a version 1 file. | this commit |
 | Notifications (in-app) | **Done.** A bell in the sidebar lists what is overdue, due today and due in the next week, computed from the twigs, with a count badge for the first two. Push and email still need a server (Part C). | this commit |
 | A5 drag and drop, kanban | **Done.** A board at `/board` with a column per status; cards drag between and within columns, by pointer or by keyboard. On the calendar, a task drags onto another day to reschedule it. `@dnd-kit` is finally doing the job it was installed for. | this commit |
-| A3 PWA | After that. | |
+| A3 PWA | **Done.** A manifest with real icons, and a hand-written service worker, so the app installs and starts with no network. No new dependency. | this commit |
 | Crypto seam, then the app lock | Separate version bump, last of the storage work. Confirmed: on by default, no reset. | |
 | WASM Brotli | Last, alone, because of the dependency gauntlet in CLAUDE.md section 9. | |
 
@@ -178,13 +178,18 @@ a second migration, and sync (B2) cannot merge or delete safely without them. No
 
 | Feature | Claimed at | Status |
 | --- | --- | --- |
-| PWA: manifest, offline asset caching | `Todo.md` section 5 | **Absent.** `public/` has only icons; no manifest, no service worker, no `vite-plugin-pwa`. Not installable, and a cold start with no network fails. |
-| Offline first | `landing-benefits.tsx:49-50` | **Partial.** Once loaded, the app has no network dependency. The "will sync once you're back online" half needs B2. |
+| PWA: manifest, offline asset caching | `Todo.md` section 5 | **Done.** `public/manifest.webmanifest` plus 192/512/maskable icons, and `public/sw.js`. Installable, and a cold start with no network works for everything already visited. Written by hand rather than with `vite-plugin-pwa`, so it adds no dependency and no build step. |
+| Offline first | `landing-benefits.tsx:49-50` | **Partial, and now mostly true.** The app installs, and starts and runs with no network. The "will sync once you're back online" half still needs B2. |
 | Tauri desktop wrapper | `Todo.md` section 5 | **Absent.** Needs the Rust toolchain; no server. |
 | Cross platform (opens on any device) | `landing-benefits.tsx:44-45`, `pricing-tiers.ts:19` | **Partial.** The web app opens in any browser, and a PWA would make it installable on phone and desktop. "Seamlessly, on all your devices" means sync and is B2. |
 
 A PWA makes "offline first" and "installable on every platform" true with no server. It does not make
 your data follow you between devices.
+
+**Shipped, with one limit worth knowing:** the service worker caches what it serves, and it is not
+controlling the page that registered it, so a route whose chunk has never been fetched under the
+worker is not cached and opening it for the first time while offline still fails. From the second
+visit on, everything the user touches works offline.
 
 ## A4. Data safety
 
@@ -306,7 +311,7 @@ The detail lives in the part named in the last column; this table only says whic
 | Brotli compression | A | A4 |
 | Files (PDFs, images) | A | A2 (Pebbles) |
 | Calendar and dashboard as part of the planner | A | A2 |
-| Cross platform | A + B | A3 (installable), B2 (data follows you) |
+| Cross platform | A + B | A3 (installable — done), B2 (data follows you) |
 
 ---
 

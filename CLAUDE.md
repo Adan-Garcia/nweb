@@ -139,7 +139,8 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
     *   Also validate: data read from IndexedDB/`localStorage`, worker messages, imported files.
 *   **XSS / code execution:** no `dangerouslySetInnerHTML`, `eval`, or `new Function`. Rich text goes through TipTap's schema. `[REQUIRED]` (`grep -rnE 'dangerouslySetInnerHTML|\beval\(|new Function' src` → nothing.)
 *   **Secrets:** never commit secrets. Anything in `import.meta.env.VITE_*` is public in the bundle; do not put credentials there.
-*   **Vite assets:** import static assets (images, SVGs) through Vite's module system; do not reference `public/` paths directly from components.
+*   **Vite assets:** import static assets (images, SVGs) through Vite's module system; do not reference `public/` paths directly from components. The exception is what the browser fetches by URL rather than the bundler: `manifest.webmanifest`, `sw.js` and the PWA icons live in `public/` and are referenced from `index.html`.
+*   **The service worker (`public/sw.js`) is hand-written and takes no build step.** `[REQUIRED]` It needs no precache manifest because everything under `/assets/` is content-hashed (cached forever, served cache-first) while the HTML document is not (network-first, so a deploy is picked up). Do not add `vite-plugin-pwa` to replace it without a reason; it would be a new dependency for something that already works. Registration goes through `lib/service-worker.ts`, production only — in dev a cache would serve yesterday's modules back after an edit.
 *   **Bundle weight:** every route except the landing page is loaded on demand through `lazyPage()` in `App.tsx`, which kept the entry chunk at ~230 kB instead of ~2.1 MB. New pages must be added the same way; do not import a page eagerly into `App.tsx`. `[REQUIRED]`
 *   **Untrusted files:** user-supplied PDFs/images are untrusted input; process them in the worker where possible.
 
