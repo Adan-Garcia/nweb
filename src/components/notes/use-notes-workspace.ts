@@ -29,6 +29,7 @@ import {
 
 export function useNotesWorkspace() {
   const { mediaWorker, refs } = useNotesSession();
+  const { activeDocumentIdRef } = refs;
 
   const [mode, setMode] = useState<NotesMode>("linear");
   const [isStorageReady, setIsStorageReady] = useState(false);
@@ -45,6 +46,19 @@ export function useNotesWorkspace() {
 
   const markSaved = useCallback(() => setLastSavedAt(Date.now()), []);
   const markStorageReady = useCallback(() => setIsStorageReady(true), []);
+
+  /**
+   * Sets the open note in both the state the UI renders and the ref queued work reads.
+   * They are written together, synchronously, so an operation that starts after a switch
+   * cannot still see the note that was open when it was queued.
+   */
+  const applyActiveDocumentId = useCallback(
+    (documentId: string | null) => {
+      activeDocumentIdRef.current = documentId;
+      setActiveDocumentId(documentId);
+    },
+    [activeDocumentIdRef],
+  );
 
   const runInDocumentSwitchQueue = useDocumentSwitchQueue();
   const { optimizedAssetCount, handleSpatialPaste } = useNotesImageIngest({
@@ -120,10 +134,10 @@ export function useNotesWorkspace() {
       setActiveLocation(toLocation(entry));
       setSelectedCreatedMode(entry.createdMode);
       setMode(entry.createdMode);
-      setActiveDocumentId(entry.id);
+      applyActiveDocumentId(entry.id);
       await hydrateDocument(entry.id, entry.createdMode);
     },
-    [hydrateDocument],
+    [applyActiveDocumentId, hydrateDocument],
   );
 
   const openDocumentById = useCallback(
@@ -142,11 +156,12 @@ export function useNotesWorkspace() {
           return;
         }
 
-        setActiveDocumentId(documentId);
+        applyActiveDocumentId(documentId);
         await hydrateDocument(documentId);
       });
     },
     [
+      applyActiveDocumentId,
       directoryEntries,
       hydrateDocument,
       openEntry,
@@ -175,7 +190,7 @@ export function useNotesWorkspace() {
         const nextEntries = await refreshDirectoryEntries();
         const createdEntry = nextEntries.find((candidate) => candidate.id === entry.id);
 
-        setActiveDocumentId(entry.id);
+        applyActiveDocumentId(entry.id);
         setActiveLocation(createdEntry ? toLocation(createdEntry) : normalizedLocation);
         setSelectedCreatedMode(createdEntry?.createdMode ?? targetMode);
         setMode(createdEntry?.createdMode ?? targetMode);
@@ -183,6 +198,7 @@ export function useNotesWorkspace() {
       });
     },
     [
+      applyActiveDocumentId,
       hydrateDocument,
       mode,
       persistActiveDocumentBeforeSwitch,
@@ -194,17 +210,16 @@ export function useNotesWorkspace() {
   const applyInitialEntries = useCallback(
     (entries: NotesDirectoryEntry[], initialEntry: NotesDirectoryEntry) => {
       setDirectoryEntries(entries);
-      setActiveDocumentId(initialEntry.id);
+      applyActiveDocumentId(initialEntry.id);
       setSelectedCreatedMode(initialEntry.createdMode);
       setActiveLocation(toLocation(initialEntry));
       setMode(initialEntry.createdMode);
     },
-    [],
+    [applyActiveDocumentId],
   );
 
   const { deleteDocument } = useNotesDelete({
     refs,
-    activeDocumentId,
     clearPendingLinearEdit,
     refreshDirectoryEntries,
     openEntry,

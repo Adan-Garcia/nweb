@@ -529,7 +529,9 @@ describe("useNotesWorkspace: deleting a note", () => {
     act(() => result.current.setLinearContent("<p>typed a moment before deleting</p>"));
 
     // Storage slower than the 700ms autosave debounce, which is the window where a timer
-    // armed before the delete fires after the row is already gone and writes it back.
+    // armed before the delete fires after the row is already gone and writes it back. The
+    // empty result is the true one: this is the only note, so the refresh after the delete
+    // really does find nothing. Copying this into a test with a second note would lie.
     spies.listEntries.mockImplementationOnce(async () => {
       await new Promise((resolve) => setTimeout(resolve, 900));
       return [];
@@ -550,8 +552,9 @@ describe("useNotesWorkspace: deleting a note", () => {
     sceneVersion = 7;
     act(() => result.current.handleSpatialChange([], appState, {}));
 
-    // Same window, against the 500ms canvas debounce. That timer persists a snapshot it
-    // captured up front and re-checks nothing, so only cancelling it stops the write.
+    // Same window and the same truthful empty result, against the 500ms canvas debounce.
+    // That timer persists a snapshot it captured up front and re-checks nothing, so only
+    // cancelling it stops the write.
     spies.listEntries.mockImplementationOnce(async () => {
       await new Promise((resolve) => setTimeout(resolve, 900));
       return [];
@@ -563,5 +566,32 @@ describe("useNotesWorkspace: deleting a note", () => {
 
     expect(spies.saveSpatial).not.toHaveBeenCalled();
     expect(await documents.loadNotesDocument(doomedId)).toBeNull();
+  });
+});
+
+describe("useNotesWorkspace: deleting while a switch is queued", () => {
+  it("still leaves a live note open when the deleted one was opened by a queued switch", async () => {
+    const { result } = await mountReady();
+    const firstId = result.current.activeDocumentId ?? "";
+    await act(async () => {
+      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+    });
+    const secondId = result.current.activeDocumentId ?? "";
+    await act(async () => {
+      await result.current.openDocumentById(firstId);
+    });
+
+    // Both calls are made from the same render, so both see the first note as the open
+    // one. The switch runs first and makes the second note active; the delete then runs
+    // against a note that has become the open one since it was asked for.
+    await act(async () => {
+      await Promise.all([
+        result.current.openDocumentById(secondId),
+        result.current.deleteDocument(secondId),
+      ]);
+    });
+
+    expect(result.current.directoryEntries.map((entry) => entry.id)).toEqual([firstId]);
+    expect(result.current.activeDocumentId).toBe(firstId);
   });
 });

@@ -23,9 +23,13 @@ export function useNotesSession() {
   const pendingSpatialSceneVersionRef = useRef<number | null>(null);
   const activeObjectUrlsRef = useRef<string[]>([]);
   const loadRequestRef = useRef(0);
+  // Mirrors the open note for work that runs from a queue: by the time a queued operation
+  // starts, the note that was open when it was asked for may not be the open one any more.
+  const activeDocumentIdRef = useRef<string | null>(null);
 
   const refs = useMemo(
     () => ({
+      activeDocumentIdRef,
       spatialHostRef,
       linearSaveTimeoutRef,
       spatialSaveTimeoutRef,
@@ -38,6 +42,7 @@ export function useNotesSession() {
       loadRequestRef,
     }),
     [
+      activeDocumentIdRef,
       spatialHostRef,
       linearSaveTimeoutRef,
       spatialSaveTimeoutRef,

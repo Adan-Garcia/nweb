@@ -9,7 +9,6 @@ import { createNotesDirectoryEntry } from "@/lib/notes-directory-storage";
 
 type UseNotesDeleteOptions = {
   refs: NotesSessionRefs;
-  activeDocumentId: string | null;
   clearPendingLinearEdit: () => void;
   refreshDirectoryEntries: () => Promise<NotesDirectoryEntry[]>;
   openEntry: (entry: NotesDirectoryEntry) => Promise<void>;
@@ -19,13 +18,13 @@ type UseNotesDeleteOptions = {
 /** Deletes a note and decides what the editor shows afterwards. */
 export function useNotesDelete({
   refs,
-  activeDocumentId,
   clearPendingLinearEdit,
   refreshDirectoryEntries,
   openEntry,
   runInDocumentSwitchQueue,
 }: UseNotesDeleteOptions) {
   const {
+    activeDocumentIdRef,
     latestSpatialSnapshotRef,
     linearSaveTimeoutRef,
     pendingSpatialSceneVersionRef,
@@ -68,9 +67,13 @@ export function useNotesDelete({
         return;
       }
 
-      const wasActive = documentId === activeDocumentId;
-
       await runInDocumentSwitchQueue("deleteDocument", async () => {
+        // Read here, not when the delete was asked for: a switch queued ahead of this one
+        // may have opened or left this very note in the meantime, and getting it wrong
+        // either leaves the editor pointing at a note that no longer exists or lets the
+        // open note's autosave write a deleted row back.
+        const wasActive = documentId === activeDocumentIdRef.current;
+
         if (wasActive) {
           cancelPendingWrites();
         }
@@ -101,7 +104,7 @@ export function useNotesDelete({
       });
     },
     [
-      activeDocumentId,
+      activeDocumentIdRef,
       cancelPendingWrites,
       openEntry,
       refreshDirectoryEntries,
