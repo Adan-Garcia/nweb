@@ -6,7 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { resetActiveCipher } from "@/lib/cipher";
 import { getNotesDb } from "@/lib/notes-db";
-import { createWorkspaceLock, lockWorkspace } from "@/lib/workspace-lock";
+import { lockWorkspace } from "@/lib/workspace-lock";
+import { createWorkspaceLock } from "@/lib/workspace-passphrase";
 
 import { LockScreen } from "./lock-screen";
 

@@ -9,7 +9,7 @@ import {
   type ParsedBackupFile,
   parseWorkspaceBackup,
 } from "@/lib/workspace-backup";
-import { restoreWorkspaceBackup } from "@/lib/workspace-restore";
+import { type RestoreMode, restoreWorkspaceBackup } from "@/lib/workspace-restore";
 
 export type BackupStatus =
   | { kind: "idle" }
@@ -28,6 +28,7 @@ export function useWorkspaceBackup() {
   const [status, setStatus] = useState<BackupStatus>({ kind: "idle" });
   /** Set when a file turns out to be encrypted, so the UI can ask for the passphrase. */
   const [pendingEncrypted, setPendingEncrypted] = useState<EncryptedEnvelope | null>(null);
+  const [restoreMode, setRestoreMode] = useState<RestoreMode>("replace");
 
   const exportWorkspace = useCallback(async (passphrase?: string) => {
     setStatus({ kind: "working" });
@@ -55,34 +56,38 @@ export function useWorkspaceBackup() {
   }, []);
 
   /** Shared by a plaintext file and by one that has just been decrypted. */
-  const applyParsed = useCallback(async (parsed: ParsedBackupFile) => {
-    if ("error" in parsed) {
-      setStatus({ kind: "error", message: parsed.error });
-      return;
-    }
+  const applyParsed = useCallback(
+    async (parsed: ParsedBackupFile) => {
+      if ("error" in parsed) {
+        setStatus({ kind: "error", message: parsed.error });
+        return;
+      }
 
-    if ("encrypted" in parsed) {
-      setPendingEncrypted(parsed.encrypted);
-      setStatus({ kind: "idle" });
-      return;
-    }
+      if ("encrypted" in parsed) {
+        setPendingEncrypted(parsed.encrypted);
+        setStatus({ kind: "idle" });
+        return;
+      }
 
-    try {
-      const summary = await restoreWorkspaceBackup(parsed.backup);
+      try {
+        const summary = await restoreWorkspaceBackup(parsed.backup, restoreMode);
+        const verb = restoreMode === "merge" ? "Merged" : "Restored";
 
-      setPendingEncrypted(null);
-      setStatus({
-        kind: "done",
-        message: `Restored ${summary.notes} notes and ${summary.events} tasks. Reload to see them.`,
-      });
-    } catch {
-      setStatus({
-        kind: "error",
-        message:
-          "Could not write the backup to this browser. Your existing data may be incomplete.",
-      });
-    }
-  }, []);
+        setPendingEncrypted(null);
+        setStatus({
+          kind: "done",
+          message: `${verb} ${summary.notes} notes and ${summary.events} tasks. Reload to see them.`,
+        });
+      } catch {
+        setStatus({
+          kind: "error",
+          message:
+            "Could not write the backup to this browser. Your existing data may be incomplete.",
+        });
+      }
+    },
+    [restoreMode],
+  );
 
   const importWorkspace = useCallback(
     async (file: File) => {
@@ -123,6 +128,8 @@ export function useWorkspaceBackup() {
   return {
     status,
     needsPassphrase: pendingEncrypted !== null,
+    restoreMode,
+    chooseRestoreMode: setRestoreMode,
     exportWorkspace,
     importWorkspace,
     unlockImport,

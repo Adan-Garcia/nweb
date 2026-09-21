@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resetActiveCipher } from "@/lib/cipher";
 import { getNotesDb } from "@/lib/notes-db";
-import { createWorkspaceLock, unlockWorkspace } from "@/lib/workspace-lock";
+import { unlockWorkspace } from "@/lib/workspace-lock";
+import { createWorkspaceLock } from "@/lib/workspace-passphrase";
 
 import { SettingsPage } from "./settings";
 
@@ -184,6 +185,47 @@ describe("SettingsPage", () => {
       expect(await unlockWorkspace("battery staple")).toBe(true);
     });
     expect(await unlockWorkspace("correct horse")).toBe(false);
+  });
+
+  it("locks and removes the passphrase from the card", async () => {
+    await createWorkspaceLock("correct horse");
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Remove the passphrase" }));
+    await userEvent.type(screen.getByLabelText("Confirm the passphrase"), "correct horse");
+    await userEvent.click(screen.getByRole("button", { name: "Remove and decrypt" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Set a passphrase" })).toBeInTheDocument();
+    });
+  });
+
+  it("merges a backup instead of replacing when that is what was chosen", async () => {
+    const database = await getNotesDb();
+    await database.put("notes-directory", { ...ENTRY, feather: "Written here", updatedAt: 99 });
+    renderPage();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Merge with what is here/ }));
+
+    const backup = {
+      format: "cuervo-planner-backup",
+      version: 2,
+      exportedAt: "2026-09-20T00:00:00.000Z",
+      notes: { directory: [ENTRY], documents: [], media: [] },
+      workspace: { wings: [], flights: [], branches: [], nests: [] },
+      twigs: [],
+      pebbles: [],
+      calendar: [],
+    };
+
+    await userEvent.upload(
+      screen.getByLabelText("Backup file"),
+      new File([JSON.stringify(backup)], "backup.json", { type: "application/json" }),
+    );
+
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Merged"));
+    // The copy here is newer, so the file did not overwrite it.
+    expect((await database.get("notes-directory", ENTRY.id))?.feather).toBe("Written here");
   });
 
   it("reports a file it cannot read as text", async () => {

@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { LockScreen } from "@/components/lock-screen";
+import { RekeyResumeScreen } from "@/components/rekey-resume-screen";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { WorkspaceSidebar } from "@/components/workspace-sidebar";
 import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
@@ -16,16 +17,33 @@ export function WorkspaceShell({ children, isDark, onToggleTheme }: WorkspaceShe
   const lock = useWorkspaceLock();
 
   /**
-   * Housekeeping, once a load: tombstones past the retention window are dropped. It runs
-   * here rather than at startup because the workspace is what has them, and only after
-   * the lock is open — a sweep reads no names, but there is no reason for it to race the
-   * unlock either.
+   * Housekeeping, once a load: tombstones past the retention window are dropped.
+   *
+   * Only when the workspace is actually usable. A locked one has nothing to sweep for yet,
+   * and a half-rekeyed one is being walked row by row by the resume — deleting rows out
+   * from under that is a race with nothing to gain.
    */
+  const isUsable = lock.state === "unlocked" || lock.state === "unset";
+
   React.useEffect(() => {
-    if (lock.state !== "locked") {
+    if (isUsable) {
       void collectTombstonesOnce();
     }
-  }, [lock.state]);
+  }, [isUsable]);
+
+  // Checked before the lock screen: a half-converted workspace cannot be unlocked, only
+  // finished, and offering a passphrase box that cannot work would be a dead end.
+  if (lock.state === "interrupted") {
+    return (
+      <RekeyResumeScreen
+        needed={lock.needed}
+        error={lock.error}
+        isWorking={lock.isWorking}
+        progress={lock.progress}
+        onResume={(passphrases) => void lock.resume(passphrases)}
+      />
+    );
+  }
 
   if (lock.state === "locked") {
     return (

@@ -9,6 +9,7 @@ function setup(overrides: Partial<Parameters<typeof LockCard>[0]> = {}) {
     state: "unset" as const,
     error: null,
     isWorking: false,
+    progress: null,
     onCreate: vi.fn(),
     onChange: vi.fn(),
     onRemove: vi.fn(),

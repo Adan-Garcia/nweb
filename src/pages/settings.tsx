@@ -10,8 +10,7 @@ import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
 
 export function SettingsPage() {
   const { isDark, toggleTheme } = useThemeMode();
-  const { status, needsPassphrase, exportWorkspace, importWorkspace, unlockImport, cancelImport } =
-    useWorkspaceBackup();
+  const backup = useWorkspaceBackup();
   const lock = useWorkspaceLock();
   const editor = useWorkspaceEditor();
 
@@ -30,6 +29,7 @@ export function SettingsPage() {
             state={lock.state}
             error={lock.error}
             isWorking={lock.isWorking}
+            progress={lock.progress}
             onCreate={(passphrase) => void lock.create(passphrase)}
             onChange={(current, next) => void lock.change(current, next)}
             onRemove={(passphrase) => void lock.remove(passphrase)}
@@ -39,12 +39,14 @@ export function SettingsPage() {
           <WorkspaceEditorCard {...editor} />
 
           <BackupCard
-            status={status}
-            needsPassphrase={needsPassphrase}
-            onExport={(passphrase) => void exportWorkspace(passphrase)}
-            onImport={(file) => void importWorkspace(file)}
-            onUnlock={(passphrase) => void unlockImport(passphrase)}
-            onCancelUnlock={cancelImport}
+            status={backup.status}
+            needsPassphrase={backup.needsPassphrase}
+            restoreMode={backup.restoreMode}
+            onChooseRestoreMode={backup.chooseRestoreMode}
+            onExport={(passphrase) => void backup.exportWorkspace(passphrase)}
+            onImport={(file) => void backup.importWorkspace(file)}
+            onUnlock={(passphrase) => void backup.unlockImport(passphrase)}
+            onCancelUnlock={backup.cancelImport}
           />
 
           <Card>

@@ -18,7 +18,7 @@ import {
   type ParsedBackupFile,
   parseWorkspaceBackup,
 } from "./workspace-backup";
-import { createWorkspaceLock } from "./workspace-lock";
+import { createWorkspaceLock } from "./workspace-passphrase";
 import { restoreWorkspaceBackup } from "./workspace-restore";
 import { loadWorkspaceSnapshot } from "./workspace-storage";
 
@@ -494,5 +494,98 @@ describe("a backup and the workspace lock", () => {
         },
       }),
     ).rejects.toThrow(/not unlocked/);
+  });
+});
+
+describe("a merge-style restore", () => {
+  /** The same note, changed here after the backup was taken. */
+  async function editEntryHere(feather: string, updatedAt: number) {
+    const database = await getNotesDb();
+    await database.put("notes-directory", { ...ENTRY, feather, updatedAt });
+  }
+
+  it("keeps the newer of the two, note by note", async () => {
+    await seed();
+    const file = JSON.stringify(await createWorkspaceBackup());
+
+    await editEntryHere("Lecture, rewritten", ENTRY.updatedAt + 1_000);
+
+    await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(file)), "merge");
+
+    // The copy here is newer, so the file does not overwrite it.
+    expect((await listNotesDirectoryEntries())[0].feather).toBe("Lecture, rewritten");
+  });
+
+  it("takes the file's copy when the file is the newer one", async () => {
+    await seed();
+    await editEntryHere("Lecture, rewritten", ENTRY.updatedAt + 1_000);
+    const file = JSON.stringify(await createWorkspaceBackup());
+
+    await editEntryHere("Lecture", ENTRY.updatedAt);
+
+    await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(file)), "merge");
+
+    expect((await listNotesDirectoryEntries())[0].feather).toBe("Lecture, rewritten");
+  });
+
+  it("leaves rows the file has never heard of alone", async () => {
+    await seed();
+    const file = JSON.stringify(await createWorkspaceBackup());
+
+    const database = await getNotesDb();
+    await database.put("notes-directory", {
+      ...ENTRY,
+      id: "note-2",
+      feather: "Written since",
+      updatedAt: 5,
+    });
+
+    await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(file)), "merge");
+
+    expect(await database.get("notes-directory", "note-2")).toBeDefined();
+    // Where a replace would have cleared it.
+    await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(file)), "replace");
+    expect(await database.get("notes-directory", "note-2")).toBeUndefined();
+  });
+
+  it("keeps a deletion made since the backup, because a tombstone is a row like any other", async () => {
+    await seed();
+    const file = JSON.stringify(await createWorkspaceBackup());
+
+    const database = await getNotesDb();
+    await database.put("notes-directory", {
+      ...ENTRY,
+      deletedAt: ENTRY.updatedAt + 1_000,
+      updatedAt: ENTRY.updatedAt + 1_000,
+    });
+
+    await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(file)), "merge");
+
+    // The note does not come back: the delete is newer than the file's copy of it.
+    expect(await listNotesDirectoryEntries()).toEqual([]);
+    expect((await database.get("notes-directory", ENTRY.id))?.deletedAt).toBeGreaterThan(0);
+  });
+
+  it("brings back a note deleted before the backup and written since", async () => {
+    await seed();
+    const database = await getNotesDb();
+    await database.put("notes-directory", { ...ENTRY, feather: "Revived", updatedAt: 9_000 });
+    const file = JSON.stringify(await createWorkspaceBackup());
+
+    await database.put("notes-directory", { ...ENTRY, deletedAt: 5, updatedAt: 5 });
+
+    await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(file)), "merge");
+
+    expect((await listNotesDirectoryEntries())[0].feather).toBe("Revived");
+  });
+
+  it("replaces by default, which is what a new device wants", async () => {
+    await seed();
+    const file = JSON.stringify(await createWorkspaceBackup());
+
+    await editEntryHere("Lecture, rewritten", ENTRY.updatedAt + 1_000);
+    await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(file)));
+
+    expect((await listNotesDirectoryEntries())[0].feather).toBe("Lecture");
   });
 });

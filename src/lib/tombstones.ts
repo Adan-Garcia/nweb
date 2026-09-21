@@ -7,9 +7,11 @@ import { getNotesDb } from "./notes-db";
  * `getAll()` in the app reads them before filtering them out.
  *
  * They are collected on a delay rather than on the spot, because the whole point of a
- * tombstone is to outlive the delete. Ninety days is longer than any device is plausibly
- * offline between syncs, and a device that has been away longer than that has to be
- * restored from a backup rather than merged — a tombstone would not have saved it.
+ * tombstone is to outlive the delete. Ninety days is what a merge-style restore can see
+ * back: merging a backup older than this window can bring a deleted note back, because
+ * the marker that said "deleted here" is gone and the file's copy of it looks new. That
+ * is the number to change if that trade stops being the right one — not a guess about a
+ * sync that does not exist yet.
  *
  * The bytes are already gone by this point. A tombstone carries no content: the note
  * document, its media and the file blobs are dropped when the delete happens.

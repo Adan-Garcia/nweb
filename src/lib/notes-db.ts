@@ -4,6 +4,7 @@ import type { Branch, Flight, Nest, Wing } from "./entity-model";
 import { migrateStringPathsToEntities } from "./notes-db-upgrade";
 import type { NotesDirectoryEntry, NotesDocumentRecord, NotesMediaRecord } from "./notes-model";
 import type { Pebble } from "./pebble-model";
+import type { RekeyJournal } from "./rekey-journal";
 import type { Twig } from "./twig-model";
 import type { WorkspaceLockRecord } from "./workspace-lock-model";
 
@@ -28,8 +29,12 @@ const NOTES_DB_NAME = "cuervo-notes";
  * saying which cipher wrote its one display field. Like 3, this rewrites no rows: a row
  * without the marker is plaintext, which is what every row written before this one is,
  * and turning the lock on is what converts them.
+ *
+ * 7 added `workspace-rekey`, which holds the journal for a rekey in progress. One row,
+ * present only while a passphrase is being set, changed or removed, and what makes an
+ * interrupted rewrite something the next load can finish rather than a broken workspace.
  */
-export const NOTES_DB_VERSION = 6;
+export const NOTES_DB_VERSION = 7;
 
 export interface NotesDbSchema extends DBSchema {
   "notes-documents": {
@@ -72,6 +77,10 @@ export interface NotesDbSchema extends DBSchema {
     key: string;
     value: WorkspaceLockRecord;
   };
+  "workspace-rekey": {
+    key: string;
+    value: RekeyJournal;
+  };
 }
 
 const STORE_NAMES = [
@@ -85,6 +94,7 @@ const STORE_NAMES = [
   "twigs",
   "pebbles",
   "workspace-keys",
+  "workspace-rekey",
 ] as const;
 
 let dbPromise: Promise<IDBPDatabase<NotesDbSchema>> | null = null;

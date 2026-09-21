@@ -3,12 +3,12 @@ import {
   type Cipher,
   createAesGcmCipher,
   getActiveCipher,
-  plaintextCipher,
   resetActiveCipher,
   setActiveCipher,
 } from "./cipher";
-import { createKdfParams, deriveKey, type KdfParams } from "./kdf";
+import { deriveKey, type KdfParams } from "./kdf";
 import { getNotesDb } from "./notes-db";
+import { readRekeyJournal } from "./rekey-journal";
 import {
   LOCK_VERIFIER_PLAINTEXT,
   WORKSPACE_LOCK_ID,
@@ -16,7 +16,6 @@ import {
   workspaceLockRecordSchema,
   type WorkspaceLockState,
 } from "./workspace-lock-model";
-import { rewriteStoredContent } from "./workspace-rekey";
 
 /**
  * A synchronous hint that a passphrase exists, so the first paint can show the lock screen
@@ -38,7 +37,7 @@ export function readLockHint(): boolean {
   }
 }
 
-function writeLockHint(isSet: boolean) {
+export function writeLockHint(isSet: boolean) {
   if (typeof window === "undefined") {
     return;
   }
@@ -59,7 +58,7 @@ function writeLockHint(isSet: boolean) {
  * not describe a KDF this build knows how to run is no key at all, and reporting "no
  * passphrase" for it would quietly write the next note in plaintext beside the locked ones.
  */
-async function readLockRecord(): Promise<WorkspaceLockRecord | undefined> {
+export async function readLockRecord(): Promise<WorkspaceLockRecord | undefined> {
   const database = await getNotesDb();
   const stored = await database.get("workspace-keys", WORKSPACE_LOCK_ID);
 
@@ -80,8 +79,19 @@ export async function isWorkspaceLockSet(): Promise<boolean> {
   return Boolean(await readLockRecord());
 }
 
-/** What the UI renders from: no passphrase, one that is not in memory, or one that is. */
+/**
+ * What the UI renders from: a rekey that never finished, no passphrase, one that is not in
+ * memory, or one that is.
+ *
+ * The interrupted case is checked first and on purpose. A half-converted workspace has
+ * rows under two different keys, and letting it through as "unset" or "unlocked" would put
+ * the app in front of rows it cannot open and invite it to write more beside them.
+ */
 export async function getWorkspaceLockState(): Promise<WorkspaceLockState> {
+  if (await readRekeyJournal()) {
+    return "interrupted";
+  }
+
   if (!(await isWorkspaceLockSet())) {
     return "unset";
   }
@@ -89,74 +99,28 @@ export async function getWorkspaceLockState(): Promise<WorkspaceLockState> {
   return getActiveCipher().name === "aes-gcm" ? "unlocked" : "locked";
 }
 
-async function cipherFor(passphrase: string, kdf: KdfParams): Promise<Cipher> {
+export async function cipherFor(passphrase: string, kdf: KdfParams): Promise<Cipher> {
   return createAesGcmCipher(await deriveKey(passphrase, kdf));
 }
 
-/** The row that proves a passphrase, written once the content it protects is already sealed. */
-async function writeLockRecord(cipher: Cipher, kdf: KdfParams, createdAt: number) {
-  const verifier = await cipher.encrypt(new TextEncoder().encode(LOCK_VERIFIER_PLAINTEXT));
-  const database = await getNotesDb();
-
-  await database.put("workspace-keys", {
-    id: WORKSPACE_LOCK_ID,
-    kdf,
-    verifier: bytesToBase64(verifier),
-    createdAt,
-    updatedAt: Date.now(),
-  });
+/**
+ * A known plaintext sealed with a key: decrypting it later proves the passphrase. It is
+ * produced before any content is rewritten, because the rekey journal has to carry it —
+ * a passphrase whose verifier was never written down is one nothing can check.
+ */
+export async function verifierFor(cipher: Cipher): Promise<string> {
+  return bytesToBase64(await cipher.encrypt(new TextEncoder().encode(LOCK_VERIFIER_PLAINTEXT)));
 }
 
-/**
- * Chooses the passphrase and encrypts what is already stored.
- *
- * The rewrite is the part that matters: without it, turning the lock on would leave every
- * note written so far sitting in plaintext behind a screen that merely refuses to show it.
- * The lock record is written last, so a failure partway through leaves the workspace
- * unlocked and readable rather than half-sealed with no way in.
- */
-export async function createWorkspaceLock(passphrase: string): Promise<void> {
-  if (await isWorkspaceLockSet()) {
-    throw new Error("This workspace already has a passphrase.");
-  }
+/** True when this cipher is the one that sealed the verifier. */
+export async function opensVerifier(cipher: Cipher, verifier: string): Promise<boolean> {
+  try {
+    const opened = await cipher.decrypt(base64ToBytes(verifier));
 
-  const kdf = createKdfParams();
-  const cipher = await cipherFor(passphrase, kdf);
-
-  await rewriteStoredContent({ from: plaintextCipher, to: cipher });
-  await writeLockRecord(cipher, kdf, Date.now());
-
-  writeLockHint(true);
-  setActiveCipher(cipher);
-}
-
-/**
- * Moves the workspace from one passphrase to another in a single pass.
- *
- * Remove-then-set would do it in two, and would leave every note in plaintext on disk in
- * between — a window where a crash, or anyone reading the profile directory, gets the lot.
- * Rewriting straight from the old cipher to the new one never writes a readable row. The
- * new record is written last, so a failure partway leaves the old passphrase the one that
- * opens whatever has not been converted yet.
- */
-export async function changeWorkspacePassphrase(
-  currentPassphrase: string,
-  nextPassphrase: string,
-): Promise<boolean> {
-  const record = await readLockRecord();
-
-  if (!record || !(await unlockWorkspace(currentPassphrase))) {
+    return new TextDecoder().decode(opened) === LOCK_VERIFIER_PLAINTEXT;
+  } catch {
     return false;
   }
-
-  const kdf = createKdfParams();
-  const next = await cipherFor(nextPassphrase, kdf);
-
-  await rewriteStoredContent({ from: getActiveCipher(), to: next });
-  await writeLockRecord(next, kdf, record.createdAt);
-
-  setActiveCipher(next);
-  return true;
 }
 
 /**
@@ -176,9 +140,8 @@ export async function unlockWorkspace(passphrase: string): Promise<boolean> {
   // and the caller has nothing different to do about it.
   try {
     const cipher = await cipherFor(passphrase, record.kdf);
-    const opened = await cipher.decrypt(base64ToBytes(record.verifier));
 
-    if (new TextDecoder().decode(opened) !== LOCK_VERIFIER_PLAINTEXT) {
+    if (!(await opensVerifier(cipher, record.verifier))) {
       return false;
     }
 
@@ -192,26 +155,4 @@ export async function unlockWorkspace(passphrase: string): Promise<boolean> {
 /** Drops the key. The content stays encrypted and unreadable until the next unlock. */
 export function lockWorkspace() {
   resetActiveCipher();
-}
-
-/**
- * Removes the passphrase and writes everything back as plaintext, so a user who no longer
- * wants the lock is not trapped behind it. The record is deleted last, for the same reason
- * it is written last when the lock goes on.
- */
-export async function removeWorkspaceLock(passphrase: string): Promise<boolean> {
-  const record = await readLockRecord();
-
-  if (!record || !(await unlockWorkspace(passphrase))) {
-    return false;
-  }
-
-  await rewriteStoredContent({ from: getActiveCipher(), to: plaintextCipher });
-
-  const database = await getNotesDb();
-  await database.delete("workspace-keys", WORKSPACE_LOCK_ID);
-
-  writeLockHint(false);
-  resetActiveCipher();
-  return true;
 }

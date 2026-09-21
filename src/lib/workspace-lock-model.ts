@@ -33,5 +33,7 @@ export type WorkspaceLockRecord = z.infer<typeof workspaceLockRecordSchema>;
  * `unset` — no passphrase has ever been chosen, so nothing is encrypted.
  * `locked` — there is a passphrase and the key is not in memory. Content cannot be read.
  * `unlocked` — the key is in memory and every write from now on is encrypted.
+ * `interrupted` — a rekey started and did not finish, so rows sit under two keys. Nothing
+ * may be read or written until it is finished; the journal says what it needs.
  */
-export type WorkspaceLockState = "unset" | "locked" | "unlocked";
+export type WorkspaceLockState = "unset" | "locked" | "unlocked" | "interrupted";

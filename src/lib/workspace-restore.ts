@@ -22,6 +22,12 @@ export type RestoreSummary = {
   events: number;
 };
 
+/**
+ * `replace` clears every store first, so the result is exactly what was exported.
+ * `merge` keeps what is here and takes from the file only what is newer.
+ */
+export type RestoreMode = "replace" | "merge";
+
 type ResolvedBackup = {
   wings: Wing[];
   flights: Flight[];
@@ -88,6 +94,42 @@ async function reseal<Key extends string, Row extends Record<Key, string> & Seal
   return sealRows(await openRows(rows, key), key, cipher);
 }
 
+/**
+ * Last write wins, by `updatedAt`.
+ *
+ * It is the rule a sync will need, and the reason every record has carried `updatedAt` and
+ * a `deletedAt` tombstone since the entity layer landed. A tombstone is a row like any
+ * other here, so a note deleted after the backup was taken stays deleted, and one deleted
+ * before it and rewritten since stays alive. `updatedAt` is never sealed, so deciding this
+ * costs no decryption.
+ */
+function isNewer(incoming: { updatedAt: number }, existing: { updatedAt: number } | undefined) {
+  return !existing || incoming.updatedAt > existing.updatedAt;
+}
+
+/** Writes a store's incoming rows, all of them or only the ones that win. */
+async function applyRows<Row extends { id: string; updatedAt: number }>(
+  store: {
+    get: (key: string) => Promise<Row | undefined>;
+    put: (row: Row) => Promise<unknown>;
+  },
+  rows: Row[],
+  mode: RestoreMode,
+): Promise<number> {
+  let written = 0;
+
+  for (const row of rows) {
+    if (mode === "merge" && !isNewer(row, await store.get(row.id))) {
+      continue;
+    }
+
+    await store.put(row);
+    written += 1;
+  }
+
+  return written;
+}
+
 const RESTORE_STORES = [
   "notes-directory",
   "notes-documents",
@@ -101,15 +143,22 @@ const RESTORE_STORES = [
 ] as const;
 
 /**
- * Replaces the workspace with the backup's contents. Everything currently stored is
- * cleared first, so the result is exactly what was exported rather than a merge.
+ * Applies a backup, either over the workspace or into it.
+ *
+ * `replace` is the old behaviour and the one to reach for on a new device: everything
+ * stored is cleared, so the result is exactly what was exported. `merge` is for a device
+ * that has been used since the file was written — it keeps what is here and takes only
+ * what the file has newer, by the same last-write-wins rule a sync would use.
  *
  * A file holds plaintext, so what comes in is sealed with whatever cipher is active now —
  * restoring into a locked workspace must not leave a readable row beside the sealed ones.
  * Every seal happens before the transaction opens, because a transaction held across a
  * non-IndexedDB await commits itself.
  */
-export async function restoreWorkspaceBackup(backup: WorkspaceBackup): Promise<RestoreSummary> {
+export async function restoreWorkspaceBackup(
+  backup: WorkspaceBackup,
+  mode: RestoreMode = "replace",
+): Promise<RestoreSummary> {
   const resolved = resolveBackup(backup);
   const cipher = getActiveCipher();
 
@@ -164,25 +213,22 @@ export async function restoreWorkspaceBackup(backup: WorkspaceBackup): Promise<R
   const database = await getNotesDb();
   const transaction = database.transaction(RESTORE_STORES, "readwrite");
 
-  await Promise.all(RESTORE_STORES.map((name) => transaction.objectStore(name).clear()));
+  if (mode === "replace") {
+    await Promise.all(RESTORE_STORES.map((name) => transaction.objectStore(name).clear()));
+  }
 
-  await Promise.all([
-    ...directory.map((entry) => transaction.objectStore("notes-directory").put(entry)),
-    ...documents.map((entry) => transaction.objectStore("notes-documents").put(entry)),
-    ...media.map((entry) => transaction.objectStore("notes-media").put(entry)),
-    ...wings.map((entry) => transaction.objectStore("wings").put(entry)),
-    ...flights.map((entry) => transaction.objectStore("flights").put(entry)),
-    ...branches.map((entry) => transaction.objectStore("branches").put(entry)),
-    ...nests.map((entry) => transaction.objectStore("nests").put(entry)),
-    ...twigs.map((entry) => transaction.objectStore("twigs").put(entry)),
-    ...pebbles.map((entry) => transaction.objectStore("pebbles").put(entry)),
-  ]);
+  const notes = await applyRows(transaction.objectStore("notes-directory"), directory, mode);
+  const mediaWritten = await applyRows(transaction.objectStore("notes-media"), media, mode);
+  const events = await applyRows(transaction.objectStore("twigs"), twigs, mode);
+
+  await applyRows(transaction.objectStore("notes-documents"), documents, mode);
+  await applyRows(transaction.objectStore("wings"), wings, mode);
+  await applyRows(transaction.objectStore("flights"), flights, mode);
+  await applyRows(transaction.objectStore("branches"), branches, mode);
+  await applyRows(transaction.objectStore("nests"), nests, mode);
+  await applyRows(transaction.objectStore("pebbles"), pebbles, mode);
 
   await transaction.done;
 
-  return {
-    notes: directory.length,
-    media: media.length,
-    events: twigs.length,
-  };
+  return { notes, media: mediaWritten, events };
 }

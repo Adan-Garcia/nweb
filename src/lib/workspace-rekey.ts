@@ -1,6 +1,16 @@
 import { type Cipher, decryptWith } from "./cipher";
 import { getNotesDb } from "./notes-db";
+import { REKEY_STORES, type RekeyJournal, type RekeyStore } from "./rekey-journal";
+import {
+  type CipherPair,
+  createRekeyCursor,
+  openEither,
+  type RekeyCursor,
+  type RekeyProgress,
+} from "./rekey-sweep";
 import { openRow, type SealedRow, sealRow } from "./sealed-text";
+
+export type { RekeyProgress } from "./rekey-sweep";
 
 export type RekeySummary = {
   documents: number;
@@ -9,8 +19,100 @@ export type RekeySummary = {
   names: number;
 };
 
+/** Every row a rekey will visit, so the progress it reports has a denominator. */
+export async function countRekeyRows(): Promise<number> {
+  const database = await getNotesDb();
+  const counts = await Promise.all(REKEY_STORES.map((store) => database.count(store)));
+
+  return counts.reduce((total, count) => total + count, 0);
+}
+
+async function rewriteDocuments(pair: CipherPair, cursor: RekeyCursor): Promise<number> {
+  const database = await getNotesDb();
+  let rewritten = 0;
+
+  for (const key of await database.getAllKeys("notes-documents")) {
+    if (cursor.skips("notes-documents", key)) {
+      continue;
+    }
+
+    const record = await database.get("notes-documents", key);
+
+    if (!record) {
+      continue;
+    }
+
+    const wroteWith = record.encryption ?? "none";
+    const opened = await openEither(
+      async (cipher) => ({
+        linear: record.linearCompressed
+          ? await decryptWith(record.linearCompressed, wroteWith, cipher)
+          : null,
+        scene: record.sceneCompressed
+          ? await decryptWith(record.sceneCompressed, wroteWith, cipher)
+          : null,
+      }),
+      pair,
+    );
+
+    if (!opened.alreadyMoved) {
+      await database.put("notes-documents", {
+        ...record,
+        linearCompressed: opened.value.linear ? await pair.to.encrypt(opened.value.linear) : null,
+        sceneCompressed: opened.value.scene ? await pair.to.encrypt(opened.value.scene) : null,
+        encryption: pair.to.name,
+      });
+      rewritten += 1;
+    }
+
+    await cursor.advance("notes-documents", key);
+  }
+
+  return rewritten;
+}
+
+async function rewriteMedia(pair: CipherPair, cursor: RekeyCursor): Promise<number> {
+  const database = await getNotesDb();
+  let rewritten = 0;
+
+  for (const key of await database.getAllKeys("notes-media")) {
+    if (cursor.skips("notes-media", key)) {
+      continue;
+    }
+
+    const record = await database.get("notes-media", key);
+
+    if (!record) {
+      continue;
+    }
+
+    const wroteWith = record.encryption ?? "none";
+    const bytes = new Uint8Array(await record.blob.arrayBuffer());
+    const opened = await openEither((cipher) => decryptWith(bytes, wroteWith, cipher), pair);
+
+    if (!opened.alreadyMoved) {
+      const sealed = await pair.to.encrypt(opened.value);
+
+      await database.put("notes-media", {
+        ...record,
+        // The blob holds ciphertext once sealed, so it carries no media type of its own;
+        // `mimeType` is what it will be when opened, which is what every reader uses.
+        blob: new Blob([Uint8Array.from(sealed)], {
+          type: pair.to.name === "none" ? record.mimeType : "",
+        }),
+        encryption: pair.to.name,
+      });
+      rewritten += 1;
+    }
+
+    await cursor.advance("notes-media", key);
+  }
+
+  return rewritten;
+}
+
 /**
- * Rewrites one store's display names from one cipher to another.
+ * Rewrites one store's display names.
  *
  * Each row is its own transaction — an implicit one, since `put` opens and closes it —
  * because sealing is a non-IndexedDB await and a transaction held across one commits
@@ -18,19 +120,36 @@ export type RekeySummary = {
  * dates, statuses and timestamps readable while the title beside them is not.
  */
 async function rewriteNames<Key extends string, Row extends Record<Key, string> & SealedRow>(
-  rows: Row[],
-  key: Key,
-  { from, to }: { from: Cipher; to: Cipher },
+  store: RekeyStore,
+  rows: { key: string; row: Row }[],
+  field: Key,
+  pair: CipherPair,
+  cursor: RekeyCursor,
   put: (row: Row) => Promise<unknown>,
 ): Promise<number> {
   let rewritten = 0;
 
-  for (const row of rows) {
-    await put(await sealRow(await openRow(row, key, from), key, to));
-    rewritten += 1;
+  for (const { key, row } of rows) {
+    if (cursor.skips(store, key)) {
+      continue;
+    }
+
+    const opened = await openEither((cipher) => openRow(row, field, cipher), pair);
+
+    if (!opened.alreadyMoved) {
+      await put(await sealRow(opened.value, field, pair.to));
+      rewritten += 1;
+    }
+
+    await cursor.advance(store, key);
   }
 
   return rewritten;
+}
+
+/** Rows paired with their keys, which is what the cursor is expressed in. */
+function keyed<Row extends { id: string }>(rows: Row[]) {
+  return rows.map((row) => ({ key: row.id, row }));
 }
 
 /**
@@ -45,103 +164,84 @@ async function rewriteNames<Key extends string, Row extends Record<Key, string> 
  * nothing but ciphertext can still tell a device that something is due at nine without
  * being able to say what it is.
  *
- * A failure partway through therefore leaves some rows converted; both callers order their
- * work so that the recoverable state is the one the old passphrase still opens.
+ * It is safe to run again on a workspace it was interrupted in: a row it has already moved
+ * is recognised and left alone. The journal says where it got to so a resume does not have
+ * to walk what it finished; writing and clearing that journal is the caller's job.
  */
 export async function rewriteStoredContent({
   from,
   to,
+  journal,
+  onProgress,
 }: {
   from: Cipher;
   to: Cipher;
+  journal: RekeyJournal;
+  onProgress?: (progress: RekeyProgress) => void;
 }): Promise<RekeySummary> {
-  // Identity, not name: changing the passphrase rewrites AES-GCM to AES-GCM, and comparing
-  // the two by name would call that a no-op and leave every row readable only by the key
-  // that is about to be thrown away.
-  if (from === to) {
-    return { documents: 0, media: 0, names: 0 };
-  }
-
   const database = await getNotesDb();
-  const documentIds = await database.getAllKeys("notes-documents");
-  const mediaIds = await database.getAllKeys("notes-media");
-
-  let documents = 0;
-  let media = 0;
-
-  for (const id of documentIds) {
-    const record = await database.get("notes-documents", id);
-
-    if (!record) {
-      continue;
-    }
-
-    const wroteWith = record.encryption ?? "none";
-    const linear = record.linearCompressed
-      ? await to.encrypt(await decryptWith(record.linearCompressed, wroteWith, from))
-      : null;
-    const scene = record.sceneCompressed
-      ? await to.encrypt(await decryptWith(record.sceneCompressed, wroteWith, from))
-      : null;
-
-    await database.put("notes-documents", {
-      ...record,
-      linearCompressed: linear,
-      sceneCompressed: scene,
-      encryption: to.name,
-    });
-    documents += 1;
-  }
-
-  for (const id of mediaIds) {
-    const record = await database.get("notes-media", id);
-
-    if (!record) {
-      continue;
-    }
-
-    const wroteWith = record.encryption ?? "none";
-    const opened = await decryptWith(
-      new Uint8Array(await record.blob.arrayBuffer()),
-      wroteWith,
-      from,
-    );
-    const sealed = await to.encrypt(opened);
-
-    await database.put("notes-media", {
-      ...record,
-      // The blob holds ciphertext once sealed, so it carries no media type of its own;
-      // `mimeType` is what it will be when opened, which is what every reader uses.
-      blob: new Blob([Uint8Array.from(sealed)], {
-        type: to.name === "none" ? record.mimeType : "",
-      }),
-      encryption: to.name,
-    });
-    media += 1;
-  }
-
   const pair = { from, to };
+  const cursor = createRekeyCursor(journal, onProgress);
+
+  const documents = await rewriteDocuments(pair, cursor);
+  const media = await rewriteMedia(pair, cursor);
+
   const names =
-    (await rewriteNames(await database.getAll("notes-directory"), "feather", pair, (row) =>
-      database.put("notes-directory", row),
+    (await rewriteNames(
+      "notes-directory",
+      keyed(await database.getAll("notes-directory")),
+      "feather",
+      pair,
+      cursor,
+      (row) => database.put("notes-directory", row),
     )) +
-    (await rewriteNames(await database.getAll("wings"), "name", pair, (row) =>
-      database.put("wings", row),
+    (await rewriteNames(
+      "wings",
+      keyed(await database.getAll("wings")),
+      "name",
+      pair,
+      cursor,
+      (row) => database.put("wings", row),
     )) +
-    (await rewriteNames(await database.getAll("flights"), "name", pair, (row) =>
-      database.put("flights", row),
+    (await rewriteNames(
+      "flights",
+      keyed(await database.getAll("flights")),
+      "name",
+      pair,
+      cursor,
+      (row) => database.put("flights", row),
     )) +
-    (await rewriteNames(await database.getAll("branches"), "name", pair, (row) =>
-      database.put("branches", row),
+    (await rewriteNames(
+      "branches",
+      keyed(await database.getAll("branches")),
+      "name",
+      pair,
+      cursor,
+      (row) => database.put("branches", row),
     )) +
-    (await rewriteNames(await database.getAll("nests"), "name", pair, (row) =>
-      database.put("nests", row),
+    (await rewriteNames(
+      "nests",
+      keyed(await database.getAll("nests")),
+      "name",
+      pair,
+      cursor,
+      (row) => database.put("nests", row),
     )) +
-    (await rewriteNames(await database.getAll("twigs"), "title", pair, (row) =>
-      database.put("twigs", row),
+    (await rewriteNames(
+      "twigs",
+      keyed(await database.getAll("twigs")),
+      "title",
+      pair,
+      cursor,
+      (row) => database.put("twigs", row),
     )) +
-    (await rewriteNames(await database.getAll("pebbles"), "name", pair, (row) =>
-      database.put("pebbles", row),
+    (await rewriteNames(
+      "pebbles",
+      keyed(await database.getAll("pebbles")),
+      "name",
+      pair,
+      cursor,
+      (row) => database.put("pebbles", row),
     ));
 
   return { documents, media, names };

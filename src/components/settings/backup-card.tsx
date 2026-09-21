@@ -2,13 +2,17 @@ import { useRef, useState } from "react";
 import { Download, Lock, Upload } from "lucide-react";
 
 import { BackupPassphraseField } from "@/components/settings/backup-passphrase-field";
+import { RestoreModeField } from "@/components/settings/restore-mode-field";
 import type { BackupStatus } from "@/components/settings/use-workspace-backup";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { RestoreMode } from "@/lib/workspace-restore";
 
 type BackupCardProps = {
   status: BackupStatus;
   needsPassphrase: boolean;
+  restoreMode: RestoreMode;
+  onChooseRestoreMode: (mode: RestoreMode) => void;
   onExport: (passphrase?: string) => void;
   onImport: (file: File) => void;
   onUnlock: (passphrase: string) => void;
@@ -19,6 +23,8 @@ type BackupCardProps = {
 export function BackupCard({
   status,
   needsPassphrase,
+  restoreMode,
+  onChooseRestoreMode,
   onExport,
   onImport,
   onUnlock,
@@ -95,10 +101,11 @@ export function BackupCard({
           />
         ) : null}
 
-        <p className="m-0 text-sm text-muted-foreground">
-          Restoring replaces everything in this browser with the contents of the file. Export first
-          if you want to keep what is here.
-        </p>
+        <RestoreModeField
+          restoreMode={restoreMode}
+          isDisabled={isWorking}
+          onChoose={onChooseRestoreMode}
+        />
 
         <input
           ref={fileInputRef}
