@@ -25,8 +25,13 @@ afterEach(() => {
   server.resetHandlers();
 
   // Suites can opt into the `node` environment (e.g. the Web Worker), where there is no DOM.
+  // A node suite may also stub a partial `window` for a storage module under test, so the
+  // two globals are checked separately rather than assumed to arrive together.
   if (typeof window !== "undefined") {
-    window.localStorage.clear();
+    window.localStorage?.clear();
+  }
+
+  if (typeof document !== "undefined") {
     document.documentElement.className = "";
   }
 });

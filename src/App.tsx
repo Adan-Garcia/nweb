@@ -24,6 +24,7 @@ const PricingPage = lazyPage(() => import("@/pages/pricing"), "PricingPage");
 const PrivacyPage = lazyPage(() => import("@/pages/privacy"), "PrivacyPage");
 const CalendarPage = lazyPage(() => import("@/pages/calendar"), "CalendarPage");
 const NotesPage = lazyPage(() => import("@/pages/notes"), "NotesPage");
+const SettingsPage = lazyPage(() => import("@/pages/settings"), "SettingsPage");
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/notes" element={<NotesPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

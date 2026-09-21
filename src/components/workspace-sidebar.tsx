@@ -1,4 +1,4 @@
-import { MoonIcon, SunIcon } from "lucide-react";
+import { MoonIcon, Settings, SunIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 import { BrandIcon } from "@/components/brand-icon";
@@ -80,6 +80,14 @@ export function WorkspaceSidebar({
             className="shrink-0 "
           >
             {isDark ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Settings"
+            render={<Link to="/settings" />}
+          >
+            <Settings className="size-4" />
           </Button>
         </div>
       </SidebarFooter>
