@@ -15,6 +15,16 @@ import { useElementFullscreen } from "@/components/notes/use-element-fullscreen"
 import { useExcalidrawPen } from "@/components/notes/use-excalidraw-pen";
 import { usePdfImport } from "@/components/notes/use-pdf-import";
 
+// `notes-canvas-shell` is a hook for the Excalidraw branding overrides in pages/notes.css.
+// Breakpoint matches the original stylesheet (`max-width: 960px`); Tailwind's `max-[N]` is
+// exclusive, hence 961.
+const CANVAS_SHELL_CLASSES =
+  "notes-canvas-shell grid h-[calc(100svh_-_18rem)] min-h-[calc(100svh_-_18rem)] grid-rows-[1fr] overflow-hidden " +
+  "rounded-[1rem] border border-[color-mix(in_oklab,var(--border)_80%,transparent)] " +
+  "bg-[color-mix(in_oklab,var(--card)_92%,var(--background))] " +
+  "max-[961px]:h-[calc(100svh_-_16.6rem)] max-[961px]:min-h-[calc(100svh_-_16.6rem)] " +
+  "[&:fullscreen]:h-svh [&:fullscreen]:min-h-svh [&:fullscreen]:rounded-none";
+
 export function SpatialNotesEditor({
   isDark,
   hostRef,
@@ -35,7 +45,7 @@ export function SpatialNotesEditor({
     usePdfImport(excalidrawApiRef);
 
   return (
-    <section className="notes-canvas-shell" ref={shellRef}>
+    <section className={CANVAS_SHELL_CLASSES} ref={shellRef}>
       <input
         ref={pdfInputRef}
         type="file"
@@ -43,7 +53,7 @@ export function SpatialNotesEditor({
         className="hidden"
         onChange={handlePdfInputChange}
       />
-      <div className="notes-excalidraw-host" ref={hostRef}>
+      <div className="h-full min-h-0" ref={hostRef}>
         <Excalidraw
           theme={isDark ? "dark" : "light"}
           initialData={initialData}

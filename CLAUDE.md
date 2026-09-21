@@ -175,7 +175,8 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 *   **Class composition:** use `cn()` from `@/lib/utils` to merge classes; use `cva` for variant-driven components.
 *   **Use design tokens** (`bg-background`, `text-muted-foreground`, `border-border`, …). No hard-coded hex colours or arbitrary colour values in components. Dark mode goes through the token system.
 *   **No inline `style={{}}`** except for dynamically computed positioning/sizing values.
-*   **Plain CSS:** `App.css` and `pages/notes.css` are legacy. Do not add new global CSS files. New styling uses Tailwind utilities; plain CSS is allowed only for third-party overrides (e.g. Excalidraw) that utilities cannot express.
+*   **Plain CSS:** none, except `pages/notes.css`, which holds the Excalidraw branding overrides (third-party markup that cannot take utility classes). Do not add new global CSS files.
+*   **`index.css` element rules are unlayered.** Its `h1`, `h2`, `p`, `body` and `#root` rules sit outside `@layer`, so they beat every Tailwind utility on the same property (an `h1` with `text-4xl` still renders at 56px). To override one, use the `!` modifier on just that property (`m-0!`, `text-[..]!`) and say why in a comment; do not move those rules into `@layer base` without checking every page, because that resizes headings app-wide.
 *   **Icons:** `lucide-react` for UI icons; brand marks go through `components/brand-icon.tsx`.
 *   **Forms:** React Hook Form + Zod + the `Field` primitives; do not hand-roll form state.
 *   **Dates:** use `date-fns`. Do not add a second date library.
@@ -220,4 +221,3 @@ A change is done only when:
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
 1.  **Untested UI.** Coverage is ~90% lines, but no test exercises `notes/spatial-notes-pdf.ts` (pdf.js rendering), `notes/linear-notes-editor.tsx` (TipTap), `notes/spatial-notes-editor.tsx` / `spatial-notes-toolbar.tsx` (Excalidraw), or `main.tsx`; `use-notes-hydration.ts` and `use-notes-flush.ts` have untested error branches. These were smoke-tested by hand in a browser (notes, calendar, dashboard, marketing and onboarding pages), which is not repeatable.
-2.  **Legacy plain CSS:** `App.css` (391 lines) and `pages/notes.css` (273 lines) should migrate to Tailwind utilities over time.

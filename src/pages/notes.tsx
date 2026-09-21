@@ -24,7 +24,7 @@ export function NotesPage() {
           isHydratingDocument={workspace.isHydratingDocument}
         />
 
-        <div className="notes-main-editor">
+        <div className="min-w-0">
           <NotesEditorArea workspace={workspace} isDark={isDark} />
         </div>
       </div>
