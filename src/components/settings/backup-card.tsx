@@ -1,19 +1,31 @@
-import { useRef } from "react";
-import { Download, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { Download, Lock, Upload } from "lucide-react";
 
+import { BackupPassphraseField } from "@/components/settings/backup-passphrase-field";
 import type { BackupStatus } from "@/components/settings/use-workspace-backup";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type BackupCardProps = {
   status: BackupStatus;
-  onExport: () => void;
+  needsPassphrase: boolean;
+  onExport: (passphrase?: string) => void;
   onImport: (file: File) => void;
+  onUnlock: (passphrase: string) => void;
+  onCancelUnlock: () => void;
 };
 
 /** Export and import controls: the only backup the app has while there is no server. */
-export function BackupCard({ status, onExport, onImport }: BackupCardProps) {
+export function BackupCard({
+  status,
+  needsPassphrase,
+  onExport,
+  onImport,
+  onUnlock,
+  onCancelUnlock,
+}: BackupCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isEncrypting, setIsEncrypting] = useState(false);
   const isWorking = status.kind === "working";
 
   return (
@@ -27,9 +39,21 @@ export function BackupCard({ status, onExport, onImport }: BackupCardProps) {
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="flex flex-wrap gap-3">
-          <Button type="button" onClick={onExport} disabled={isWorking}>
+          <Button type="button" onClick={() => onExport()} disabled={isWorking}>
             <Download className="size-4" />
             Download backup
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isWorking}
+            aria-pressed={isEncrypting}
+            onClick={() => {
+              setIsEncrypting((current) => !current);
+            }}
+          >
+            <Lock className="size-4" />
+            Encrypt a backup
           </Button>
           <Button
             type="button"
@@ -41,6 +65,35 @@ export function BackupCard({ status, onExport, onImport }: BackupCardProps) {
             Restore from file
           </Button>
         </div>
+
+        {isEncrypting && !needsPassphrase ? (
+          <BackupPassphraseField
+            id="export-passphrase"
+            label="Passphrase for this backup"
+            hint="The file is encrypted with AES-GCM under this passphrase. There is no account and no server, so nothing can reset it: forget the passphrase and the file is gone."
+            submitLabel="Download encrypted backup"
+            isDisabled={isWorking}
+            onSubmit={(passphrase) => {
+              onExport(passphrase);
+              setIsEncrypting(false);
+            }}
+            onCancel={() => {
+              setIsEncrypting(false);
+            }}
+          />
+        ) : null}
+
+        {needsPassphrase ? (
+          <BackupPassphraseField
+            id="import-passphrase"
+            label="This backup is encrypted"
+            hint="Enter the passphrase it was exported with."
+            submitLabel="Unlock and restore"
+            isDisabled={isWorking}
+            onSubmit={onUnlock}
+            onCancel={onCancelUnlock}
+          />
+        ) : null}
 
         <p className="m-0 text-sm text-muted-foreground">
           Restoring replaces everything in this browser with the contents of the file. Export first

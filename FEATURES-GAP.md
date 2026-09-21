@@ -29,16 +29,17 @@ Approved on 2026-09-20 and shipped so far:
 | A3 PWA | **Done.** A manifest with real icons, and a hand-written service worker, so the app installs and starts with no network. No new dependency. | this commit |
 | Crypto seam, then the app lock | Separate version bump, last of the storage work. Confirmed: on by default, no reset. | |
 | WASM Brotli | **Done.** `brotli-wasm`, loaded lazily in the worker. Notes are 38-50% smaller than gzip on the payloads actually stored. | this commit |
-| Crypto seam, then the app lock | Next. | |
+| Crypto seam | **Done.** AES-GCM under a PBKDF2 key, the seam every document write goes through, and the encrypted backup that was waiting on it. WebCrypto only, no dependency. | this commit |
+| The app lock | Next, and the last of the storage work: a passphrase on the workspace itself, which needs a stored key record and a version bump. Confirmed: on by default, no reset. | |
 
 Decisions taken while building the above, all worth knowing:
 
 - **The copy runs in two passes.** Everything encryption-related now reads "Coming soon", because
   the lock does not exist yet. When it ships, only the narrow wording comes back: "encrypted on this
   device when locked", never "Device Level Encryption".
-- **The encrypted export waits for the cipher.** The backup is plaintext today. The
-  plaintext-or-encrypted choice at export time arrives with the crypto seam, since it needs the
-  same code.
+- **The encrypted export waited for the cipher, and now has it.** Exporting offers a passphrase;
+  the file is AES-GCM under a PBKDF2-derived key and says it is encrypted, so restoring asks for
+  the passphrase instead of calling it an invalid file. A plaintext export is still one click.
 - **Backups carry tombstones.** Deleted notes travel in the export file as markers with no content.
   Dropping them would mean a restore could not tell a note that was deleted from one that never
   existed, so under any future merge-style restore every deletion since the backup would come back.
@@ -197,7 +198,7 @@ visit on, everything the user touches works offline.
 | Feature | Claimed at | Status |
 | --- | --- | --- |
 | Export / import your data (JSON, plus files) | Implied by "local-first, you own your data" (`signup.tsx:12,17`, `unlogged.tsx:43`) | **Absent.** Clearing site data deletes everything, and there is no backup. This is the single most important missing safety feature. |
-| Device-level encryption at rest | `landing-benefits.tsx:34`, `Todo.md` section 3 | **Absent, and buildable without a server.** Encrypt IndexedDB and `localStorage` contents with WebCrypto AES-GCM under a key derived from a passphrase (PBKDF2 or Argon2). The trade-off is that a forgotten passphrase means unrecoverable data, with no account to reset it. |
+| Device-level encryption at rest | `landing-benefits.tsx:34`, `Todo.md` section 3 | **Half done.** The cipher is built and every note write goes through it (`lib/cipher.ts`), and an exported backup can be encrypted under a passphrase today. What is missing is the passphrase on the workspace itself: until the app lock ships, the active cipher is the plaintext one and what is stored is not encrypted. The copy must keep saying "Coming soon" until then. |
 | An app lock ("locked" workspace) | `signin.tsx:17`, `landing-benefits.tsx:14-15` | **Absent, and buildable without a server** as the unlock step of the passphrase above. It is a local lock, not an account. |
 | Brotli text compression | `notes.md:21-22` | **Done.** `brotli-wasm` in the worker, behind a lazy import so the WASM is only fetched on the first save. Measured against the payloads actually stored, Brotli is 38% smaller than gzip on TipTap HTML and 50% smaller on an Excalidraw scene. The algorithm is recorded per row, so notes written as gzip still open. |
 

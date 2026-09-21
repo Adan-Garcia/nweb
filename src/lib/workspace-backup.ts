@@ -1,11 +1,16 @@
+import { base64ToBytes, bytesToBase64 } from "./base64";
+import {
+  type EncryptedEnvelope,
+  isEncryptedEnvelope,
+  openWithPassphrase,
+  sealWithPassphrase,
+} from "./crypto-envelope";
 import type { Branch, Flight, Nest, Wing } from "./entity-model";
 import { getNotesDb } from "./notes-db";
 import type { NotesDirectoryEntry, NotesDocumentRecord, NotesMediaRecord } from "./notes-model";
 import type { Pebble } from "./pebble-model";
 import type { Twig } from "./twig-model";
 import {
-  base64ToBytes,
-  bytesToBase64,
   isLegacyBackupEntry,
   WORKSPACE_BACKUP_FORMAT,
   WORKSPACE_BACKUP_VERSION,
@@ -71,14 +76,35 @@ export async function createWorkspaceBackup(now = new Date()): Promise<Workspace
   };
 }
 
+/**
+ * Wraps a backup in an encrypted envelope. The file still says what it is, so a restore
+ * can ask for the passphrase instead of failing with "not a backup".
+ *
+ * A forgotten passphrase means the file is gone. There is no account and no server, so
+ * there is nothing that could reset it, and the UI has to say so before it is used.
+ */
+export function encryptWorkspaceBackup(
+  backup: WorkspaceBackup,
+  passphrase: string,
+): Promise<EncryptedEnvelope> {
+  return sealWithPassphrase(JSON.stringify(backup), passphrase);
+}
+
+export type ParsedBackupFile =
+  { backup: WorkspaceBackup } | { encrypted: EncryptedEnvelope } | { error: string };
+
 /** Parses untrusted file contents. Returns the backup, or an error the UI can show as-is. */
-export function parseWorkspaceBackup(raw: string): { backup: WorkspaceBackup } | { error: string } {
+export function parseWorkspaceBackup(raw: string): ParsedBackupFile {
   let parsed: unknown;
 
   try {
     parsed = JSON.parse(raw);
   } catch {
     return { error: "That file is not valid JSON." };
+  }
+
+  if (isEncryptedEnvelope(parsed)) {
+    return { encrypted: parsed };
   }
 
   const result = workspaceBackupSchema.safeParse(parsed);
@@ -88,6 +114,20 @@ export function parseWorkspaceBackup(raw: string): { backup: WorkspaceBackup } |
   }
 
   return { backup: result.data };
+}
+
+/** Opens an encrypted backup. A null return is the wrong passphrase, or a tampered file. */
+export async function decryptWorkspaceBackup(
+  envelope: EncryptedEnvelope,
+  passphrase: string,
+): Promise<ParsedBackupFile> {
+  const plaintext = await openWithPassphrase(envelope, passphrase);
+
+  if (plaintext === null) {
+    return { error: "That passphrase does not open this file." };
+  }
+
+  return parseWorkspaceBackup(plaintext);
 }
 
 export type RestoreSummary = {

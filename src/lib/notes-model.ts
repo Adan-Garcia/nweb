@@ -1,3 +1,5 @@
+import type { CipherName } from "./cipher";
+
 export const DEFAULT_NOTES_DOCUMENT_ID = "notes-main";
 
 export type NotesDocumentMode = "linear" | "spatial";
@@ -52,6 +54,12 @@ export type NotesDocumentRecord = {
   sceneCompressionAlgorithm: string | null;
   sceneFiles: SceneFileRef[];
   updatedAt: number;
+  /**
+   * Which cipher wrote the compressed payloads above. Rows written before this existed
+   * read back `undefined`, which `loadNotesDocument` normalizes to "none". A database can
+   * hold a mix, so turning encryption on never has to rewrite everything at once.
+   */
+  encryption?: CipherName;
 };
 
 export type NotesMediaRecord = {
@@ -84,5 +92,6 @@ export function buildEmptyDocument(id: string): NotesDocumentRecord {
     sceneCompressionAlgorithm: null,
     sceneFiles: [],
     updatedAt: Date.now(),
+    encryption: "none",
   };
 }

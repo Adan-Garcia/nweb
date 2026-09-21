@@ -6,15 +6,18 @@
 // legacy-calendar half needs window.localStorage, which node has no business providing.
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { bytesToBase64 } from "./base64";
 import { getNotesDb } from "./notes-db";
 import { listNotesDirectoryEntries } from "./notes-directory-storage";
 import { listTwigs } from "./twig-storage";
 import {
   createWorkspaceBackup,
+  decryptWorkspaceBackup,
+  encryptWorkspaceBackup,
+  type ParsedBackupFile,
   parseWorkspaceBackup,
   restoreWorkspaceBackup,
 } from "./workspace-backup";
-import { bytesToBase64 } from "./workspace-backup-schema";
 import { loadWorkspaceSnapshot } from "./workspace-storage";
 
 function createLocalStorageStub() {
@@ -34,6 +37,19 @@ vi.stubGlobal("window", { localStorage: localStorageStub });
 afterAll(() => {
   vi.unstubAllGlobals();
 });
+
+/** Narrows the three-way result to the plaintext backup these tests are about. */
+function plainBackup(parsed: ParsedBackupFile) {
+  if ("error" in parsed) {
+    throw new Error(parsed.error);
+  }
+
+  if ("encrypted" in parsed) {
+    throw new Error("expected a plaintext backup");
+  }
+
+  return parsed.backup;
+}
 
 const STAMP = { createdAt: 1, updatedAt: 2, deletedAt: null };
 
@@ -189,13 +205,7 @@ describe("workspace backup", () => {
     const file = JSON.stringify(await createWorkspaceBackup());
     await clearAll();
 
-    const parsed = parseWorkspaceBackup(file);
-
-    if ("error" in parsed) {
-      throw new Error(parsed.error);
-    }
-
-    const summary = await restoreWorkspaceBackup(parsed.backup);
+    const summary = await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(file)));
     const database = await getNotesDb();
     const media = await database.get("notes-media", "file-1");
 
@@ -224,9 +234,7 @@ describe("workspace backup", () => {
     await database.put("notes-directory", { ...ENTRY, id: "notes-stale", feather: "Stale" });
     await database.put("wings", { ...WING, id: "wing-stale", name: "Stale" });
 
-    const parsed = parseWorkspaceBackup(file);
-    if ("error" in parsed) throw new Error(parsed.error);
-    await restoreWorkspaceBackup(parsed.backup);
+    await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(file)));
 
     expect(await database.get("notes-directory", "notes-stale")).toBeUndefined();
     expect(await database.get("wings", "wing-stale")).toBeUndefined();
@@ -274,10 +282,7 @@ describe("restoring a version 1 backup", () => {
     });
 
   it("converts its string paths into entities, the way the database upgrade does", async () => {
-    const parsed = parseWorkspaceBackup(legacyFile());
-    if ("error" in parsed) throw new Error(parsed.error);
-
-    await restoreWorkspaceBackup(parsed.backup);
+    await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(legacyFile())));
 
     const snapshot = await loadWorkspaceSnapshot();
     expect(snapshot.wings.map((wing) => wing.name)).toEqual(["Home"]);
@@ -291,10 +296,7 @@ describe("restoring a version 1 backup", () => {
   });
 
   it("turns its calendar events into twigs", async () => {
-    const parsed = parseWorkspaceBackup(legacyFile());
-    if ("error" in parsed) throw new Error(parsed.error);
-
-    const summary = await restoreWorkspaceBackup(parsed.backup);
+    const summary = await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(legacyFile())));
     const twigs = await listTwigs();
 
     expect(summary.events).toBe(1);
@@ -329,13 +331,65 @@ describe("restoring a version 1 backup", () => {
     // A file exported by that version has no deletedAt key at all.
     expect(file).not.toContain("deletedAt");
 
-    const parsed = parseWorkspaceBackup(file);
-    if ("error" in parsed) throw new Error(parsed.error);
-    await restoreWorkspaceBackup(parsed.backup);
+    await restoreWorkspaceBackup(plainBackup(parseWorkspaceBackup(file)));
 
     const database = await getNotesDb();
     expect(await database.get("notes-directory", "legacy-note")).toMatchObject({
       deletedAt: null,
+    });
+  });
+});
+
+describe("an encrypted backup", () => {
+  beforeEach(clearAll);
+
+  // A low iteration count: what matters here is the round trip, not the derivation cost.
+  const seal = (backup: Awaited<ReturnType<typeof createWorkspaceBackup>>) =>
+    encryptWorkspaceBackup(backup, "correct horse");
+
+  it("round-trips through the file and back into an empty workspace", async () => {
+    await seed();
+    const file = JSON.stringify(await seal(await createWorkspaceBackup()));
+    await clearAll();
+
+    const parsed = parseWorkspaceBackup(file);
+    if (!("encrypted" in parsed)) throw new Error("expected an encrypted file");
+
+    const opened = await decryptWorkspaceBackup(parsed.encrypted, "correct horse");
+    const summary = await restoreWorkspaceBackup(plainBackup(opened));
+
+    expect(summary).toEqual({ notes: 1, media: 1, events: 1 });
+    expect(await listNotesDirectoryEntries()).toHaveLength(1);
+    expect(await listTwigs()).toEqual([TWIG]);
+  });
+
+  it("is recognised as encrypted rather than rejected as not a backup", async () => {
+    await seed();
+    const file = JSON.stringify(await seal(await createWorkspaceBackup()));
+
+    expect(parseWorkspaceBackup(file)).toMatchObject({
+      encrypted: { format: "cuervo-planner-encrypted" },
+    });
+  });
+
+  it("keeps the notes out of the file", async () => {
+    await seed();
+    const file = JSON.stringify(await seal(await createWorkspaceBackup()));
+
+    // The note's title would be right there in a plaintext export.
+    expect(file).not.toContain("Lecture");
+    expect(file).not.toContain("Essay due");
+  });
+
+  it("says so for the wrong passphrase, and restores nothing", async () => {
+    await seed();
+    const file = JSON.stringify(await seal(await createWorkspaceBackup()));
+
+    const parsed = parseWorkspaceBackup(file);
+    if (!("encrypted" in parsed)) throw new Error("expected an encrypted file");
+
+    expect(await decryptWorkspaceBackup(parsed.encrypted, "wrong")).toEqual({
+      error: "That passphrase does not open this file.",
     });
   });
 });

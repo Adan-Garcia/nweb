@@ -1,4 +1,5 @@
 import { blobToDataUrl } from "./blob-utils";
+import { decryptWith, getActiveCipher } from "./cipher";
 import { getNotesDb } from "./notes-db";
 import { touchNotesDirectoryEntry } from "./notes-directory-storage";
 import {
@@ -16,7 +17,20 @@ export async function loadNotesDocument(
   documentId = DEFAULT_NOTES_DOCUMENT_ID,
 ): Promise<LoadedNotesDocument | null> {
   const database = await getNotesDb();
-  const documentRecord = await database.get("notes-documents", documentId);
+  const storedRecord = await database.get("notes-documents", documentId);
+  // Rows written before the cipher seam existed carry no marker, which means plaintext.
+  const wroteWith = storedRecord?.encryption ?? "none";
+  const documentRecord = storedRecord
+    ? {
+        ...storedRecord,
+        linearCompressed: storedRecord.linearCompressed
+          ? await decryptWith(storedRecord.linearCompressed, wroteWith)
+          : null,
+        sceneCompressed: storedRecord.sceneCompressed
+          ? await decryptWith(storedRecord.sceneCompressed, wroteWith)
+          : null,
+      }
+    : undefined;
 
   notesTrace("notes-storage", "loadNotesDocument:start", {
     documentId,
@@ -78,11 +92,15 @@ export async function saveLinearDocumentPayload({
   const existingDocument =
     (await database.get("notes-documents", documentId)) ?? buildEmptyDocument(documentId);
 
+  const cipher = getActiveCipher();
+  const sealed = await cipher.encrypt(compressed);
+
   await database.put("notes-documents", {
     ...existingDocument,
-    linearCompressed: compressed,
+    linearCompressed: sealed,
     linearCompressionAlgorithm: compressionAlgorithm,
     updatedAt: Date.now(),
+    encryption: cipher.name,
   });
 
   await touchNotesDirectoryEntry(documentId, createdMode);
@@ -104,6 +122,11 @@ export async function saveSpatialDocumentPayload({
   createdMode?: NotesDocumentMode;
 }) {
   const database = await getNotesDb();
+  // Sealed before the transaction opens, not inside it: awaiting anything that is not an
+  // IndexedDB request lets the transaction auto-commit, and the puts below would then fail
+  // with TransactionInactiveError in a real browser.
+  const cipher = getActiveCipher();
+  const sealed = await cipher.encrypt(compressed);
   const transaction = database.transaction(["notes-documents", "notes-media"], "readwrite");
 
   const documentStore = transaction.objectStore("notes-documents");
@@ -160,10 +183,11 @@ export async function saveSpatialDocumentPayload({
 
   await documentStore.put({
     ...existingDocument,
-    sceneCompressed: compressed,
+    sceneCompressed: sealed,
     sceneCompressionAlgorithm: compressionAlgorithm,
     sceneFiles: nextSceneFiles,
     updatedAt: Date.now(),
+    encryption: cipher.name,
   });
 
   await transaction.done;

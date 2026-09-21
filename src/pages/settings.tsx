@@ -6,7 +6,8 @@ import { useThemeMode } from "@/hooks/use-theme-mode";
 
 export function SettingsPage() {
   const { isDark, toggleTheme } = useThemeMode();
-  const { status, exportWorkspace, importWorkspace } = useWorkspaceBackup();
+  const { status, needsPassphrase, exportWorkspace, importWorkspace, unlockImport, cancelImport } =
+    useWorkspaceBackup();
 
   return (
     <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
@@ -21,8 +22,11 @@ export function SettingsPage() {
         <div className="grid gap-6">
           <BackupCard
             status={status}
-            onExport={() => void exportWorkspace()}
+            needsPassphrase={needsPassphrase}
+            onExport={(passphrase) => void exportWorkspace(passphrase)}
             onImport={(file) => void importWorkspace(file)}
+            onUnlock={(passphrase) => void unlockImport(passphrase)}
+            onCancelUnlock={cancelImport}
           />
 
           <Card>

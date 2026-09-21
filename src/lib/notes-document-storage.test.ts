@@ -1,5 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import {
+  CipherUnavailableError,
+  createAesGcmCipher,
+  resetActiveCipher,
+  setActiveCipher,
+} from "./cipher";
+import { getNotesDb } from "./notes-db";
 import { listNotesDirectoryEntries, upsertNotesDirectoryEntry } from "./notes-directory-storage";
 import {
   loadNotesDocument,
@@ -125,5 +132,90 @@ describe("notes document storage", () => {
     });
 
     expect((await loadNotesDocument("doc-unknown-ref"))?.sceneFiles).toEqual({});
+  });
+});
+
+describe("the cipher seam", () => {
+  afterEach(() => {
+    resetActiveCipher();
+  });
+
+  it("writes plaintext while nothing has been unlocked, which is today's default", async () => {
+    await saveLinearDocumentPayload({
+      documentId: "doc-plain",
+      compressionAlgorithm: "none",
+      compressed: new TextEncoder().encode("readable"),
+    });
+
+    const database = await getNotesDb();
+    const stored = await database.get("notes-documents", "doc-plain");
+
+    expect(stored?.encryption).toBe("none");
+    expect(new TextDecoder().decode(stored?.linearCompressed ?? new Uint8Array())).toBe("readable");
+  });
+
+  it("encrypts what it stores once a cipher is active, and reads it back", async () => {
+    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
+      "encrypt",
+      "decrypt",
+    ]);
+    setActiveCipher(createAesGcmCipher(key));
+
+    await saveLinearDocumentPayload({
+      documentId: "doc-sealed",
+      compressionAlgorithm: "none",
+      compressed: new TextEncoder().encode("SECRET-MARKER"),
+    });
+
+    const database = await getNotesDb();
+    const stored = await database.get("notes-documents", "doc-sealed");
+
+    expect(stored?.encryption).toBe("aes-gcm");
+    expect(new TextDecoder().decode(stored?.linearCompressed ?? new Uint8Array())).not.toContain(
+      "SECRET-MARKER",
+    );
+
+    // And the load path hands the caller the plaintext back.
+    const loaded = await loadNotesDocument("doc-sealed");
+    expect(new TextDecoder().decode(loaded?.document.linearCompressed ?? new Uint8Array())).toBe(
+      "SECRET-MARKER",
+    );
+  });
+
+  it("refuses to load an encrypted note while locked", async () => {
+    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
+      "encrypt",
+      "decrypt",
+    ]);
+    setActiveCipher(createAesGcmCipher(key));
+    await saveLinearDocumentPayload({
+      documentId: "doc-locked",
+      compressionAlgorithm: "none",
+      compressed: new TextEncoder().encode("secret"),
+    });
+
+    resetActiveCipher();
+
+    await expect(loadNotesDocument("doc-locked")).rejects.toBeInstanceOf(CipherUnavailableError);
+  });
+
+  it("reads a row written before the marker existed as plaintext", async () => {
+    const database = await getNotesDb();
+    // Exactly what an older database holds: the field is absent, not "none".
+    await database.put("notes-documents", {
+      id: "doc-legacy",
+      linearCompressed: new TextEncoder().encode("older note"),
+      linearCompressionAlgorithm: "none",
+      sceneCompressed: null,
+      sceneCompressionAlgorithm: null,
+      sceneFiles: [],
+      updatedAt: 1,
+    });
+
+    const loaded = await loadNotesDocument("doc-legacy");
+
+    expect(new TextDecoder().decode(loaded?.document.linearCompressed ?? new Uint8Array())).toBe(
+      "older note",
+    );
   });
 });
