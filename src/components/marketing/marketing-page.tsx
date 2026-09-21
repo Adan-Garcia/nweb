@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { useThemeMode } from "@/hooks/use-theme-mode";
 
@@ -16,6 +17,7 @@ export function MarketingPage({ activeHref, children }: MarketingPageProps) {
     <main className="min-h-screen w-full bg-background text-foreground">
       <MarketingHeader activeHref={activeHref} isDark={isDark} onToggleTheme={toggleTheme} />
       {children}
+      <MarketingFooter />
     </main>
   );
 }

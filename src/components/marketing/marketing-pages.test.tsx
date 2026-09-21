@@ -95,6 +95,22 @@ describe("PricingPage", () => {
   });
 });
 
+describe("MarketingFooter", () => {
+  it("links every public page to the source repository under the MIT licence", () => {
+    for (const Page of [PricingPage, PrivacyPage, DocumentationPage]) {
+      const { unmount } = render(<Page />);
+      const footer = screen.getByRole("contentinfo");
+
+      expect(within(footer).getByText(/MIT licence/i)).toBeInTheDocument();
+      expect(within(footer).getByRole("link", { name: "Source on GitHub" })).toHaveAttribute(
+        "href",
+        "https://github.com/Adan-Garcia/nweb",
+      );
+      unmount();
+    }
+  });
+});
+
 describe("PrivacyPage", () => {
   it("shows the four policy sections as lists", () => {
     render(<PrivacyPage />);

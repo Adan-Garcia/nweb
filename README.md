@@ -54,6 +54,11 @@ Browser-level tests live in `e2e/` at the repo root (Playwright: the real canvas
 
 Notes are organised as **Wing** (workspace) > **Flight** (term) > **Branch** (course) > **Nest** (tag/unit) > **Feather** (note), with **Twigs** (tasks) and **Pebbles** (files). See [`Heirarchy.md`](./Heirarchy.md).
 
+## Licence
+
+MIT, see [`LICENSE`](./LICENSE). `package.json` keeps `"private": true` because this is an
+application rather than a published npm package; it does not restrict the licence.
+
 ## Conventions
 
 The engineering standards for this repository (architecture layers, naming, testing, dependency rules, and what is enforced by tooling) live in [`CLAUDE.md`](./CLAUDE.md). It also tracks known gaps.

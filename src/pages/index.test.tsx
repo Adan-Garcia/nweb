@@ -44,6 +44,16 @@ describe("IndexPage", () => {
     }
   });
 
+  it("links to the source repository in the footer", () => {
+    render(<IndexPage />);
+    const footer = screen.getByRole("contentinfo");
+
+    expect(within(footer).getByRole("link", { name: "Source on GitHub" })).toHaveAttribute(
+      "href",
+      "https://github.com/Adan-Garcia/nweb",
+    );
+  });
+
   it("marks the benefits that do not exist yet as coming soon", () => {
     render(<IndexPage />);
     const benefits = screen.getByLabelText("Features and benefits of using Cuervo Planner");

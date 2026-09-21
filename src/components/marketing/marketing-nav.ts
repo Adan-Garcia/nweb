@@ -3,6 +3,9 @@ export type NavLink = {
   href: string;
 };
 
+/** Public repository, linked from the footer so the "Open Source" claim can be checked. */
+export const REPOSITORY_URL = "https://github.com/Adan-Garcia/nweb";
+
 /** Links in the header of the public information pages. */
 export const MARKETING_LINKS: NavLink[] = [
   { label: "About", href: "/" },
