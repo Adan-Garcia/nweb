@@ -39,8 +39,9 @@ export function UnloggedPage() {
               Planning, Notes, and Sharing; One place
             </h1>
             <p className={COPY_TEXT}>
-              Create an account to keep your information encrypted and safe. Your data is stored
-              locally on your device and never leaves it, for more information, see our{" "}
+              Everything you write is stored locally in this browser and never leaves it. Accounts
+              and sharing are still being built, so the planner works without one. For more
+              information, see our{" "}
               <a href="/privacy">
                 <b>privacy policy</b>
               </a>

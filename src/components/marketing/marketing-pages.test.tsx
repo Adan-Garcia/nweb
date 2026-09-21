@@ -84,9 +84,14 @@ describe("PricingPage", () => {
   it("states the security and open-source commitments", () => {
     render(<PricingPage />);
     expect(
-      screen.getByRole("heading", { name: "Security included on every tier" }),
+      screen.getByRole("heading", { name: "How your data is handled today" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Forever open source" })).toBeInTheDocument();
+  });
+
+  it("does not claim encryption the app does not have", () => {
+    const { container } = render(<PricingPage />);
+    expect(container.textContent).not.toMatch(/encryption-first|secure key management/i);
   });
 });
 
@@ -94,17 +99,23 @@ describe("PrivacyPage", () => {
   it("shows the four policy sections as lists", () => {
     render(<PrivacyPage />);
     for (const title of [
-      "Data we collect",
-      "How your data is protected",
-      "Sharing and access control",
-      "Storage, sync, and retention",
+      "What we collect",
+      "Where your data lives",
+      "Who can see it",
+      "What is not built yet",
     ]) {
       expect(screen.getByText(title)).toBeInTheDocument();
     }
     expect(screen.getAllByRole("list")).toHaveLength(4);
   });
 
-  it("explains the encryption in three plain steps", () => {
+  it("says plainly that nothing is encrypted and nothing is collected", () => {
+    const { container } = render(<PrivacyPage />);
+    expect(container.textContent).toMatch(/not encrypted/i);
+    expect(container.textContent).not.toMatch(/AES-GCM|key exchange|row-level/i);
+  });
+
+  it("explains local-first storage in three plain steps", () => {
     render(<PrivacyPage />);
     expect(screen.getByRole("heading", { name: "Privacy in plain language" })).toBeInTheDocument();
     expect(screen.getByText("Step 1")).toBeInTheDocument();

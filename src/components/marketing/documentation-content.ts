@@ -24,7 +24,8 @@ export const HIERARCHY_LEVELS: HierarchyLevel[] = [
   },
   {
     name: "Twig & Feather",
-    description: "Twigs are tasks, feathers are markdown notes connected to each class.",
+    description:
+      "Twigs are tasks, feathers are the notes for each class: rich text, an infinite canvas, or both.",
   },
 ];
 

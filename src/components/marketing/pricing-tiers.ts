@@ -16,7 +16,7 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       "Private-by-default planner",
       "Notes and homework organization",
-      "Cross-platform sync-ready architecture",
+      "Runs in any modern browser",
       "All features are free forever",
       "Open Source on GitHub",
     ],

@@ -9,7 +9,7 @@ export function SignupPage() {
       formAriaLabel="Sign up form"
       eyebrow="Join the beta"
       title="Plan your classes, notes, and deadlines in one place."
-      description="Create a free account to organize your coursework. Your data is stored locally on your device, and the core planner will stay free and open source."
+      description="Accounts are still being built, so this form does not create one yet. The planner is already usable without it: your coursework is stored locally on your device, and the core planner will stay free and open source."
       benefits={[
         {
           icon: <ShieldCheck className="size-4" />,

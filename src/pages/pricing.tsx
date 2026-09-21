@@ -34,11 +34,12 @@ export function PricingPage() {
 
         <MarketingCallout
           icon={ShieldCheck}
-          title="Security included on every tier"
+          title="How your data is handled today"
           className="mt-10 text-left"
         >
-          Every plan follows the same encryption-first model: local-first data handling, secure key
-          management, and access control designed for shared academic workspaces.
+          Cuervo Planner currently runs entirely in your browser: there is no server, so nothing you
+          write is uploaded, and nothing is encrypted at rest. Encryption, sync, and shared
+          workspaces are on the roadmap, and the paid tiers below stay unavailable until they exist.
         </MarketingCallout>
         <MarketingCallout
           icon={ShieldCheck}

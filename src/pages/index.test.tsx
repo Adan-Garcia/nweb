@@ -32,15 +32,25 @@ describe("IndexPage", () => {
 
     for (const title of [
       "Private by default",
-      "Fast syncing",
       "Open Source",
       "Free Beta",
-      "Device Level Encryption",
-      "Easy sharing",
-      "Cross platform",
+      "Works in any browser",
       "Offline first",
+      "Device level encryption",
+      "Fast syncing",
+      "Easy sharing",
     ]) {
       expect(within(benefits).getByText(title)).toBeInTheDocument();
+    }
+  });
+
+  it("marks the benefits that do not exist yet as coming soon", () => {
+    render(<IndexPage />);
+    const benefits = screen.getByLabelText("Features and benefits of using Cuervo Planner");
+
+    expect(within(benefits).getAllByText("Coming soon")).toHaveLength(3);
+    for (const title of ["Device level encryption", "Fast syncing", "Easy sharing"]) {
+      expect(within(benefits).getByText(title).textContent).toContain("Coming soon");
     }
   });
 

@@ -1,4 +1,4 @@
-import { Database, KeyRound, type LucideIcon, ShieldCheck, Users } from "lucide-react";
+import { Database, HardDrive, type LucideIcon, Map, Users } from "lucide-react";
 
 export type PolicySection = {
   title: string;
@@ -8,40 +8,39 @@ export type PolicySection = {
 
 export const POLICY_SECTIONS: PolicySection[] = [
   {
-    title: "Data we collect",
+    title: "What we collect",
     icon: Database,
     items: [
-      "Account information you provide, such as email and profile details.",
-      "Planner content you create, including tasks, notes, labels, and collaboration metadata.",
-      "Operational logs required to keep syncing and reliability working during the beta period.",
+      "Nothing. Cuervo Planner has no server and no accounts, so there is nowhere to send your data and no one to send it to.",
+      "The sign-in and sign-up forms do not create an account yet. They check that what you typed is well formed and go no further.",
+      "There is no analytics, no tracking, and no telemetry in the app.",
     ],
   },
   {
-    title: "How your data is protected",
-    icon: ShieldCheck,
+    title: "Where your data lives",
+    icon: HardDrive,
     items: [
-      "Data is designed to be encrypted before it is sent to backend services.",
-      "Current architecture uses unique AES-GCM data encryption keys for courses and notes.",
-      "Private keys remain on user devices, while only encrypted payloads and encrypted keys are stored remotely.",
-      "Our code is 100% open-source, meaning our encryption methods and data practices can be independently verified by anyone.",
+      "Your notes are stored in this browser's IndexedDB, and your calendar events in its local storage. Both stay on this device.",
+      "Notes are compressed to save space. They are not encrypted, so anyone who can open this browser profile can read them.",
+      "Clearing your browser's site data deletes everything, and there is no copy anywhere else.",
     ],
   },
   {
-    title: "Sharing and access control",
+    title: "Who can see it",
     icon: Users,
     items: [
-      "Shared workspaces use key exchange so collaborators can decrypt only the content they are invited to access.",
-      "Server-side access is controlled with row-level policies.",
-      "When collaboration membership changes, access revocation rules are applied and new keys may be rotated.",
+      "Only someone using this browser profile. There is no sharing and no collaboration.",
+      "Nothing is transmitted, so there is nothing to intercept in the first place.",
+      "If you use Cuervo Planner on a shared or public computer, treat your notes as readable by the next person.",
     ],
   },
   {
-    title: "Storage, sync, and retention",
-    icon: KeyRound,
+    title: "What is not built yet",
+    icon: Map,
     items: [
-      "Cuervo Planner is local-first and keeps decrypted state on your device for offline usage.",
-      "Encrypted copies may be synchronized through supported cloud infrastructure to keep devices in sync.",
-      "You can stop using the service at any time; self-hosting and local-first workflows remain a supported direction.",
+      "Accounts, sync between devices, encryption at rest, and sharing are on the roadmap and are not implemented today.",
+      "Until they exist, no part of this app can promise them, whatever a feature list elsewhere might suggest.",
+      "This page will be rewritten before any of them ship. The planned order is on the documentation page.",
     ],
   },
 ];
@@ -55,17 +54,17 @@ export type BreakdownStep = {
 export const PLAIN_LANGUAGE_STEPS: BreakdownStep[] = [
   {
     step: "1",
-    title: "You lock it on your device",
-    copy: "Before your notes leave your device, they are scrambled into unreadable text.",
+    title: "It stays in this browser",
+    copy: "Everything you write is saved by the browser on this device. There is no server to send it to.",
   },
   {
     step: "2",
-    title: "Only your key can unlock it",
-    copy: "The app needs your key to turn that scrambled text back into readable content.",
+    title: "It is not locked",
+    copy: "Your notes are compressed, not encrypted. Anyone who can open this browser profile can read them.",
   },
   {
     step: "3",
-    title: "No key means no reading",
-    copy: "If someone gets the stored data but not your key, they only see encrypted gibberish.",
+    title: "It is the only copy",
+    copy: "Clear your site data or lose the device and the notes are gone. Nothing is backed up anywhere else.",
   },
 ];

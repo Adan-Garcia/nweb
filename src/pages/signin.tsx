@@ -7,19 +7,19 @@ export function SignInPage() {
   return (
     <AuthShell
       formAriaLabel="Sign in form"
-      eyebrow="Secure access"
-      title="Pick up right where your notes and projects left off."
-      description="Sign in to resume your encrypted workspace, keep your drafts in sync, and return to the same clean flow on every device."
+      eyebrow="Beta preview"
+      title="Accounts are not live yet."
+      description="Sign-in is still being built, so this form does not sign you in anywhere. The planner already works without an account: your notes and deadlines are saved in this browser."
       benefits={[
         {
           icon: <ShieldCheck className="size-4" />,
           title: "Private by default",
-          copy: "Your workspace stays locked to your account.",
+          copy: "Nothing you write leaves this browser.",
         },
         {
           icon: <LockKeyhole className="size-4" />,
-          title: "Fast recovery",
-          copy: "Get back in quickly if you switch devices.",
+          title: "No account needed",
+          copy: "The notes, calendar, and dashboard all work right now.",
         },
       ]}
       form={<LoginForm className="m-0 w-[min(100%,480px)]" />}

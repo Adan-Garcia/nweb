@@ -15,14 +15,14 @@ export function PrivacyPage() {
           <MarketingEyebrow icon={ShieldCheck}>Privacy Policy</MarketingEyebrow>
           <h1 className="mb-3 text-4xl font-bold sm:text-5xl">Your study data stays yours</h1>
           <p className="text-base text-muted-foreground sm:text-lg">
-            This policy explains how Cuervo Planner handles account information and study content
-            during beta. The product is designed around local-first storage, encryption, and
-            controlled sharing for collaborative coursework.
+            Cuervo Planner is an early beta that runs entirely in your browser. There is no server,
+            no account, and nothing is collected. This page describes what the app does today, not
+            what it is planned to do.
           </p>
-          <p className="mt-3 text-sm text-muted-foreground">Last updated: April 15, 2026</p>
+          <p className="mt-3 text-sm text-muted-foreground">Last updated: September 20, 2026</p>
         </div>
 
-        <PlainLanguageBreakdown intro="Short version: your data is encrypted first, and it cannot be read without your key." />
+        <PlainLanguageBreakdown intro="Short version: everything stays in this browser, nothing is encrypted, and it is the only copy." />
 
         <div className="grid gap-5 md:grid-cols-2">
           {POLICY_SECTIONS.map((section) => (

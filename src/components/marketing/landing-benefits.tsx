@@ -1,4 +1,14 @@
-import { LockKeyhole, type LucideIcon, ShieldCheck } from "lucide-react";
+import {
+  CloudOff,
+  Code,
+  FileDown,
+  Laptop,
+  LockKeyhole,
+  type LucideIcon,
+  RefreshCw,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 
 import { BenefitCards } from "@/components/auth/benefit-cards";
 
@@ -6,48 +16,52 @@ type Benefit = {
   icon: LucideIcon;
   title: string;
   copy: string;
+  comingSoon?: boolean;
 };
 
 const BENEFITS: Benefit[] = [
   {
     icon: ShieldCheck,
     title: "Private by default",
-    copy: "Your wings stay locked to your account.",
+    copy: "Everything you write stays in your browser. There is no server to send it to.",
   },
   {
-    icon: LockKeyhole,
-    title: "Fast syncing",
-    copy: "Quickly sync your data across all your devices.",
-  },
-  {
-    icon: LockKeyhole,
+    icon: Code,
     title: "Open Source",
-    copy: "Open Source, forever.",
+    copy: "MIT licensed and free to read, fork, or self-host.",
   },
   {
-    icon: LockKeyhole,
+    icon: FileDown,
     title: "Free Beta",
     copy: "Free beta access till 2027.",
   },
   {
-    icon: LockKeyhole,
-    title: "Device Level Encryption",
-    copy: "Your data is encrypted at the device level, ensuring maximum security.",
+    icon: Laptop,
+    title: "Works in any browser",
+    copy: "Open Cuervo Planner on any modern browser. Installing it as an app is on the way.",
   },
   {
-    icon: LockKeyhole,
-    title: "Easy sharing",
-    copy: "share your notes and homework with your friends, family, or classmates",
-  },
-  {
-    icon: LockKeyhole,
-    title: "Cross platform",
-    copy: "Access Cuervo Planner on all your devices, seamlessly.",
-  },
-  {
-    icon: LockKeyhole,
+    icon: CloudOff,
     title: "Offline first",
-    copy: "Use Cuervo Planner even without an internet connection, your data will sync once you're back online.",
+    copy: "Once the page has loaded, the planner keeps working with no connection.",
+  },
+  {
+    icon: LockKeyhole,
+    title: "Device level encryption",
+    copy: "Lock your notes on this device behind a passphrase.",
+    comingSoon: true,
+  },
+  {
+    icon: RefreshCw,
+    title: "Fast syncing",
+    copy: "Keep the same notes and deadlines on every device you use.",
+    comingSoon: true,
+  },
+  {
+    icon: Users,
+    title: "Easy sharing",
+    copy: "Share your notes and homework with friends, family, or classmates.",
+    comingSoon: true,
   },
 ];
 
@@ -55,10 +69,11 @@ export function LandingBenefits() {
   return (
     <BenefitCards
       label="Features and benefits of using Cuervo Planner"
-      benefits={BENEFITS.map(({ icon: Icon, title, copy }) => ({
+      benefits={BENEFITS.map(({ icon: Icon, title, copy, comingSoon }) => ({
         icon: <Icon className="size-4" />,
         title,
         copy,
+        comingSoon,
       }))}
     />
   );

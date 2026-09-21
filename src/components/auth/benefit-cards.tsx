@@ -4,6 +4,8 @@ export type Benefit = {
   icon: ReactNode;
   title: string;
   copy: string;
+  /** Marks a benefit the app does not deliver yet, so the card says so instead of implying it. */
+  comingSoon?: boolean;
 };
 
 type BenefitCardsProps = {
@@ -34,7 +36,14 @@ export function BenefitCards({ benefits, label }: BenefitCardsProps) {
             {benefit.icon}
           </span>
           <div className="w-full">
-            <p className="m-0 font-semibold text-(--text-h)">{benefit.title}</p>
+            <p className="m-0 flex flex-wrap items-center gap-2 font-semibold text-(--text-h)">
+              {benefit.title}
+              {benefit.comingSoon ? (
+                <span className="rounded-full bg-muted px-2 py-[0.1rem] text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">
+                  Coming soon
+                </span>
+              ) : null}
+            </p>
             <p className="mt-[0.2rem]! text-[0.92rem] text-[oklch(0.49_0.02_286)] dark:text-[oklch(0.8_0.015_286)]">
               {benefit.copy}
             </p>
