@@ -86,6 +86,14 @@ export function useCalendarTwigs() {
     [refreshTwigs],
   );
 
+  const rescheduleTwig = useCallback(
+    async (twigId: string, dueDate: string) => {
+      await updateTwig(twigId, { dueDate });
+      await refreshTwigs();
+    },
+    [refreshTwigs],
+  );
+
   const deleteTwig = useCallback(
     async (twigToDelete: Twig) => {
       if (!window.confirm(`Delete "${twigToDelete.title}"?`)) {
@@ -107,5 +115,6 @@ export function useCalendarTwigs() {
     setTwigStatus,
     saveTwig,
     deleteTwig,
+    rescheduleTwig,
   };
 }

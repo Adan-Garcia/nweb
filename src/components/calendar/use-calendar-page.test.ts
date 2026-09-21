@@ -1,10 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { dayId } from "@/lib/calendar-drop";
 import { createBranch, createFlight, createWing } from "@/lib/entity-storage";
 import { getNotesDb } from "@/lib/notes-db";
 import type { Twig } from "@/lib/twig-model";
-import { createTwig, type TwigDraft } from "@/lib/twig-storage";
+import { createTwig, listTwigs, type TwigDraft } from "@/lib/twig-storage";
 
 import { formatDateKey } from "./calendar-shared";
 import { useCalendarPage } from "./use-calendar-page";
@@ -200,6 +201,36 @@ describe("useCalendarPage", () => {
       branchId: physicsId,
       kind: "essay",
     });
+  });
+
+  it("dragging a task onto another day moves its due date there", async () => {
+    const twig = await twigOn("15");
+    const { result } = await mount();
+
+    await act(async () => {
+      await result.current.handleDayDrop(twig.id, dayId(`${monthKey}22`));
+    });
+
+    const stored = (await listTwigs()).find((item) => item.id === twig.id);
+    expect(stored?.dueDate).toBe(`${monthKey}22`);
+    // The view follows the task, so it is still on screen after the move.
+    expect(result.current.selectedDateKey).toBe(`${monthKey}22`);
+  });
+
+  it("ignores a drop on nothing, on a non-day, or back on the same day", async () => {
+    const twig = await twigOn("15");
+    const { result } = await mount();
+
+    await act(async () => {
+      await result.current.handleDayDrop(twig.id, null);
+      await result.current.handleDayDrop(twig.id, "column:incomplete");
+      await result.current.handleDayDrop(twig.id, dayId(`${monthKey}15`));
+    });
+
+    const stored = (await listTwigs()).find((item) => item.id === twig.id);
+    expect(stored?.dueDate).toBe(`${monthKey}15`);
+    expect(stored?.updatedAt).toBe(twig.updatedAt);
+    expect(result.current.selectedDateKey).toBeNull();
   });
 
   it("saving while editing updates that task instead of adding one", async () => {

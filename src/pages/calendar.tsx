@@ -1,3 +1,12 @@
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  pointerWithin,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+
 import { CalendarEventListCard } from "@/components/calendar/calendar-event-list-card";
 import { CalendarGridCard } from "@/components/calendar/calendar-grid-card";
 import { EventOverlay } from "@/components/calendar/event-overlay";
@@ -9,6 +18,12 @@ export function CalendarPage() {
   const { isDark, toggleTheme } = useThemeMode();
   const calendar = useCalendarPage();
   const { editor } = calendar;
+
+  // A small distance before a drag starts, so the buttons on an event still take a click.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor),
+  );
 
   return (
     <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
@@ -22,49 +37,62 @@ export function CalendarPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_2.5fr]">
-          <CalendarEventListCard
-            snapshot={calendar.snapshot}
-            isLoading={calendar.isLoading}
-            selectedDateKey={calendar.selectedDateKey}
-            viewMode={calendar.viewMode}
-            weekLabel={calendar.weekLabel}
-            monthLabel={calendar.monthLabel}
-            eventTab={calendar.eventTab}
-            onEventTabChange={calendar.setEventTab}
-            onClearDayFilter={calendar.clearDayFilter}
-            searchTerm={calendar.searchTerm}
-            onSearchTermChange={calendar.setSearchTerm}
-            selectedClassFilter={calendar.selectedClassFilter}
-            onSelectedClassFilterChange={calendar.setSelectedClassFilter}
-            eventClasses={calendar.eventClasses}
-            filteredEvents={calendar.filteredEvents}
-            onOpenAddEvent={editor.openAdd}
-            onOpenEditEvent={editor.openEdit}
-            onDeleteEvent={(event) => {
-              void calendar.deleteEvent(event);
-            }}
-            onSetEventStatus={(twigId, nextStatus) => {
-              void calendar.setEventStatus(twigId, nextStatus);
-            }}
-          />
-          <CalendarGridCard
-            snapshot={calendar.snapshot}
-            viewMode={calendar.viewMode}
-            onViewModeChange={calendar.setViewMode}
-            monthLabel={calendar.monthLabel}
-            weekLabel={calendar.weekLabel}
-            onPrevious={calendar.goPrevious}
-            onNext={calendar.goNext}
-            onToday={calendar.goToToday}
-            visibleDates={calendar.visibleDates}
-            currentMonth={calendar.currentMonth}
-            today={calendar.today}
-            selectedDateKey={calendar.selectedDateKey}
-            eventsByDate={calendar.eventsByDate}
-            onSelectDate={calendar.selectDate}
-          />
-        </div>
+        <DndContext
+          sensors={sensors}
+          // The dragged card is larger than a day cell and overlaps several at once, so the
+          // day under the pointer is the one that counts, not the one it overlaps most.
+          collisionDetection={pointerWithin}
+          onDragEnd={(event) => {
+            void calendar.handleDayDrop(
+              String(event.active.id),
+              event.over ? String(event.over.id) : null,
+            );
+          }}
+        >
+          <div className="grid gap-6 lg:grid-cols-[1fr_2.5fr]">
+            <CalendarEventListCard
+              snapshot={calendar.snapshot}
+              isLoading={calendar.isLoading}
+              selectedDateKey={calendar.selectedDateKey}
+              viewMode={calendar.viewMode}
+              weekLabel={calendar.weekLabel}
+              monthLabel={calendar.monthLabel}
+              eventTab={calendar.eventTab}
+              onEventTabChange={calendar.setEventTab}
+              onClearDayFilter={calendar.clearDayFilter}
+              searchTerm={calendar.searchTerm}
+              onSearchTermChange={calendar.setSearchTerm}
+              selectedClassFilter={calendar.selectedClassFilter}
+              onSelectedClassFilterChange={calendar.setSelectedClassFilter}
+              eventClasses={calendar.eventClasses}
+              filteredEvents={calendar.filteredEvents}
+              onOpenAddEvent={editor.openAdd}
+              onOpenEditEvent={editor.openEdit}
+              onDeleteEvent={(event) => {
+                void calendar.deleteEvent(event);
+              }}
+              onSetEventStatus={(twigId, nextStatus) => {
+                void calendar.setEventStatus(twigId, nextStatus);
+              }}
+            />
+            <CalendarGridCard
+              snapshot={calendar.snapshot}
+              viewMode={calendar.viewMode}
+              onViewModeChange={calendar.setViewMode}
+              monthLabel={calendar.monthLabel}
+              weekLabel={calendar.weekLabel}
+              onPrevious={calendar.goPrevious}
+              onNext={calendar.goNext}
+              onToday={calendar.goToToday}
+              visibleDates={calendar.visibleDates}
+              currentMonth={calendar.currentMonth}
+              today={calendar.today}
+              selectedDateKey={calendar.selectedDateKey}
+              eventsByDate={calendar.eventsByDate}
+              onSelectDate={calendar.selectDate}
+            />
+          </div>
+        </DndContext>
       </div>
 
       <EventOverlay

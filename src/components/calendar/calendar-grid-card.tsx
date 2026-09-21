@@ -1,11 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import {
-  branchLabelFor,
-  type DatedTwig,
-  formatDateKey,
-  weekDays,
-} from "@/components/calendar/calendar-shared";
+import { CalendarDayCell } from "@/components/calendar/calendar-day-cell";
+import { type DatedTwig, formatDateKey, weekDays } from "@/components/calendar/calendar-shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
@@ -85,59 +81,20 @@ export function CalendarGridCard({
         <div className="grid min-h-120 grid-cols-7 auto-rows-fr gap-2">
           {visibleDates.map((date) => {
             const dateKey = formatDateKey(date);
-            const dayEvents = eventsByDate.get(dateKey) ?? [];
-            const isToday = date.toDateString() === today.toDateString();
-            const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
-            const isSelected = dateKey === selectedDateKey;
 
             return (
-              <button
+              <CalendarDayCell
                 key={dateKey}
-                type="button"
-                onClick={() => onSelectDate(date)}
-                className={`rounded-lg border p-2 text-left transition-all duration-300 opacity-90 hover:opacity-100 ${
-                  viewMode === "month" ? "min-h-24" : "h-full"
-                } ${isCurrentMonth ? "bg-card" : "bg-muted/40 text-muted-foreground"} ${
-                  isSelected
-                    ? "border-primary ring-1 ring-primary/30"
-                    : isToday
-                      ? "border-primary"
-                      : "border-border"
-                } flex flex-col items-start justify-start text-left`}
-              >
-                <div className="mb-1 flex w-full items-start justify-start">
-                  <span
-                    className={`text-sm font-semibold ${
-                      isToday
-                        ? "inline-flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                        : ""
-                    }`}
-                  >
-                    {date.getDate()}
-                  </span>
-                </div>
-
-                <div className="w-full space-y-1">
-                  {dayEvents.slice(0, 2).map((event) => (
-                    <div
-                      key={event.id}
-                      className={`truncate rounded-md bg-muted px-2 py-1 text-[11px] transition-opacity duration-300 ${
-                        event.status === "complete" ? "opacity-50" : "opacity-100"
-                      }`}
-                    >
-                      <span
-                        className={`mr-1 inline-block size-2 rounded-full ${branchLabelFor(snapshot, event.branchId).colorClass}`}
-                      />
-                      {event.title}
-                    </div>
-                  ))}
-                  {dayEvents.length > 2 ? (
-                    <p className="text-[11px] text-muted-foreground">
-                      +{dayEvents.length - 2} more
-                    </p>
-                  ) : null}
-                </div>
-              </button>
+                snapshot={snapshot}
+                date={date}
+                dateKey={dateKey}
+                events={eventsByDate.get(dateKey) ?? []}
+                isToday={date.toDateString() === today.toDateString()}
+                isCurrentMonth={date.getMonth() === currentMonth.getMonth()}
+                isSelected={dateKey === selectedDateKey}
+                isCompact={viewMode === "month"}
+                onSelect={onSelectDate}
+              />
             );
           })}
         </div>

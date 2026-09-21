@@ -1,4 +1,5 @@
-import { Clock3, Pencil, Trash2 } from "lucide-react";
+import { useDraggable } from "@dnd-kit/core";
+import { Clock3, GripVertical, Pencil, Trash2 } from "lucide-react";
 
 import {
   branchLabelFor,
@@ -27,12 +28,16 @@ export function CalendarEventListItem({
   onSetStatus,
 }: CalendarEventListItemProps) {
   const branch = branchLabelFor(snapshot, event.branchId);
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
+    id: event.id,
+  });
 
   return (
     <div
+      ref={setNodeRef}
       className={`rounded-lg border border-border p-3 transition-opacity duration-300 ${
         event.status === "complete" ? "opacity-60" : "opacity-90 hover:opacity-100"
-      }`}
+      } ${isDragging ? "opacity-40" : ""}`}
     >
       <div className="mb-2 flex items-start justify-between gap-2 flex-col">
         <div className="flex flex-row items-center min-w-full justify-between">
@@ -42,7 +47,17 @@ export function CalendarEventListItem({
             eventTitle={event.title}
           />
 
-          <div>
+          <div className="flex items-center">
+            <button
+              type="button"
+              ref={setActivatorNodeRef}
+              aria-label={`Move ${event.title} to another day`}
+              className="cursor-grab rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="size-4" />
+            </button>
             <Button
               variant="ghost"
               size="icon-sm"

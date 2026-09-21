@@ -25,7 +25,7 @@ Approved on 2026-09-20 and shipped so far:
 | A2 data model, step 2: delete a note | **Done.** Deletes the note that is open, behind a confirmation, from the notes path bar. Tombstones the entry and drops the document and its media. | this commit |
 | A2 data model, the rest | **Done.** Wings, flights, branches and nests are records with UUIDs, timestamps and tombstones, and rename/recolour/cascading-delete storage. Notes point at a branch and carry nests as tags. Twigs replaced calendar events and moved into IndexedDB. Pebbles list files as their own entity. `NOTES_DB_VERSION` 3 to 4, converting every string path and every stored event in one transaction; backup format 1 to 2, still restoring a version 1 file. | this commit |
 | Notifications (in-app) | **Done.** A bell in the sidebar lists what is overdue, due today and due in the next week, computed from the twigs, with a count badge for the first two. Push and email still need a server (Part C). | this commit |
-| Drag and drop, kanban | Next. Twigs, their statuses and a sparse `boardOrder` are already in place for the board to drag. | |
+| A5 drag and drop, kanban | **Done.** A board at `/board` with a column per status; cards drag between and within columns, by pointer or by keyboard. On the calendar, a task drags onto another day to reschedule it. `@dnd-kit` is finally doing the job it was installed for. | this commit |
 | A3 PWA | After that. | |
 | Crypto seam, then the app lock | Separate version bump, last of the storage work. Confirmed: on by default, no reset. | |
 | WASM Brotli | Last, alone, because of the dependency gauntlet in CLAUDE.md section 9. | |
@@ -207,7 +207,7 @@ zero-knowledge and key-exchange wording (B2, B3) out of the copy until a server 
 
 | Feature | Claimed at | Status |
 | --- | --- | --- |
-| Drag and drop calendar and kanban (`@dnd-kit`) | `documentation-content.ts:44`, `Todo.md:13` | **Absent.** `@dnd-kit/*` is in `package.json:22-24` but imported nowhere; the calendar has no drag handlers and there is no kanban. Depends on Twigs (A2). |
+| Drag and drop calendar and kanban (`@dnd-kit`) | `documentation-content.ts:44`, `Todo.md:13` | **Done.** The board drags cards between and within status columns; the calendar drags a task onto another day. Both by pointer and by keyboard. |
 | Zustand stores (`usePlannerStore`, `useEventStore`) | `documentation-content.ts:42`, `Todo.md:6-7` | **Absent.** `zustand` is in `package.json:47` but imported nowhere (CLAUDE.md keeps it on purpose). |
 | Typed `DecryptedTask` / `DecryptedNote` / `EncryptedPayload` | `documentation-content.ts:43` | **Absent.** Exist only if A4 encryption is built. |
 

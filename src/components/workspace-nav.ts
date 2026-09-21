@@ -1,4 +1,10 @@
-import { CalendarDays, LayoutDashboard, type LucideIcon, Notebook } from "lucide-react";
+import {
+  CalendarDays,
+  KanbanSquare,
+  LayoutDashboard,
+  type LucideIcon,
+  Notebook,
+} from "lucide-react";
 
 export type WorkspaceNavItem = {
   title: string;
@@ -16,6 +22,11 @@ export const NAVIGATION_ITEMS: WorkspaceNavItem[] = [
     title: "Calendar",
     url: "/calendar",
     icon: CalendarDays,
+  },
+  {
+    title: "Board",
+    url: "/board",
+    icon: KanbanSquare,
   },
   {
     title: "Notes",

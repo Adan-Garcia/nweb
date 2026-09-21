@@ -23,6 +23,7 @@ const DocumentationPage = lazyPage(() => import("@/pages/documentation"), "Docum
 const PricingPage = lazyPage(() => import("@/pages/pricing"), "PricingPage");
 const PrivacyPage = lazyPage(() => import("@/pages/privacy"), "PrivacyPage");
 const CalendarPage = lazyPage(() => import("@/pages/calendar"), "CalendarPage");
+const BoardPage = lazyPage(() => import("@/pages/board"), "BoardPage");
 const NotesPage = lazyPage(() => import("@/pages/notes"), "NotesPage");
 const SettingsPage = lazyPage(() => import("@/pages/settings"), "SettingsPage");
 
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/board" element={<BoardPage />} />
           <Route path="/notes" element={<NotesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
