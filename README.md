@@ -6,7 +6,7 @@ A local-first homework planner and note-taking app for students: a calendar, a d
 
 ## Stack
 
-React 19, TypeScript 6 (strict), Vite 8, Tailwind CSS v4, shadcn/ui (`base-nova`), React Router 7, React Hook Form + Zod 4, TipTap (linear notes), Excalidraw (spatial notes), pdf.js (PDF import), `idb` (IndexedDB), and a Web Worker for image optimization and text compression. Tests use Vitest, React Testing Library, MSW and `fake-indexeddb`.
+React 19, TypeScript 6 (strict), Vite 8, Tailwind CSS v4, shadcn/ui (`base-nova`), React Router 7, React Hook Form + Zod 4, TipTap (linear notes), Excalidraw (spatial notes), pdf.js (PDF import), `idb` (IndexedDB), and a Web Worker for image optimization and text compression. Unit and component tests use Vitest, React Testing Library, MSW and `fake-indexeddb`; browser-level tests use Playwright.
 
 ## Getting started
 
@@ -24,10 +24,11 @@ npm run dev        # http://localhost:5173
 | `npm run lint` | ESLint, type-aware. |
 | `npm run format` | Format with Prettier (`format:check` verifies without writing). |
 | `npm run test` | Run the test suite once. `test:watch` and `test:coverage` are also available. |
+| `npm run test:e2e` | Browser tests (Playwright) against a production build. First run: `npx playwright install chromium`. |
 | `npm run build` | Type-check and produce a production build in `dist/`. |
 | `npm run preview` | Serve the production build locally. |
 
-Before opening a change, run `npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build`. To make `git blame` skip the one-off formatting commit, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+Before opening a change, run `npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build`, and `npm run test:e2e` if you touched the notes canvas, PDF import or a page flow. To make `git blame` skip the one-off formatting commit, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 
 ## Project layout
 
@@ -46,6 +47,8 @@ src/
   workers/             Web Worker entry points
   test/                Shared test setup (jsdom, fake-indexeddb, MSW)
 ```
+
+Browser-level tests live in `e2e/` at the repo root (Playwright: the real canvas, PDF import, drag-and-drop, fullscreen).
 
 ## Domain model
 

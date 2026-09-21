@@ -13,3 +13,9 @@ src/components/ui
 *.md
 *.css
 *.html
+
+# Playwright output and local visual baselines
+test-results
+playwright-report
+blob-report
+e2e/__visual__

@@ -124,6 +124,10 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   **Isolation** `[ENFORCED]`: the setup file runs an MSW server that fails any network request without a handler (`data:` and `blob:` URLs are in-memory and exempt); add handlers with `server.use(...)` from `src/test/server.ts`. IndexedDB is `fake-indexeddb` (auto-installed); `localStorage` and the `<html>` class are reset after every test. Stub `window.matchMedia` per test where needed (jsdom has none).
 *   **Coverage** `[ENFORCED]` by `npm run test:coverage` (thresholds in `vite.config.ts`, deliberately just under what is measured so it can only go up): overall lines/statements 97%, functions 95%, branches 90%; `src/hooks/**` 100%; feature hooks (`src/components/**/use-*.ts`) 97% lines / 85% branches; `src/lib/**` 95%; `src/workers/**` 98%. Pure utilities in `lib/` and `*-utils.ts` should reach 100% of their logic `[REQUIRED]`. Raise a threshold whenever coverage improves. The text reporter hides fully covered files, so read totals from `--coverage.reporter=json-summary` if a file seems missing.
 *   Suites that need real streams or no DOM (the Web Worker) opt into Node with a `// @vitest-environment node` first line; the shared setup is safe in both environments.
+*   **Browser-level tests (Playwright)** `[REQUIRED]` live in `e2e/*.spec.ts` and cover only what jsdom cannot: the real Excalidraw canvas, real pdf.js, drag-and-drop, fullscreen, and cross-page flows. Do not re-test routing, forms or filters there; those belong in Vitest. Specs run against a production build served by `vite preview` (`playwright.config.ts` builds it), each in a fresh browser context so IndexedDB and `localStorage` start empty. Every test also fails on any uncaught page error or `console.error` (`e2e/fixtures.ts`), and each spec was checked by breaking the behavior it covers.
+    *   Drive Excalidraw like a user: its tool buttons are radio inputs behind a label, so click the label; choosing a tool opens a properties panel over the left of the canvas, so start strokes right of centre. Measure the canvas with `inkPixels()`, not with selectors.
+    *   `window.prompt` (the PDF page picker) is auto-dismissed unless a `dialog` handler is registered first, which would make an import test pass vacuously: always register one.
+    *   **Visual regression** is a separate project (`npm run test:visual`). Baselines are not committed because font rendering differs between machines: run `npm run test:visual -- --update-snapshots` before a UI change, then `npm run test:visual` after; any pixel difference fails. Baselines live in `e2e/__visual__` (git-ignored).
 *   MSW's postinstall (browser service worker) is blocked by npm's install-scripts policy. It is only needed for in-browser mocking, not for these Node tests; do not approve it unless browser mocking is introduced.
 
 ## 5. Performance & Security
@@ -145,6 +149,8 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | Typecheck | `npm run typecheck` | `tsc -b`. The root `tsconfig.json` is solution-style, so build mode (`-b`) is required; a bare `tsc --noEmit` checks zero files. |
 | Lint | `npm run lint` | `eslint .`; **type-aware** (`recommendedTypeChecked`), so it needs the tsconfigs and takes a few seconds. |
 | Format | `npm run format` / `npm run format:check` | Prettier. `format:check` is the CI-style gate. |
+| E2E | `npm run test:e2e` | Playwright against a production build; first run on a machine needs `npx playwright install chromium`. |
+| Visual | `npm run test:visual` | Local pixel comparison; see §4. |
 | Build | `npm run build` | `tsc -b && vite build` |
 | Test | `npm run test` | Vitest; see §4. |
 
@@ -187,6 +193,7 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 *   Remaining audit advisories in the Excalidraw chain (`lodash-es`, `nanoid`, `@mermaid-js/parser`) are handled by the scoped `overrides` block in `package.json`. Extend that block; do not remove it.
 *   Pinned constraints: `@excalidraw/excalidraw` stays on `^0.18`; `pdfjs-dist` stays on v6 (fixes a high-severity malicious-PDF advisory; `destroy()` is on the loading task, not `PDFDocumentProxy`).
 *   After **any** dependency change run `npm run format:check`, `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`, and `npm audit`; also confirm `npm ls @excalidraw/excalidraw pdfjs-dist nanoid lodash-es` still shows the pinned versions.
+*   Playwright downloads its own browser to `~/.cache/ms-playwright` (`npx playwright install chromium`); the browser revision is tied to the `@playwright/test` version, so re-run that command after upgrading it.
 *   Prefer what is already installed (`date-fns`, `zod`, `lucide-react`, `@dnd-kit`, `zustand`) over adding a new package. A new dependency needs a stated reason and explicit approval.
 *   Commit `package-lock.json` with `package.json`. Do not use `--force` or `--legacy-peer-deps`.
 
@@ -205,7 +212,7 @@ A change is done only when:
 2.  No new violation of any §1 directive; touched files are no worse against §13.
 3.  No leftover `console.*`, commented-out code, or unowned TODOs.
 4.  Any new storage shape has a version bump and migration; any new external input has a Zod schema.
-5.  New or changed behaviour has tests (§4). UI changes were also exercised in the running app, or you state that they were not.
+5.  New or changed behaviour has tests (§4). If you changed the notes canvas, PDF import, image drop, fullscreen or a page flow, `npm run test:e2e` passes too. UI changes were also exercised in the running app, or you state that they were not.
 6.  Docs stay true: if you changed the domain model, commands, or structure, this file or `Heirarchy.md` is updated in the same change.
 
 ## 12. Working Agreement for AI Agents
@@ -220,4 +227,4 @@ A change is done only when:
 
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
-1.  **No browser-level tests.** Unit and component tests cover ~98.7% of lines, but Excalidraw and pdf.js are mocked, so real canvas drawing, PDF import, drag-and-drop and fullscreen are only ever exercised by hand. The UI migrations were checked pixel-for-pixel with an ad-hoc headless-Chrome harness (DevTools protocol, not in the repo). Adopting Playwright would make both repeatable; it is a new dependency and CI job, so it needs a decision.
+1.  **No CI pipeline.** There is no `.github/` (or other CI) config, so nothing runs `format:check`, `typecheck`, `lint`, `test:coverage`, `build` or `test:e2e` automatically. `playwright.config.ts` is already CI-aware (`forbidOnly`, one retry, no server reuse when `CI` is set).
