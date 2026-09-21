@@ -23,26 +23,21 @@ pay for. The site says so.
 
 # Part A. Still missing, and buildable with no backend
 
-## A1. Encryption: what is left
+## A1. Nothing, for the first time
 
-The workspace lock now encrypts note content — the text, the drawings, the bytes of every
-image and PDF — and every display name: note titles, course names, task titles, file names.
-A passphrase can be set, changed in one pass, and removed. Dates and times are left
-readable by design, which is a rule rather than a gap: `CLAUDE.md` §5 and `sealed-text.ts`
-say why.
+Everything on this list that could be built without a server has been. The workspace lock
+encrypts note content and every display name under an Argon2id-derived key; a passphrase
+can be set, changed in one pass, removed, and — if any of those is interrupted — finished
+from where it stopped, with the rows converted so far reported as it goes. A backup can be
+restored over the workspace or merged into it. The notes tree opens, renames and deletes.
 
-| Gap | Where | Why it is not done |
-| --- | --- | --- |
-| The rekey has no progress and no resume | `workspace-rekey.ts` | Setting, changing or removing a passphrase rewrites every row serially. A failure partway leaves some rows converted; the caller ordering means the recoverable state is the one the old key opens, but a user with a gigabyte of PDFs still sits on a spinner with nothing to look at. |
-| Restore is replace-only | `workspace-restore.ts` | Applying a backup clears every store first. There is no merge, so restoring onto a device that has been used since loses what it did. A merge needs the same conflict rules sync will need, so it is waiting on B2 rather than being separately hard. |
+Dates and times are left readable by design, which is a rule rather than a gap:
+`CLAUDE.md` §5 and `sealed-text.ts` say why.
 
-## A2. Smaller things
-
-| Gap | Where | Note |
-| --- | --- | --- |
-| The tree can only open notes | `notes-file-viewer.tsx` | The sidebar is a toggle beside the path bar now and lists every saved note. Renaming, moving and deleting still happen elsewhere, and which groups are expanded is component state, so it resets on reload. |
-| Tombstone collection is a startup guess | `tombstones.ts` | Markers older than ninety days are swept once per load from `WorkspaceShell`. The window was chosen before any sync exists to need it, and a workspace nobody opens never sweeps. |
-| Route warm-up is best effort | `route-warmup.ts`, `public/sw.js` | The unvisited page chunks are imported on idle so the worker caches them. A first visit closed before it goes idle still leaves routes that will not open offline. |
+What is left is genuinely inherent, and is recorded in `CLAUDE.md` §13 rather than here:
+a workspace nobody opens never sweeps its tombstones, and a first visit closed before the
+browser goes idle leaves routes that will not open offline. Neither has a fix that does
+not need a server or a background process.
 
 ---
 

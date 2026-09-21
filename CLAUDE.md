@@ -236,23 +236,21 @@ A change is done only when:
 ## 13. Known Gaps & Backlog (audited 2026-09-21)
 
 Pre-existing; not blockers for unrelated work (§0). `FEATURES-GAP.md` is the full list and
-the reasoning; this is the short form for someone editing the code.
+the reasoning; this is the short form for someone editing the code. Everything buildable
+without a server has shipped, so what is left here is inherent or waiting on the backend.
 
-1.  **The rekey has no progress and no resume.** Setting, changing or removing a
-    passphrase rewrites every document, media blob and name one row at a time
-    (`workspace-rekey.ts`). A workspace with a gigabyte of PDFs sits on a spinner, and a
-    failure partway leaves some rows converted — recoverable, because both callers order
-    their work so the old key still opens what has not moved, but not resumable.
-2.  **Backups are all-or-nothing.** `restoreWorkspaceBackup` clears every store and writes
-    the file's contents. There is no merge, so restoring on a device that has since been
-    used loses whatever it did in the meantime.
-3.  **Tombstone collection only runs when the workspace is opened.**
-    `collectTombstonesOnce` runs from `WorkspaceShell`, so a workspace nobody opens never
-    sweeps, and the ninety-day window is a guess made before any sync exists to need it.
-4.  **Route warm-up is best-effort.** `lib/route-warmup.ts` imports the unvisited page
-    chunks on idle so the service worker caches them. A first visit that is closed before
-    it goes idle still leaves routes that will not open offline.
-5.  **`NotesFileViewer` shows notes but cannot act on them.** The tree opens a note and
-    nothing else: renaming, moving and deleting from it all go through the path bar or the
-    settings editor. Its groups are also expanded from component state, so the shape is
-    forgotten on reload.
+1.  **Tombstone collection only runs when the workspace is opened.**
+    `collectTombstonesOnce` runs from `WorkspaceShell` when the workspace is usable, so
+    one nobody opens never sweeps. The ninety-day window is what a merge-style restore can
+    see back: merging a file older than that can bring a deleted note back, because the
+    marker that said "deleted here" is gone.
+2.  **Route warm-up is best-effort.** `lib/route-warmup.ts` imports the unvisited page
+    chunks on idle so the service worker caches them, workspace routes first. A first
+    visit closed before it goes idle still leaves routes that will not open offline.
+3.  **A merge restore is last-write-wins and nothing more.** Two devices that changed the
+    same note both keep the later `updatedAt`; there is no field-level merge and no way to
+    see what was dropped. That is the rule sync will need too, so it is the place to start
+    when B2 lands rather than a second implementation.
+4.  **A rekey holds one key per browser.** `lib/cipher.ts` has one active cipher, so a
+    shared wing cannot have a key of its own. The seam allows it — every row records which
+    cipher wrote it — but nothing does it, and sharing (B3) needs it.
