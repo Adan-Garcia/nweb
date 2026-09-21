@@ -28,7 +28,8 @@ Approved on 2026-09-20 and shipped so far:
 | A5 drag and drop, kanban | **Done.** A board at `/board` with a column per status; cards drag between and within columns, by pointer or by keyboard. On the calendar, a task drags onto another day to reschedule it. `@dnd-kit` is finally doing the job it was installed for. | this commit |
 | A3 PWA | **Done.** A manifest with real icons, and a hand-written service worker, so the app installs and starts with no network. No new dependency. | this commit |
 | Crypto seam, then the app lock | Separate version bump, last of the storage work. Confirmed: on by default, no reset. | |
-| WASM Brotli | Last, alone, because of the dependency gauntlet in CLAUDE.md section 9. | |
+| WASM Brotli | **Done.** `brotli-wasm`, loaded lazily in the worker. Notes are 38-50% smaller than gzip on the payloads actually stored. | this commit |
+| Crypto seam, then the app lock | Next. | |
 
 Decisions taken while building the above, all worth knowing:
 
@@ -198,7 +199,7 @@ visit on, everything the user touches works offline.
 | Export / import your data (JSON, plus files) | Implied by "local-first, you own your data" (`signup.tsx:12,17`, `unlogged.tsx:43`) | **Absent.** Clearing site data deletes everything, and there is no backup. This is the single most important missing safety feature. |
 | Device-level encryption at rest | `landing-benefits.tsx:34`, `Todo.md` section 3 | **Absent, and buildable without a server.** Encrypt IndexedDB and `localStorage` contents with WebCrypto AES-GCM under a key derived from a passphrase (PBKDF2 or Argon2). The trade-off is that a forgotten passphrase means unrecoverable data, with no account to reset it. |
 | An app lock ("locked" workspace) | `signin.tsx:17`, `landing-benefits.tsx:14-15` | **Absent, and buildable without a server** as the unlock step of the passphrase above. It is a local lock, not an account. |
-| Brotli text compression | `notes.md:21-22` | **Partial.** The worker tries `br` first (`media-worker.ts:84`). Chromium rejects `br`/`brotli` in `CompressionStream` (checked with Playwright: `br:false, brotli:false, gzip:true`), so it silently falls back to **gzip**. Either drop the claim or ship a WASM Brotli (a new dependency, needs approval). |
+| Brotli text compression | `notes.md:21-22` | **Done.** `brotli-wasm` in the worker, behind a lazy import so the WASM is only fetched on the first save. Measured against the payloads actually stored, Brotli is 38% smaller than gzip on TipTap HTML and 50% smaller on an Excalidraw scene. The algorithm is recorded per row, so notes written as gzip still open. |
 
 Local encryption is the only place the site's "encrypted" wording can honestly be made true without a
 backend, but the honest wording is **narrower than "Device Level Encryption."** In a browser app the
@@ -308,7 +309,7 @@ The detail lives in the part named in the last column; this table only says whic
 | Free beta through 2027 | A | A6 |
 | Notes organised by Wing > Flight > Branch > Nest > Feather | A | A2 |
 | Flights sorted by term | A | A2 |
-| Brotli compression | A | A4 |
+| Brotli compression | A | A4 — done |
 | Files (PDFs, images) | A | A2 (Pebbles) |
 | Calendar and dashboard as part of the planner | A | A2 |
 | Cross platform | A + B | A3 (installable — done), B2 (data follows you) |

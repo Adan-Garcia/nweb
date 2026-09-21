@@ -13,6 +13,15 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    alias: {
+      // brotli-wasm's ESM entry loads its .wasm by fetching a URL relative to the module,
+      // which Node cannot do for a file: URL. Tests run in Node either way, so they use the
+      // package's own Node build, which reads the same .wasm off disk. The browser and the
+      // worker still get the web build.
+      "brotli-wasm": fileURLToPath(
+        new URL("./node_modules/brotli-wasm/index.node.js", import.meta.url),
+      ),
+    },
     globalSetup: ["./vitest.global-setup.ts"],
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],

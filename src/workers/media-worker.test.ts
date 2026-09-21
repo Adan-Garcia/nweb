@@ -91,14 +91,15 @@ describe("compress-text / decompress-text", () => {
     expect(response).toMatchObject({ ok: true, payload: { text: "not gzip" } });
   });
 
-  it("falls back to 'none' when no compression algorithm is available", async () => {
+  it("compresses with brotli, which no browser offers through CompressionStream", async () => {
+    // Stubbed away to prove the worker is not quietly falling through to gzip, which is
+    // what it did for as long as "br" was only ever asked of CompressionStream.
     vi.stubGlobal("CompressionStream", undefined);
 
-    const response = await compress("hello");
+    const response = await compress("notes ".repeat(200));
 
     if (!response.ok || response.type !== "compress-text") throw new Error("unexpected");
-    expect(response.payload.algorithm).toBe("none");
-    expect(new TextDecoder().decode(response.payload.buffer)).toBe("hello");
+    expect(response.payload.algorithm).toBe("brotli");
   });
 });
 

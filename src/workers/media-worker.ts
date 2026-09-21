@@ -1,9 +1,9 @@
 import type {
-  DecompressTextRequest,
   OptimizeImageRequest,
   WorkerRequest,
   WorkerResponse,
 } from "@/lib/media-worker-protocol";
+import { compressText, decompressText } from "@/lib/text-compression";
 
 type WorkerScope = {
   postMessage: (message: WorkerResponse, transfer?: Transferable[]) => void;
@@ -65,57 +65,6 @@ async function optimizeImageToWebp(
   }
 }
 
-async function tryCompression(input: Uint8Array, algorithm: string): Promise<ArrayBuffer | null> {
-  try {
-    const compressionStream = new CompressionStream(algorithm as CompressionFormat);
-    const sourceBuffer = Uint8Array.from(input).buffer;
-    const stream = new Blob([sourceBuffer]).stream().pipeThrough(compressionStream);
-    return await new Response(stream).arrayBuffer();
-  } catch {
-    return null;
-  }
-}
-
-async function compressTextToBuffer(
-  text: string,
-): Promise<{ algorithm: string; buffer: ArrayBuffer }> {
-  const source = new TextEncoder().encode(text);
-
-  const preferredAlgorithms = ["br", "brotli", "gzip", "deflate"];
-
-  for (const algorithm of preferredAlgorithms) {
-    const compressed = await tryCompression(source, algorithm);
-    if (compressed) {
-      return {
-        algorithm,
-        buffer: compressed,
-      };
-    }
-  }
-
-  return {
-    algorithm: "none",
-    buffer: source.slice().buffer,
-  };
-}
-
-async function decompressTextFromBuffer(
-  payload: DecompressTextRequest["payload"],
-): Promise<string> {
-  if (payload.algorithm === "none") {
-    return new TextDecoder().decode(payload.buffer);
-  }
-
-  try {
-    const decompressionStream = new DecompressionStream(payload.algorithm as CompressionFormat);
-    const stream = new Blob([payload.buffer]).stream().pipeThrough(decompressionStream);
-    const result = await new Response(stream).arrayBuffer();
-    return new TextDecoder().decode(result);
-  } catch {
-    return new TextDecoder().decode(payload.buffer);
-  }
-}
-
 async function handleMessage(event: MessageEvent<WorkerRequest>) {
   const request = event.data;
 
@@ -137,7 +86,7 @@ async function handleMessage(event: MessageEvent<WorkerRequest>) {
     }
 
     if (request.type === "compress-text") {
-      const compressed = await compressTextToBuffer(request.payload.text);
+      const compressed = await compressText(request.payload.text);
 
       postResponse(
         {
@@ -152,7 +101,7 @@ async function handleMessage(event: MessageEvent<WorkerRequest>) {
       return;
     }
 
-    const text = await decompressTextFromBuffer(request.payload);
+    const text = await decompressText(request.payload.buffer, request.payload.algorithm);
 
     postResponse({
       id: request.id,
