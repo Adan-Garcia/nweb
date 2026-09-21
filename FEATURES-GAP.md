@@ -57,7 +57,6 @@ the sidebar up, or delete them.
 | Feathers are called markdown | `documentation-content.ts:27` | They are TipTap HTML plus an Excalidraw scene. `Heirarchy.md` says JSON. Neither is markdown. Fix the doc or add a markdown export. |
 | No "About" page | `marketing-nav.ts` | The nav has no About link now, which is honest. If one is wanted, it has to be written. |
 | Zustand is installed and unused | `package.json` | Kept on purpose for cross-tree state. Nothing needs it yet. |
-| No CI | — | Nothing runs `format:check`, `typecheck`, `lint`, `test:coverage`, `build` or `test:e2e` automatically. `playwright.config.ts` is already CI-aware. This is the highest-value item in this file. |
 
 ---
 
@@ -130,13 +129,14 @@ billing and support tooling, which is outside the app.
 
 # Part D. Order of work
 
-1. **CI.** Everything below is safer with the gates running automatically. Nothing else in
-   this file is cheaper.
-2. **A2, the workspace editor** — rename and delete already work in storage and are
+1. **A2, the workspace editor** — rename and delete already work in storage and are
    invisible. The largest gap between what the code does and what a user can reach.
-3. **A3** — wire the file viewer up or delete it. It has been dead since `d03aa1a`.
-4. **A1** — encrypt the titles, if the lock is meant to mean what most people will read it
+2. **A3** — wire the file viewer up or delete it. It has been dead since `d03aa1a`.
+3. **A1** — encrypt the titles, if the lock is meant to mean what most people will read it
    to mean. Decide this before anyone relies on it.
-5. **A4** — the shared-media save path, then tombstone collection.
-6. **Then the backend, as one project:** accounts (B1), sync (B2), encrypted sync,
+4. **A4** — the shared-media save path, then tombstone collection.
+5. **Then the backend, as one project:** accounts (B1), sync (B2), encrypted sync,
    sharing (B3), paid tiers (B4).
+
+CI is in place (`.github/workflows/ci.yml`), so each of these is gated on the same checks
+from the first commit rather than from whenever someone remembers to run them.

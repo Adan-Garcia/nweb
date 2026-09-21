@@ -1,0 +1,92 @@
+name: CI
+
+# The gates from CLAUDE.md section 11, run on every push and pull request so that
+# "all pass on a clean tree" is something a machine checks rather than a claim.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The floor CLAUDE.md section 6 states, so CI fails if the code drifts past it rather
+  # than only working on whatever the last developer happened to have installed.
+  NODE_VERSION: "22.13"
+
+jobs:
+  checks:
+    name: Format, types, lint, tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # --ignore-scripts keeps msw's postinstall from running, matching the local policy
+      # in CLAUDE.md section 4: it installs a browser service worker that these Node tests
+      # do not use. Nothing else in the tree needs a lifecycle script; Playwright's browser
+      # is installed explicitly in the job below.
+      - run: npm ci --ignore-scripts
+
+      - name: Format
+        run: npm run format:check
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # Coverage rather than plain `test`: the thresholds are part of the gate.
+      - name: Tests
+        run: npm run test:coverage
+
+      - name: Build
+        run: npm run build
+
+  e2e:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      # The browser revision is tied to the @playwright/test version, so the lockfile is
+      # the right cache key (CLAUDE.md section 9).
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # Unconditional: a cache hit makes the download a no-op, but --with-deps also
+      # installs the system libraries Chromium needs, and those are not in the cache.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # `test:e2e` builds the app and serves it with `vite preview`, so this covers what
+      # ships. The `visual` project is deliberately not run: its baselines are not
+      # committed because font rendering differs between machines (CLAUDE.md section 4).
+      - name: Browser tests
+        run: npm run test:e2e
+
+      - name: Upload the report when they fail
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7

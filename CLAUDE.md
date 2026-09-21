@@ -161,7 +161,8 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | Test | `npm run test` | Vitest; see §4. |
 
 *   **Before reporting completion run:** `npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build`. All pass on a clean tree today; keep them clean.
-*   Node **>= 22.13** is required (`pdfjs-dist` v6).
+*   Node **>= 22.13** is required (`pdfjs-dist` v6), declared in `package.json` `engines`.
+*   **CI runs all of it.** `.github/workflows/ci.yml` runs the same gates on every push and pull request, on the Node floor above, installing with `npm ci --ignore-scripts` so msw's postinstall stays blocked as it is locally (§4). The `visual` project is deliberately not run there: its baselines are not committed because font rendering differs between machines. A failing browser run uploads its Playwright report as an artifact.
 
 ## 7. Domain Model
 
@@ -235,29 +236,25 @@ A change is done only when:
 Pre-existing; not blockers for unrelated work (§0). `FEATURES-GAP.md` is the full list and
 the reasoning; this is the short form for someone editing the code.
 
-1.  **No CI pipeline.** There is no `.github/` (or other CI) config, so nothing runs
-    `format:check`, `typecheck`, `lint`, `test:coverage`, `build` or `test:e2e`
-    automatically. `playwright.config.ts` is already CI-aware (`forbidOnly`, one retry, no
-    server reuse when `CI` is set).
-2.  **Rename and delete have storage but no UI.** `entity-storage.ts` and
+1.  **Rename and delete have storage but no UI.** `entity-storage.ts` and
     `entity-delete.ts` expose rename, recolour and cascading delete for every level of the
     hierarchy, with tests. Nothing on screen calls them; the path bar can only add.
-3.  **`NotesFileViewer` has no render path.** It and the modules under it (`NotesTreeView`,
+2.  **`NotesFileViewer` has no render path.** It and the modules under it (`NotesTreeView`,
     `NotesNoteButton`, `NotesTreeGroup`, `notes-tree.ts`) render nowhere, and have not since
     `d03aa1a`. They were migrated to the entity model rather than left broken. Decide
     whether to wire the sidebar up or delete it; do not add features to it meanwhile.
-4.  **The lock does not cover titles.** Note titles, course names, task titles and due
+3.  **The lock does not cover titles.** Note titles, course names, task titles and due
     dates stay readable with the workspace locked, because they are what the app lists and
     sorts by. The settings card and the privacy page both say so. Closing it means every
     list decrypting before it filters.
-5.  **`saveSpatialDocumentPayload` still deletes shared media by id.** `softDeleteNote`,
+4.  **`saveSpatialDocumentPayload` still deletes shared media by id.** `softDeleteNote`,
     `softDeletePebble` and the entity cascade all count references across `notes-documents`
     and `pebbles` before dropping a blob. The save path does not: when a file leaves one
     scene it goes even if another note draws it.
-6.  **Tombstones are never collected.** Deletes drop the bytes, so a tombstone is a few
+5.  **Tombstones are never collected.** Deletes drop the bytes, so a tombstone is a few
     bytes, but nothing removes the marker rows — for notes, and for every entity, twig and
     pebble. They accumulate for the life of the database.
-7.  **A route never visited is not cached offline.** The service worker caches what it
+6.  **A route never visited is not cached offline.** The service worker caches what it
     serves and does not control the page that registered it, so opening a route for the
     first time with no network still fails. From the second visit on, everything the user
     has touched works.

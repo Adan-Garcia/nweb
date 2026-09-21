@@ -1,8 +1,10 @@
 # Cuervo Planner (`guerraclient`)
 
+[![CI](https://github.com/Adan-Garcia/nweb/actions/workflows/ci.yml/badge.svg)](https://github.com/Adan-Garcia/nweb/actions/workflows/ci.yml)
+
 A local-first homework planner and note-taking app for students: a calendar, a dashboard, and a hybrid notes workspace that combines a linear rich-text editor with an infinite spatial canvas.
 
-> **Status: early beta, front end only.** There is no backend. Notes are stored in the browser (IndexedDB), calendar events in `localStorage`. The sign-in and sign-up forms validate input but do not authenticate, and the sync and encryption described on the marketing pages are the project's direction, not yet implemented.
+> **Status: early beta, front end only.** There is no backend. Everything — notes, tasks, files and the workspace hierarchy — is stored in the browser (IndexedDB). The sign-in and sign-up forms validate input but do not authenticate, and the sync and sharing described on the marketing pages are the project's direction, not yet implemented. Encryption is implemented: set a passphrase in Settings and note content is encrypted on this device, though note titles and the course structure stay readable.
 
 ## Stack
 
