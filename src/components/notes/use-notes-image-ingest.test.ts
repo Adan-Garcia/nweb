@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MediaWorkerClient } from "@/lib/media-worker-client";
 
@@ -71,5 +71,60 @@ describe("useNotesImageIngest", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(result.current.optimizedAssetCount).toBe(0);
+  });
+});
+
+describe("useNotesImageIngest: pasting", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  // jsdom has neither ClipboardEvent nor DataTransfer; these are the two members the handler reads.
+  function pasteEvent(files: File[]) {
+    vi.stubGlobal(
+      "DataTransfer",
+      class {
+        files: File[] = [];
+      },
+    );
+    vi.stubGlobal(
+      "ClipboardEvent",
+      class extends Event {
+        clipboardData: unknown;
+        constructor(type: string, init?: { clipboardData?: unknown }) {
+          super(type);
+          this.clipboardData = init?.clipboardData ?? null;
+        }
+      },
+    );
+    const clipboardData = new DataTransfer();
+    Object.defineProperty(clipboardData, "files", { value: files });
+    return new ClipboardEvent("paste", { clipboardData });
+  }
+
+  it("counts pasted images, and never swallows the paste", async () => {
+    const { result } = setup("spatial");
+
+    let handled: boolean | Promise<boolean> = true;
+    act(() => {
+      handled = result.current.handleSpatialPaste({}, pasteEvent([png(), text(), png()]));
+    });
+
+    expect(handled).toBe(false);
+    await waitFor(() => expect(result.current.optimizedAssetCount).toBe(2));
+  });
+
+  it("ignores a paste with no images", async () => {
+    const { result } = setup("spatial");
+
+    act(() => {
+      void result.current.handleSpatialPaste({}, pasteEvent([text()]));
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(result.current.optimizedAssetCount).toBe(0);
+  });
+
+  it("ignores a paste that has no clipboard data", () => {
+    const { result } = setup("spatial");
+    expect(result.current.handleSpatialPaste({}, null)).toBe(false);
   });
 });

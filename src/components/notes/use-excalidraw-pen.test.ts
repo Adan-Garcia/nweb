@@ -63,6 +63,16 @@ describe("useExcalidrawPen", () => {
     expect(result.current.penWidth).toBe(5);
   });
 
+  it("ignores a canvas notification that reports the width it already has", () => {
+    const { result } = renderHook(() => useExcalidrawPen());
+    const { api, notify } = fakeApi(2);
+    act(() => result.current.handleExcalidrawApi(api));
+
+    act(() => notify(2));
+
+    expect(result.current.penWidth).toBe(2);
+  });
+
   it("only updates the local width without an API to talk to", () => {
     const { result } = renderHook(() => useExcalidrawPen());
     act(() => result.current.applyPenWidth(4));

@@ -263,3 +263,191 @@ describe("useNotesWorkspace: spatial persistence", () => {
     expect(result.current.spatialInitialData?.elements).toEqual([]);
   });
 });
+
+describe("useNotesWorkspace: spatial notes", () => {
+  it("recycles the canvas when a spatial note is opened, then settles", async () => {
+    const { result } = await mountReady();
+    expect(result.current.spatialEditorReloadKey).toBe(0);
+
+    await act(async () => {
+      await result.current.createOrOpenDocumentAtLocation(otherLocation, "spatial");
+    });
+
+    expect(result.current.mode).toBe("spatial");
+    expect(result.current.activeCreatedMode).toBe("spatial");
+    expect(result.current.spatialEditorReloadKey).toBe(1);
+    expect(result.current.isSpatialEditorReloading).toBe(false);
+    expect(result.current.isHydratingDocument).toBe(false);
+  });
+
+  it("still recycles the canvas where requestAnimationFrame does not exist", async () => {
+    const { result } = await mountReady();
+    vi.stubGlobal("requestAnimationFrame", undefined);
+
+    await act(async () => {
+      await result.current.createOrOpenDocumentAtLocation(otherLocation, "spatial");
+    });
+    vi.unstubAllGlobals();
+
+    expect(result.current.spatialEditorReloadKey).toBe(1);
+    expect(result.current.isSpatialEditorReloading).toBe(false);
+  });
+
+  it("opens a note whose scene was never saved with an empty canvas", async () => {
+    const { result } = await mountReady();
+
+    await act(async () => {
+      await result.current.createOrOpenDocumentAtLocation(otherLocation, "spatial");
+    });
+
+    expect(result.current.spatialInitialData).toBeNull();
+  });
+});
+
+describe("useNotesWorkspace: failures", () => {
+  it("falls back to the default content when a note cannot be loaded", async () => {
+    const { result, spies } = await mountReady();
+    const firstId = result.current.activeDocumentId ?? "";
+    act(() => result.current.setLinearContent("<p>custom</p>"));
+    await act(async () => {
+      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+    });
+
+    spies.loadDocument.mockRejectedValueOnce(new Error("disk unavailable"));
+    await act(async () => {
+      await result.current.openDocumentById(firstId);
+    });
+
+    expect(result.current.activeDocumentId).toBe(firstId);
+    expect(result.current.linearContent).toContain("Lecture Notes");
+    expect(result.current.isHydratingDocument).toBe(false);
+    expect(result.current.spatialInitialData).toBeNull();
+  });
+
+  it("still switches notes when saving the outgoing linear edits fails", async () => {
+    const { result, spies } = await mountReady();
+    const firstId = result.current.activeDocumentId ?? "";
+    spies.saveLinear.mockRejectedValueOnce(new Error("quota exceeded"));
+
+    act(() => result.current.setLinearContent("<p>unsaved</p>"));
+    await act(async () => {
+      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+    });
+
+    expect(result.current.activeDocumentId).not.toBe(firstId);
+    expect(spies.saveLinear).toHaveBeenCalled();
+  });
+
+  it("still switches notes when saving the outgoing canvas fails", async () => {
+    const { result, spies } = await mountReady();
+    spies.saveSpatial.mockRejectedValueOnce(new Error("quota exceeded"));
+
+    sceneVersion = 3;
+    act(() => result.current.handleSpatialChange([], appState, {}));
+    await act(async () => {
+      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+    });
+
+    expect(result.current.activeLocation).toEqual(otherLocation);
+    expect(spies.saveSpatial).toHaveBeenCalledOnce();
+  });
+
+  it("becomes ready, with no note open, when storage cannot be read at startup", async () => {
+    const env = await loadWorkspace();
+    env.spies.listEntries.mockRejectedValue(new Error("idb blocked"));
+
+    const { result } = renderHook(() => env.useNotesWorkspace());
+    await waitFor(() => expect(result.current.isStorageReady).toBe(true));
+
+    expect(result.current.activeDocumentId).toBeNull();
+    expect(result.current.directoryEntries).toEqual([]);
+  });
+
+  it("does not open a note if it is unmounted before storage answers", async () => {
+    const env = await loadWorkspace();
+    const hook = renderHook(() => env.useNotesWorkspace());
+    hook.unmount();
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(hook.result.current.activeDocumentId).toBeNull();
+    expect(hook.result.current.isStorageReady).toBe(false);
+  });
+});
+
+describe("useNotesWorkspace: guards and races", () => {
+  it("does not save a stale debounced edit after a manual save already wrote it", async () => {
+    const { result, spies } = await mountReady();
+
+    act(() => result.current.setLinearContent("<p>saved by hand</p>"));
+    await act(async () => {
+      await result.current.saveActiveDocumentNow();
+    });
+    const callsAfterManualSave = spies.saveLinear.mock.calls.length;
+
+    await new Promise((resolve) => setTimeout(resolve, 900));
+
+    expect(spies.saveLinear.mock.calls.length).toBe(callsAfterManualSave);
+  });
+
+  it("does not flush anything when 'switching' to the note that is already open", async () => {
+    const { result, spies } = await mountReady();
+    const currentId = result.current.activeDocumentId ?? "";
+
+    act(() => result.current.setLinearContent("<p>pending</p>"));
+    await act(async () => {
+      await result.current.openDocumentById(currentId);
+    });
+
+    expect(spies.saveLinear).not.toHaveBeenCalled();
+  });
+
+  it("ignores a manual save requested before storage is ready", async () => {
+    const env = await loadWorkspace();
+    const { result } = renderHook(() => env.useNotesWorkspace());
+
+    await act(async () => {
+      await result.current.saveActiveDocumentNow();
+    });
+
+    expect(env.spies.saveLinear).not.toHaveBeenCalled();
+    expect(result.current.lastSavedAt).toBeNull();
+  });
+
+  it("abandons a note that finished loading after the workspace was closed", async () => {
+    const env = await loadWorkspace();
+    const hook = renderHook(() => env.useNotesWorkspace());
+    await waitFor(() => expect(hook.result.current.isStorageReady).toBe(true));
+    const firstId = hook.result.current.activeDocumentId ?? "";
+    await act(async () => {
+      await hook.result.current.createOrOpenDocumentAtLocation(otherLocation);
+    });
+
+    env.spies.loadDocument.mockImplementationOnce(
+      () => new Promise((resolve) => setTimeout(() => resolve(null), 30)),
+    );
+    const opening = hook.result.current.openDocumentById(firstId);
+    hook.unmount();
+
+    await expect(opening).resolves.toBeUndefined();
+  });
+
+  it("abandons a note whose load failed after the workspace was closed", async () => {
+    const env = await loadWorkspace();
+    const hook = renderHook(() => env.useNotesWorkspace());
+    await waitFor(() => expect(hook.result.current.isStorageReady).toBe(true));
+    const firstId = hook.result.current.activeDocumentId ?? "";
+    await act(async () => {
+      await hook.result.current.createOrOpenDocumentAtLocation(otherLocation);
+    });
+
+    env.spies.loadDocument.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => setTimeout(() => reject(new Error("late failure")), 30)),
+    );
+    const opening = hook.result.current.openDocumentById(firstId);
+    hook.unmount();
+
+    await expect(opening).resolves.toBeUndefined();
+  });
+});

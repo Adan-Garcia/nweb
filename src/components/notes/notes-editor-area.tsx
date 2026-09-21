@@ -2,8 +2,22 @@ import { LinearNotesEditor } from "@/components/notes/linear-notes-editor";
 import { SpatialNotesEditor } from "@/components/notes/spatial-notes-editor";
 import type { useNotesWorkspace } from "@/components/notes/use-notes-workspace";
 
+type EditorWorkspace = Pick<
+  ReturnType<typeof useNotesWorkspace>,
+  | "mode"
+  | "linearContent"
+  | "setLinearContent"
+  | "isSpatialEditorReloading"
+  | "activeDocumentId"
+  | "spatialEditorReloadKey"
+  | "spatialHostRef"
+  | "spatialInitialData"
+  | "handleSpatialChange"
+  | "handleSpatialPaste"
+>;
+
 type NotesEditorAreaProps = {
-  workspace: ReturnType<typeof useNotesWorkspace>;
+  workspace: EditorWorkspace;
   isDark: boolean;
 };
 
