@@ -11,6 +11,31 @@ calendar events in `localStorage`. The sign-in and sign-up forms validate input 
 
 Legend: **Absent** = nothing in the code. **Partial** = some of it works.
 
+## Progress
+
+Approved on 2026-09-20 and shipped so far:
+
+| Item | State | Commit |
+| --- | --- | --- |
+| A0 copy fixes | **Done.** All nine false statements rewritten, plus a tenth in the landing hero. Tests assert the AES-GCM, key-exchange and encryption-first wording stays gone. | `f758471` |
+| A6 LICENSE and repo link | **Done.** MIT, declared in `package.json`, linked from a new site footer. | `cf6c593` |
+| A1 dead controls | **Done.** Inert buttons and `href="#"` links removed or pointed somewhere real. | `37b9af4` |
+| A4 export/import | **Done.** Dated JSON backup of notes, media and calendar, restored through a Zod-validated schema, driven from a new settings page. | `7902ae4` |
+| A2 data model | Next, and the largest. Needs `NOTES_DB_VERSION` 2 to 3. | |
+| Notifications, drag and drop, kanban | After A2. | |
+| A3 PWA | After that. | |
+| Crypto seam, then the app lock | Separate version bump, last of the storage work. Confirmed: on by default, no reset. | |
+| WASM Brotli | Last, alone, because of the dependency gauntlet in CLAUDE.md section 9. | |
+
+Two decisions taken while building the above, both worth knowing:
+
+- **The copy runs in two passes.** Everything encryption-related now reads "Coming soon", because
+  the lock does not exist yet. When it ships, only the narrow wording comes back: "encrypted on this
+  device when locked", never "Device Level Encryption".
+- **The encrypted export waits for the cipher.** The backup is plaintext today. The
+  plaintext-or-encrypted choice at export time arrives with the crypto seam, since it needs the
+  same code.
+
 ## How this file is organised
 
 Every gap is sorted by one question: **can it be built and shipped with the code in this repo alone,
