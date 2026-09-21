@@ -1,4 +1,4 @@
-import { Bell, LogOut, MoonIcon, Settings, SunIcon } from "lucide-react";
+import { MoonIcon, SunIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 import { BrandIcon } from "@/components/brand-icon";
@@ -80,15 +80,6 @@ export function WorkspaceSidebar({
             className="shrink-0 "
           >
             {isDark ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Bell className="size-4" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Settings className="size-4" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <LogOut className="size-4" />
           </Button>
         </div>
       </SidebarFooter>

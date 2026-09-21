@@ -21,7 +21,7 @@ describe.each([
     render(<Page />);
     const nav = screen.getByRole("navigation");
 
-    expect(within(nav).getByRole("link", { name: "About" })).toHaveAttribute("href", "/");
+    expect(within(nav).queryByRole("link", { name: "About" })).not.toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Documentation" })).toHaveAttribute(
       "href",
       "/documentation",

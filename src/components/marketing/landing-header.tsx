@@ -51,7 +51,7 @@ export function LandingHeader({ isDark, onToggleTheme }: LandingHeaderProps) {
       <div className="mx-auto relative max-w-6xl grid grid-cols-3 items-center px-4 py-4 sm:px-6 lg:px-8">
         <div className="max-h-10 flex items-center gap-2">
           <MobileMenu />
-          <a href="#" className="inline-flex items-center gap-2 font-semibold">
+          <a href="/" className="inline-flex items-center gap-2 font-semibold">
             <BrandIcon className="size-8" />
             <span>Cuervo Planner</span>
           </a>

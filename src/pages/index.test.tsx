@@ -68,7 +68,6 @@ describe("IndexPage", () => {
     render(<IndexPage />);
     const nav = screen.getByRole("navigation");
     const expected = [
-      ["About", "#"],
       ["Documentation", "/documentation"],
       ["Pricing", "/pricing"],
       ["Privacy", "/privacy"],

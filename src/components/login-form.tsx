@@ -78,12 +78,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<typeof C
             </Field>
 
             <Field data-invalid={!!errors.password}>
-              <div className="flex items-center justify-between gap-3">
-                <FieldLabel htmlFor="password">Password</FieldLabel>
-                <a href="#" className="text-xs font-medium text-primary hover:underline">
-                  Forgot password?
-                </a>
-              </div>
+              <FieldLabel htmlFor="password">Password</FieldLabel>
               <Input
                 {...register("password")}
                 id="password"

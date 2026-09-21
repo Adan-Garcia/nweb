@@ -16,7 +16,7 @@ export function OnboardingPage() {
     <main className="min-h-screen w-full bg-background text-foreground">
       <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-center justify-between">
-          <a href="#" className="inline-flex items-center gap-2 font-medium">
+          <a href="/" className="inline-flex items-center gap-2 font-medium">
             <BrandIcon className="size-8" />
             <span>Cuervo Planner</span>
           </a>
@@ -50,10 +50,11 @@ export function OnboardingPage() {
         </div>
 
         <p className="text-center text-sm text-muted-foreground">
-          Need help?{" "}
-          <a href="#" className="text-primary hover:underline">
-            View our guides
-          </a>
+          Guides are still being written. The{" "}
+          <a href="/documentation" className="text-primary hover:underline">
+            documentation page
+          </a>{" "}
+          lists what is built and what is planned.
         </p>
       </div>
     </main>
