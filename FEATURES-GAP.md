@@ -11,13 +11,34 @@ calendar events in `localStorage`. The sign-in and sign-up forms validate input 
 
 Legend: **Absent** = nothing in the code. **Partial** = some of it works.
 
+## How this file is organised
+
+Every gap is sorted by one question: **can it be built and shipped with the code in this repo alone,
+or does it need a server?**
+
+| Part | Meaning |
+| --- | --- |
+| **A. No backend needed** | Buildable now, browser only: copy fixes, dead controls, data model, PWA, export, local encryption, kanban, LICENSE. |
+| **B. Needs a backend** | Cannot be true without a server: accounts, sync, sharing, paid tiers. One project, in dependency order. |
+| **C. Split** | A useful front-end half exists now; the rest needs the server. |
+| **D. Partial claims** | Claimed and half true, each tagged A or B. |
+| **E. Built but unadvertised** | Exists, not on the site. |
+| **F. Suggested order** | |
+
+The big picture: **most of what a student would use day to day (Twigs, courses, kanban, install,
+offline, backup, a lock) needs no server.** What needs one is everything involving a second device
+or a second person, and the paid tiers.
+
 ---
 
-## 0. Fix first: statements that are false today (not roadmap)
+# Part A. Requires no backend
 
-These are worded as fact, not as plans. The privacy page is the most serious, because it describes
-security properties the app does not have. Nothing is encrypted anywhere: there is no
-`crypto.subtle`, no key, no cipher in `src/`.
+## A0. Fix first: statements that are false today
+
+Nine statements are worded as fact, not as plans. **All of them are fixed by editing copy alone**,
+so this is the cheapest and most important item in the file. The privacy page is the most serious,
+because it describes security properties the app does not have. Nothing is encrypted anywhere: there
+is no `crypto.subtle`, no key, no cipher in `src/`.
 
 | # | Where | What it says | Reality |
 | --- | --- | --- | --- |
@@ -25,7 +46,7 @@ security properties the app does not have. Nothing is encrypted anywhere: there 
 | 2 | `privacy-content.ts:33-35` | Shared workspaces use key exchange; row-level policies; revocation and key rotation | No sharing, no server, no keys, no RLS. |
 | 3 | `privacy-content.ts:14,16,43` | Collects "email and profile details", "operational logs", syncs encrypted copies to the cloud | Nothing is collected or sent. Also a dated policy (`privacy.tsx:22`, "Last updated: April 15, 2026") that describes a service that does not run. |
 | 4 | `privacy-content.ts:59-69` | "Before your notes leave your device, they are scrambled" / "only your key can unlock it" | No scrambling, no key. Notes are compressed (gzip) but not encrypted; the calendar is plain JSON in `localStorage`. |
-| 5 | `landing-benefits.tsx:34-35` | "Device Level Encryption: Your data is encrypted at the device level" | Not encrypted. IndexedDB and `localStorage` are plain. |
+| 5 | `landing-benefits.tsx:34-35` | "Device Level Encryption: Your data is encrypted at the device level" | Not encrypted. IndexedDB and `localStorage` are plain. (Can be made true without a server, see A4.) |
 | 6 | `signin.tsx:12` | "resume your encrypted workspace, keep your drafts in sync ... on every device" | No encryption, no sync, no session to resume. |
 | 7 | `signin.tsx:17` / `landing-benefits.tsx:14-15` | "Your workspace stays locked to your account" | No account exists. Anyone on the browser profile can open everything. |
 | 8 | `unlogged.tsx:42-43` | "keep your information encrypted and safe" | Same as #5. The second half ("stored locally ... never leaves it") is true, but it contradicts the privacy page, which says encrypted copies sync to the cloud. |
@@ -40,96 +61,204 @@ uses the app: a policy that says data is encrypted when it is not is a liability
   browser profile can read it."), and drop the "Last updated" date until there is something to date.
 - Sign-in / sign-up / `/auth`: remove "encrypted", "in sync", "locked to your account".
 - Landing: change "Device Level Encryption", "Fast syncing", "Cross platform", "Offline first" and
-  "Easy sharing" to "Coming soon" or remove them (see section 1).
+  "Easy sharing" to "Coming soon" or remove them (Parts A3, A4 and B).
 - Keep `documentation-content.ts:36-66` as is: it is already headed as a roadmap
   ("Prioritized from your current Todo roadmap", `documentation.tsx`).
 
 Pricing paid tiers stay "Coming Soon" as requested (`pricing-tiers.ts:35,47`).
 
----
+## A1. Dead controls and links
 
-## 1. Claimed and absent
+| Item | Where | Status | Backend? |
+| --- | --- | --- | --- |
+| "View our guides" | `onboarding.tsx:54` | `href="#"`. There are no guides; `/documentation` is the roadmap, not a guide. | No. Write a page or remove the link. |
+| "About" | `marketing-nav.ts:16` (landing) and `:8` (others) | Landing: `href="#"`. Other pages: points at `/`. No About page. | No. |
+| Brand mark link | `landing-header.tsx:54`, `onboarding.tsx:19` | `href="#"`. | No. Point it at `/`. |
+| Notifications (bell) | `workspace-sidebar.tsx:84-86` | Button has no handler, no notification model. | Half. An in-app list of due and overdue items needs no server; push and email do (C). |
+| Settings button | `workspace-sidebar.tsx:87-89` | Button has no handler, no settings page. | No. A local settings page (theme, data export, clear data) needs no server. |
+| Onboarding route | `/auth/onboarding` | Reachable only by typing the URL; nothing links to it. Its steps do not create or invite anything. | No for the page; see C for the steps. |
 
-### Accounts and security
+The other dead controls (log out, forgot password) depend on accounts and are in B1. Until then,
+hide them.
+
+## A2. Data model
+
+This is the largest no-backend item and it unlocks most of the dashboard.
+
 | Feature | Claimed at | Status |
 | --- | --- | --- |
-| Create an account / sign in | `signup.tsx`, `signin.tsx`, `unlogged.tsx`, `onboarding-steps.ts:14-17` ("You've successfully created your account") | **Absent.** Forms validate, then do nothing. There is no session, no user object, no route guard. |
-| Forgot password | `login-form.tsx:83` | **Absent.** `href="#"`. |
-| Log out | `workspace-sidebar.tsx:90-92` | **Absent.** Button has no handler. |
-| Notifications (bell) | `workspace-sidebar.tsx:84-86` | **Absent.** No handler, no notification model. |
-| Settings | `workspace-sidebar.tsx:87-89` | **Absent.** No handler, no settings page. |
-| Device-level encryption, keypairs, AES-GCM data keys, `CryptoService` | `landing-benefits.tsx:34`, `Todo.md` section 3, `documentation-content.ts:60` | **Absent.** |
-| Zero-knowledge envelope encryption | `Todo.md` section 3 | **Absent.** |
-
-### Sync and offline
-| Feature | Claimed at | Status |
-| --- | --- | --- |
-| Fast syncing across all devices | `landing-benefits.tsx:19-20` | **Absent.** No sync layer of any kind. |
-| Cross platform "on all your devices, seamlessly" | `landing-benefits.tsx:44-45`, `pricing-tiers.ts:19` | **Absent** as sync. The web app opens on any browser, but each device has its own separate data. |
-| Real-time sync, Supabase, optimistic concurrency, field-level merge | `documentation-content.ts:48-53`, `Todo.md` section 2 | **Absent.** No Supabase dependency, no `SyncService`. |
-| PWA (manifest, offline asset caching), Tauri desktop wrapper | `Todo.md` section 5 | **Absent.** `public/` has only icons; no manifest, no service worker, no `vite-plugin-pwa`. Not installable and not usable offline after a cold start with no network. |
-
-### Sharing and collaboration
-| Feature | Claimed at | Status |
-| --- | --- | --- |
-| Share notes and homework with friends, family, classmates | `landing-benefits.tsx:39-40`, `unlogged.tsx:39` ("Planning, Notes, and Sharing") | **Absent.** |
-| Invite Your Flock: members, permissions, real-time collaboration | `onboarding-steps.ts:29-33` | **Absent.** The step is text only. |
-| Multiple wings per user, one owned | `Heirarchy.md:6`, `documentation-content.ts:11` | **Absent.** "Wing" is a free-text string on a note; there is no user or wing entity. |
-| Key exchange, RLS, revocation and key rotation | `documentation-content.ts:61-62`, `Todo.md` section 4 | **Absent.** |
-
-### Paid tiers (labelled "Coming Soon", so honest; listed for completeness)
-Supporter-only faster servers, higher storage limits, faster support (`pricing-tiers.ts:31-33`);
-private team servers, frequent cloud backups (`pricing-tiers.ts:43-45`). No servers exist, so none of
-these can be delivered yet.
-
-### Data model
-| Feature | Claimed at | Status |
-| --- | --- | --- |
-| **Twigs** (tasks: homework, exams, essays) | `Heirarchy.md:17`, `documentation-content.ts:26-27` | **Absent.** Calendar events have a title/date/time/status but are not linked to a course or a note. No task entity, no kanban view. |
-| **Pebbles** (files as their own entity) | `Heirarchy.md:19` | **Absent** as an entity. PDFs and images are embedded in a note's canvas, not stored or listed as files. |
+| **Twigs** (tasks: homework, exams, essays) | `Heirarchy.md:17`, `documentation-content.ts:26-27` | **Absent.** Calendar events have a title/date/time/status but are not linked to a course or a note. No task entity. |
+| **Pebbles** (files as their own entity) | `Heirarchy.md:19`, `notes.md:29-31` | **Absent** as an entity. PDF import and image paste/drop work on the canvas (images optimised to WebP), but files are embedded in a note, not stored or listed as files. |
 | **Nest as a tag** applied to notes and homework | `Heirarchy.md:14-15`, `documentation-content.ts:22-23` | **Absent as a tag.** Nest is one path segment of a note's location (`location-hierarchy.ts:11`), not something you can attach to several items or to a task. |
 | Branch "keeps class notes, tasks, and labels together" | `documentation-content.ts:18-19` | **Partial.** Notes only. Calendar events use a hard-coded subject list (`calendar-event.ts:3-9`: Math, History, Physics, GroupWork, Chemistry), not your branches. |
-| Feathers are **markdown** notes | `documentation-content.ts:27` | **False as worded.** Linear notes are stored as HTML from TipTap (`linear-notes-editor.tsx:38`); `Heirarchy.md` says JSON. Neither is markdown. |
+| Wing / Flight / Branch as real entities | `Heirarchy.md`, `documentation-content.ts:8-27` | **Partial.** They are strings on a note, so you cannot rename, reorder or delete a Wing or Branch, or list "all my courses". |
+| Flights sorted into Summer / Fall / Spring + year | `Heirarchy.md:9`, `documentation-content.ts:14-15` | **Partial.** A new note defaults to the current term (`constants.ts:19-27`); after that it is free text and nothing groups or sorts by term. |
+| Feathers are **markdown** notes | `documentation-content.ts:27` | **False as worded.** Linear notes are stored as HTML from TipTap (`linear-notes-editor.tsx:38`); `Heirarchy.md` says JSON. Neither is markdown. Fix the doc or add a markdown export. |
 | Integrated note editor with tasks embedded in rich text | `Todo.md` section 1 | **Absent.** No task embedding or tagging in the editor. |
+| Calendar and dashboard linked to notes and courses | `Todo.md:12-14` | **Partial.** Both work and share data, but events are not linked to notes or courses. |
 
-### Interaction
+**Two facts about the current storage that decide how this is built** (both found in the code, not
+in any doc):
+
+1. **A note's id is its path, and there is no rename or move.** `buildNotesDocumentId`
+   (`constants.ts:46`) joins the slugified wing, flight, branch, nest and feather into the id.
+   `slugifySegment` (`constants.ts:37`) lowercases and turns every run of non-alphanumerics into `-`,
+   so "Math 101" and "math-101" are the same segment, and because the segments are also joined with
+   `-`, nest `unit-1` + feather `notes` collides with nest `unit` + feather `1-notes`. Choosing a
+   different location in `createOrOpenDocumentAtLocation` (`use-notes-workspace.ts:145`) opens or
+   creates a different note; the old one is left behind. So a Wing or Branch cannot be renamed
+   today, and making them real entities needs a `NOTES_DB_VERSION` bump (currently 2,
+   `notes-db.ts:6`) and a migration that gives every existing note a stable id first (CLAUDE.md
+   section 2.3).
+2. **Calendar events have no timestamps and sequential ids.** New ids are `max(id) + 1`
+   (`calendar-views.ts:141`), the id is `z.number()` (`calendar-event.ts:14`), and there is no
+   `createdAt` / `updatedAt`. Two devices would issue the same id for different events.
+
+Neither blocks doing this now, but if a backend is ever planned, **do the entity work with UUID ids,
+`updatedAt` and a `deletedAt` tombstone from the start.** Retrofitting them after users have data is
+a second migration, and sync (B2) cannot merge or delete safely without them. Notes already have
+`updatedAt` (`notes-model.ts:17`); nothing has a tombstone.
+
+## A3. Offline and install
+
 | Feature | Claimed at | Status |
 | --- | --- | --- |
-| Drag and drop calendar and kanban (`@dnd-kit`) | `documentation-content.ts:44`, `Todo.md:13` | **Absent.** `@dnd-kit/*` is in `package.json:22-24` but imported nowhere; the calendar has no drag handlers and there is no kanban. |
-| Zustand stores (`usePlannerStore`, `useEventStore`) | `documentation-content.ts:42`, `Todo.md:6-7` | **Absent.** `zustand` is in `package.json:47` but imported nowhere. |
-| Typed `DecryptedTask` / `DecryptedNote` / `EncryptedPayload` | `documentation-content.ts:43` | **Absent.** Nothing is encrypted, so the types do not exist. |
+| PWA: manifest, offline asset caching | `Todo.md` section 5 | **Absent.** `public/` has only icons; no manifest, no service worker, no `vite-plugin-pwa`. Not installable, and a cold start with no network fails. |
+| Offline first | `landing-benefits.tsx:49-50` | **Partial.** Once loaded, the app has no network dependency. The "will sync once you're back online" half needs B2. |
+| Tauri desktop wrapper | `Todo.md` section 5 | **Absent.** Needs the Rust toolchain; no server. |
+| Cross platform (opens on any device) | `landing-benefits.tsx:44-45`, `pricing-tiers.ts:19` | **Partial.** The web app opens in any browser, and a PWA would make it installable on phone and desktop. "Seamlessly, on all your devices" means sync and is B2. |
 
-### Dead links
-| Link | Where | Status |
+A PWA makes "offline first" and "installable on every platform" true with no server. It does not make
+your data follow you between devices.
+
+## A4. Data safety
+
+| Feature | Claimed at | Status |
 | --- | --- | --- |
-| "View our guides" | `onboarding.tsx:54` | `href="#"`. There are no guides; `/documentation` is the roadmap, not a guide. |
-| "About" | `marketing-nav.ts:16` (landing) and `:8` (others) | Landing: `href="#"`. Other pages: points at `/`. No About page. |
-| Brand mark link | `landing-header.tsx:54`, `onboarding.tsx:19` | `href="#"`. |
-| "Onboarding" itself | `/auth/onboarding` | Reachable only by typing the URL; nothing links to it, and its "Create your first wing" / "Invite your flock" steps do not create or invite anything. |
+| Export / import your data (JSON, plus files) | Implied by "local-first, you own your data" (`signup.tsx:12,17`, `unlogged.tsx:43`) | **Absent.** Clearing site data deletes everything, and there is no backup. This is the single most important missing safety feature. |
+| Device-level encryption at rest | `landing-benefits.tsx:34`, `Todo.md` section 3 | **Absent, and buildable without a server.** Encrypt IndexedDB and `localStorage` contents with WebCrypto AES-GCM under a key derived from a passphrase (PBKDF2 or Argon2). The trade-off is that a forgotten passphrase means unrecoverable data, with no account to reset it. |
+| An app lock ("locked" workspace) | `signin.tsx:17`, `landing-benefits.tsx:14-15` | **Absent, and buildable without a server** as the unlock step of the passphrase above. It is a local lock, not an account. |
+| Brotli text compression | `notes.md:21-22` | **Partial.** The worker tries `br` first (`media-worker.ts:84`). Chromium rejects `br`/`brotli` in `CompressionStream` (checked with Playwright: `br:false, brotli:false, gzip:true`), so it silently falls back to **gzip**. Either drop the claim or ship a WASM Brotli (a new dependency, needs approval). |
 
----
+Local encryption is the only place the site's "encrypted" wording can honestly be made true without a
+backend, but the honest wording is **narrower than "Device Level Encryption."** In a browser app the
+key sits in JS memory while the app is unlocked, and the code that uses it is served from the same
+origin. So it protects a copied or stolen profile directory or a shared machine while locked. It does
+not protect against a compromised bundle or an XSS bug, and there is no server involved either way.
+Write it as "your notes are encrypted on this device when the app is locked", and keep the
+zero-knowledge and key-exchange wording (B2, B3) out of the copy until a server exists.
 
-## 2. Claimed and partial
+## A5. Interaction
+
+| Feature | Claimed at | Status |
+| --- | --- | --- |
+| Drag and drop calendar and kanban (`@dnd-kit`) | `documentation-content.ts:44`, `Todo.md:13` | **Absent.** `@dnd-kit/*` is in `package.json:22-24` but imported nowhere; the calendar has no drag handlers and there is no kanban. Depends on Twigs (A2). |
+| Zustand stores (`usePlannerStore`, `useEventStore`) | `documentation-content.ts:42`, `Todo.md:6-7` | **Absent.** `zustand` is in `package.json:47` but imported nowhere (CLAUDE.md keeps it on purpose). |
+| Typed `DecryptedTask` / `DecryptedNote` / `EncryptedPayload` | `documentation-content.ts:43` | **Absent.** Exist only if A4 encryption is built. |
+
+## A6. Housekeeping that makes claims checkable
 
 | Claim | Where | What works | What does not |
 | --- | --- | --- | --- |
-| Local-first, data stored on your device | `signup.tsx:12,17`, `unlogged.tsx:43` | **True.** IndexedDB (notes) + `localStorage` (calendar). | Clearing site data deletes everything; there is no export or backup. |
-| Offline first | `landing-benefits.tsx:49-50` | Once loaded, the app has no network dependency. | "your data will sync once you're back online" has no sync behind it. No service worker, so a cold offline start fails. |
-| Private by default | `landing-benefits.tsx:14-15`, `pricing-tiers.ts:16` | Nothing leaves the browser. | Not "locked to your account" (see 0.7). |
-| Open Source, forever / on GitHub | `landing-benefits.tsx:24-25`, `pricing.tsx:22,48`, `pricing-tiers.ts:21`, `signup.tsx:12` | A GitHub remote exists (`Adan-Garcia/nweb`). | No link to it anywhere on the site, no LICENSE file (without one the code is legally all-rights-reserved), `"private": true` in `package.json`. |
+| Open Source, forever / on GitHub | `landing-benefits.tsx:24-25`, `pricing.tsx:22,48`, `pricing-tiers.ts:21`, `signup.tsx:12` | A GitHub remote exists (`Adan-Garcia/nweb`). | No link to it anywhere on the site, no LICENSE file (without one the code is legally all-rights-reserved), `"private": true` in `package.json`. Add a LICENSE and a repo link. |
 | Free beta through 2027 | `landing-benefits.tsx:30`, `pricing-tiers.ts:11`, `signup.tsx:22` | True by default. | A date commitment; make sure you want to keep it. |
-| Notes organised by Wing > Flight > Branch > Nest > Feather | `Heirarchy.md`, `documentation-content.ts:8-27` | Notes are addressed by all five levels and browsable by them (`use-notes-workspace.ts`). | The levels are strings, not entities, so you cannot rename, reorder or delete a Wing/Branch, or list "all my courses". |
-| Flights sorted into Summer / Fall / Spring + year | `Heirarchy.md:9`, `documentation-content.ts:14-15` | A new note defaults to the current term (`constants.ts:19-27`). | The value is free text after that. Nothing groups or sorts notes by term. |
-| Brotli text compression | `notes.md:21-22` | The worker tries `br` first (`media-worker.ts:84`). | Chromium rejects `br`/`brotli` in `CompressionStream` (checked with Playwright: `br:false, brotli:false, gzip:true`), so it silently falls back to **gzip**. Same for other browsers unless they add support. |
-| Files (PDFs, images) | `Heirarchy.md:19`, `notes.md:29-31` | PDF import and image paste/drop onto the canvas; images optimised to WebP and stored as blobs. | Not a file manager (see Pebbles, above). |
-| Calendar and dashboard as part of the planner | `Todo.md:12-14`, `landing` | Both work and share data. | Calendar events are not linked to notes or courses. |
+| Local-first, data stored on your device | `signup.tsx:12,17`, `unlogged.tsx:43` | **True.** IndexedDB (notes) + `localStorage` (calendar). | See A4 for the missing backup. |
+| Private by default | `landing-benefits.tsx:14-15`, `pricing-tiers.ts:16` | Nothing leaves the browser. | Not "locked to your account" (A0 #7). |
 | shadcn/ui, Zod + React Hook Form | `Todo.md:9-11` | Done. | (Not a gap; listed so the checklist can be ticked.) |
 
 ---
 
-## 3. Implemented but not mentioned on the site
+# Part B. Requires a backend
+
+None of these can be true without a server, because each one involves either identity, a second
+device, a second person, or money. Build them in this order; each depends on the one before.
+`CLAUDE.md` section 2.3 already says how: a dedicated `src/lib/api/` service module, Zod-validated
+responses, and approval before adding a data-fetching library.
+
+## B1. Accounts and identity
+
+| Feature | Claimed at | Status |
+| --- | --- | --- |
+| Create an account / sign in | `signup.tsx`, `signin.tsx`, `unlogged.tsx`, `onboarding-steps.ts:14-17` ("You've successfully created your account") | **Absent.** Forms validate, then do nothing. There is no session, no user object, no route guard. |
+| Forgot password | `login-form.tsx:83` | **Absent.** `href="#"`. Needs a server to send email. |
+| Log out | `workspace-sidebar.tsx:90-92` | **Absent.** Button has no handler. Meaningless until there is a session. |
+| Privacy page: collects "email and profile details", "operational logs" | `privacy-content.ts:14,16` | Only becomes true once B1 exists, and then needs a real policy. |
+
+The forms, validation and routes are already in place, so this is wiring plus a service.
+
+## B2. Sync
+
+| Feature | Claimed at | Status |
+| --- | --- | --- |
+| Fast syncing across all devices | `landing-benefits.tsx:19-20` | **Absent.** No sync layer of any kind. |
+| Cross-device data ("on all your devices, seamlessly") | `landing-benefits.tsx:44-45`, `pricing-tiers.ts:19` | **Absent.** Each browser has its own separate data. |
+| "Your data will sync once you're back online" | `landing-benefits.tsx:49-50` | **Absent.** |
+| Real-time sync, Supabase, optimistic concurrency, field-level merge | `documentation-content.ts:48-53`, `Todo.md` section 2 | **Absent.** No Supabase dependency, no `SyncService`. |
+| Encrypted sync (zero-knowledge envelope encryption) | `Todo.md` section 3, `documentation-content.ts:60` | **Absent.** The cipher half is A4; the server storing only ciphertext is B2. |
+
+**Prerequisite from A2:** UUID ids, `updatedAt` on every record, and `deletedAt` tombstones. Today
+note ids are paths and calendar ids are `max + 1`, so two devices would collide.
+
+**No-server stopgap:** the export/import file in A4 moves data between devices by hand. It is a
+backup, not sync, and the site should not describe it as sync.
+
+## B3. Sharing and collaboration
+
+| Feature | Claimed at | Status |
+| --- | --- | --- |
+| Share notes and homework with friends, family, classmates | `landing-benefits.tsx:39-40`, `unlogged.tsx:39` ("Planning, Notes, and Sharing") | **Absent.** |
+| Invite Your Flock: members, permissions, real-time collaboration | `onboarding-steps.ts:29-33` | **Absent.** The step is text only. |
+| A user belongs to many wings but owns exactly one | `Heirarchy.md:6`, `documentation-content.ts:11` | **Absent.** Membership and ownership need users. (Several wings for one person is A/C, below.) |
+| Key exchange, RLS, revocation and key rotation | `documentation-content.ts:61-62`, `Todo.md` section 4 | **Absent.** Needs a server to hold public keys and enforce access. |
+| Shared workspaces on the privacy page | `privacy-content.ts:33-35` | Only becomes true with all of the above. |
+
+## B4. Paid tiers (labelled "Coming Soon", so honest; listed for completeness)
+
+Supporter-only faster servers, higher storage limits, faster support (`pricing-tiers.ts:31-33`);
+private team servers, frequent cloud backups (`pricing-tiers.ts:43-45`). No servers exist, so none of
+these can be delivered yet. They also need billing and support tooling, which is outside the app.
+
+---
+
+# Part C. Split: front-end half now, backend half later
+
+| Feature | Do now, no backend | Needs the backend |
+| --- | --- | --- |
+| **Encryption** | Passphrase-derived AES-GCM for local data, plus an app lock (A4). Makes "Device Level Encryption" true. | Keypairs, envelope keys, key exchange, revocation, and storing only ciphertext on the server (B2, B3). |
+| **Wings** | Several local wings (profiles) on one browser, as real entities (A2). | "A user belongs to many wings but owns exactly one": membership and ownership (B3). |
+| **Sharing** | Export/import a file or a link to send someone a copy (A4). It is a copy, not shared access. | Live shared workspaces, permissions, real-time edits (B3). |
+| **Notifications (bell)** | An in-app list of items due today and overdue, computed from the calendar and Twigs. Optionally the browser Notification API while the app is open. | Push and email reminders when the app is closed. |
+| **Twigs, kanban, drag and drop** | The whole feature, stored locally (A2, A5). | Only sync of it (B2). |
+| **Onboarding steps** | "Create your first wing" can really create a local wing. "Invite your flock" cannot. | Invites (B3). |
+| **Settings** | Theme, export, delete-all-data, lock passphrase (A1). | Account, email, billing, devices (B1). |
+| **Backups** | Manual export file (A4). | Automatic cloud backups, a paid-tier feature (B4). |
+
+---
+
+# Part D. Partial claims: index
+
+The detail lives in the part named in the last column; this table only says which side each claim is on.
+
+| Claim | Side | Detail in |
+| --- | --- | --- |
+| Local-first | A | A6, backup in A4 |
+| Offline first | A + B | A3 (service worker), B2 (sync) |
+| Private by default | A | A6, A0 #7 |
+| Open Source | A | A6 |
+| Free beta through 2027 | A | A6 |
+| Notes organised by Wing > Flight > Branch > Nest > Feather | A | A2 |
+| Flights sorted by term | A | A2 |
+| Brotli compression | A | A4 |
+| Files (PDFs, images) | A | A2 (Pebbles) |
+| Calendar and dashboard as part of the planner | A | A2 |
+| Cross platform | A + B | A3 (installable), B2 (data follows you) |
+
+---
+
+# Part E. Implemented but not mentioned on the site
 
 Worth advertising, since the site currently sells things you do not have and hides things you do.
+None of these need a backend.
 
 - **Hybrid notes:** a linear TipTap editor and an infinite Excalidraw canvas per note (`notes.md`
   section 1; done, and covered by the E2E suite).
@@ -143,20 +272,28 @@ Worth advertising, since the site currently sells things you do not have and hid
 
 ---
 
-## 4. Suggested order of work
+# Part F. Suggested order of work
 
-1. **Copy fixes (section 0).** No new features, removes the false statements. Small.
-2. **Dead controls (section 1, dead links + sidebar).** Either hide the bell/settings/logout and the
-   "Forgot password" / "View our guides" / "About" links, or build them.
-3. **Add a LICENSE, link the repo** so "Open Source" is true and checkable.
-4. **Data model:** promote Wing/Flight/Branch to real entities, add Twigs linked to a Branch, and make
-   calendar events reference a Branch instead of the five hard-coded subjects. This is what the
-   documentation page and `Heirarchy.md` describe, and it unlocks most of the dashboard.
-5. **PWA** (manifest + service worker): makes "offline first" and "cross platform" true without a
-   backend.
-6. **Export/import** of your data (JSON), so "local-first" has a backup story.
-7. **Backend + accounts + sync**, then **encryption**, then **sharing.** These are one project
-   (`Todo.md` sections 2-4) and each depends on the one before; only start once the copy already
-   says "Coming soon".
-8. Drop `zustand` and `@dnd-kit/*` from `package.json` if you do not start on stores or drag and drop
-   soon (kept for now, at your request).
+**Phase 1: no backend, do now.** Each step stands alone and ships value.
+
+1. **Copy fixes (A0).** No new features, removes the false statements. Small.
+2. **Dead controls (A1) and LICENSE + repo link (A6).** Hide or build; make "Open Source" checkable.
+3. **JSON export/import (A4).** So "local-first" has a backup story. Do this before anything that
+   changes the stored shapes.
+4. **Data model (A2):** UUID ids, `updatedAt` and `deletedAt` on every record, Wing/Flight/Branch as
+   entities, Twigs linked to a Branch, calendar events referencing a Branch instead of the five
+   hard-coded subjects. Needs a `NOTES_DB_VERSION` bump and a migration, and the export from step 3
+   is the safety net for it.
+5. **Kanban and drag and drop (A5)**, once Twigs exist. This is what `@dnd-kit` was kept for.
+6. **PWA (A3):** manifest + service worker, so "offline first" and "installable" are true.
+7. **Local encryption and app lock (A4)**, if you want "Device Level Encryption" to be true. Decide
+   the forgotten-passphrase policy first; it is the real product question.
+
+**Phase 2: backend, one project.** Only start once the copy already says "Coming soon".
+
+8. **Accounts (B1)**, then **sync (B2)**, then **encrypted sync**, then **sharing (B3)**, then
+   **paid tiers (B4)**. `Todo.md` sections 2-4 describe this chain. Step 4's ids and tombstones are
+   what make sync possible.
+
+Housekeeping: drop `zustand` and `@dnd-kit/*` from `package.json` if you do not start on stores or
+drag and drop soon (kept for now, at your request).
