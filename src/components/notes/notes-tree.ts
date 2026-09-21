@@ -1,121 +1,132 @@
-import type { NotesDirectoryEntry, NotesHierarchyLocation } from "@/components/notes/types";
+import type { WorkspaceSelection } from "@/components/notes/location-hierarchy";
+import type { NotesDirectoryEntry } from "@/components/notes/types";
+import {
+  branchesForFlight,
+  entriesForNest,
+  flightsForWing,
+  nestsForBranch,
+  UNFILED_NEST_LABEL,
+  type WorkspaceSnapshot,
+} from "@/lib/workspace-tree";
 
 export type NestGroup = {
+  /** Null for the Unfiled group, which is a placeholder rather than a stored nest. */
+  id: string | null;
   name: string;
   key: string;
   feathers: NotesDirectoryEntry[];
 };
 
 export type BranchGroup = {
+  id: string;
   name: string;
   key: string;
   nests: NestGroup[];
 };
 
 export type FlightGroup = {
+  id: string;
   name: string;
   key: string;
   branches: BranchGroup[];
 };
 
 export type WingGroup = {
+  id: string;
   name: string;
   key: string;
   flights: FlightGroup[];
 };
 
-export function formatPath(location: NotesHierarchyLocation) {
-  return [location.wing, location.flight, location.branch, location.nest, location.feather].join(
-    " / ",
-  );
-}
-
 export function formatUpdatedAt(timestamp: number) {
   return new Date(timestamp).toLocaleString();
 }
 
-export function buildTree(entries: NotesDirectoryEntry[]): WingGroup[] {
-  const sortedEntries = [...entries].sort((left, right) => right.updatedAt - left.updatedAt);
-  const wingMap = new Map<string, Map<string, Map<string, Map<string, NotesDirectoryEntry[]>>>>();
-
-  for (const entry of sortedEntries) {
-    const flightMap =
-      wingMap.get(entry.wing) ?? new Map<string, Map<string, Map<string, NotesDirectoryEntry[]>>>();
-    wingMap.set(entry.wing, flightMap);
-
-    const branchMap =
-      flightMap.get(entry.flight) ?? new Map<string, Map<string, NotesDirectoryEntry[]>>();
-    flightMap.set(entry.flight, branchMap);
-
-    const nestMap = branchMap.get(entry.branch) ?? new Map<string, NotesDirectoryEntry[]>();
-    branchMap.set(entry.branch, nestMap);
-
-    const feathers = nestMap.get(entry.nest) ?? [];
-    feathers.push(entry);
-    nestMap.set(entry.nest, feathers);
-  }
-
+/**
+ * Groups the saved notes under the entities they belong to, rather than under the strings
+ * they used to repeat. A note tagged with two nests is listed under both, which is what
+ * makes a tag navigable as if it were a level of the tree.
+ *
+ * Levels with nothing in them are dropped, so an empty flight does not sit in the way.
+ */
+export function buildTree(
+  snapshot: WorkspaceSnapshot,
+  entries: NotesDirectoryEntry[],
+): WingGroup[] {
   const wingGroups: WingGroup[] = [];
 
-  for (const [wingName, flightMap] of wingMap.entries()) {
-    const wingKey = `wing:${wingName}`;
+  for (const wing of snapshot.wings) {
     const flightGroups: FlightGroup[] = [];
 
-    for (const [flightName, branchMap] of flightMap.entries()) {
-      const flightKey = `${wingKey}/flight:${flightName}`;
+    for (const flight of flightsForWing(snapshot, wing.id)) {
       const branchGroups: BranchGroup[] = [];
 
-      for (const [branchName, nestMap] of branchMap.entries()) {
-        const branchKey = `${flightKey}/branch:${branchName}`;
+      for (const branch of branchesForFlight(snapshot, flight.id)) {
         const nestGroups: NestGroup[] = [];
 
-        for (const [nestName, feathers] of nestMap.entries()) {
-          const nestKey = `${branchKey}/nest:${nestName}`;
+        for (const nest of nestsForBranch(snapshot, branch.id)) {
+          const feathers = entriesForNest(entries, branch.id, nest.id);
+
+          if (feathers.length) {
+            nestGroups.push({
+              id: nest.id,
+              name: nest.name,
+              key: `nest:${nest.id}`,
+              feathers,
+            });
+          }
+        }
+
+        const unfiled = entriesForNest(entries, branch.id, null);
+
+        if (unfiled.length) {
           nestGroups.push({
-            name: nestName,
-            key: nestKey,
-            feathers,
+            id: null,
+            name: UNFILED_NEST_LABEL,
+            key: `nest:unfiled:${branch.id}`,
+            feathers: unfiled,
           });
         }
 
-        nestGroups.sort((left, right) => left.name.localeCompare(right.name));
-
-        branchGroups.push({
-          name: branchName,
-          key: branchKey,
-          nests: nestGroups,
-        });
+        if (nestGroups.length) {
+          branchGroups.push({
+            id: branch.id,
+            name: branch.name,
+            key: `branch:${branch.id}`,
+            nests: nestGroups,
+          });
+        }
       }
 
-      branchGroups.sort((left, right) => left.name.localeCompare(right.name));
-
-      flightGroups.push({
-        name: flightName,
-        key: flightKey,
-        branches: branchGroups,
-      });
+      if (branchGroups.length) {
+        flightGroups.push({
+          id: flight.id,
+          name: flight.name,
+          key: `flight:${flight.id}`,
+          branches: branchGroups,
+        });
+      }
     }
 
-    flightGroups.sort((left, right) => left.name.localeCompare(right.name));
-
-    wingGroups.push({
-      name: wingName,
-      key: wingKey,
-      flights: flightGroups,
-    });
+    if (flightGroups.length) {
+      wingGroups.push({
+        id: wing.id,
+        name: wing.name,
+        key: `wing:${wing.id}`,
+        flights: flightGroups,
+      });
+    }
   }
-
-  wingGroups.sort((left, right) => left.name.localeCompare(right.name));
 
   return wingGroups;
 }
 
-/** Keys of the groups on the path to `location`, so they can be auto-expanded. */
-export function getActivePathKeys(location: NotesHierarchyLocation) {
-  const wingKey = `wing:${location.wing}`;
-  const flightKey = `${wingKey}/flight:${location.flight}`;
-  const branchKey = `${flightKey}/branch:${location.branch}`;
-  const nestKey = `${branchKey}/nest:${location.nest}`;
-
-  return [wingKey, flightKey, branchKey, nestKey];
+/** Keys of the groups on the path to the open note, so they can be auto-expanded. */
+export function getActivePathKeys(selection: WorkspaceSelection) {
+  return [
+    `wing:${selection.wingId}`,
+    `flight:${selection.flightId}`,
+    `branch:${selection.branchId}`,
+    selection.nestId ? `nest:${selection.nestId}` : `nest:unfiled:${selection.branchId}`,
+  ];
 }

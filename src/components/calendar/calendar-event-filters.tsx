@@ -13,7 +13,7 @@ type CalendarEventFiltersProps = {
   onSearchTermChange: (value: string) => void;
   selectedClassFilter: string;
   onSelectedClassFilterChange: (value: string) => void;
-  eventClasses: string[];
+  eventClasses: readonly { id: string; label: string }[];
 };
 
 /** Active/completed tabs, day-filter reset, search box and class filter. */
@@ -71,8 +71,8 @@ export function CalendarEventFilters({
         >
           <option value="all">All Classes</option>
           {eventClasses.map((eventClass) => (
-            <option key={eventClass} value={eventClass}>
-              {eventClass}
+            <option key={eventClass.id} value={eventClass.id}>
+              {eventClass.label}
             </option>
           ))}
         </select>

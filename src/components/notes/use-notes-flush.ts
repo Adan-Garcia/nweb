@@ -5,7 +5,7 @@ import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
 import { touchNotesDirectoryEntry } from "@/lib/notes-directory-storage";
 import { notesTraceError } from "@/lib/notes-trace";
 
-type SwitchContext = "openDocumentById" | "createOrOpenDocumentAtLocation";
+type SwitchContext = "openDocumentById" | "createNoteAt";
 
 type PersistLinearContent = (
   content: string,

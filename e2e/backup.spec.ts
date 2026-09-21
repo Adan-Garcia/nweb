@@ -57,17 +57,24 @@ test.describe("exporting and restoring the workspace", () => {
 
     const backup: unknown = JSON.parse(await readFile(await download.path(), "utf8"));
 
-    expect(backup).toMatchObject({ format: "cuervo-planner-backup", version: 1 });
+    expect(backup).toMatchObject({ format: "cuervo-planner-backup", version: 2 });
 
     const parsed = backup as {
       notes: {
-        directory: { feather: string }[];
+        directory: { feather: string; branchId: string }[];
         documents: { sceneCompressed: string | null }[];
         media: { data: string; mimeType: string }[];
       };
+      workspace: { wings: { id: string }[]; branches: { id: string }[] };
     };
 
-    expect(parsed.notes.directory.map((entry) => entry.feather)).toContain("Backup E2E");
+    const note = parsed.notes.directory.find((entry) => entry.feather === "Backup E2E");
+    expect(note).toBeDefined();
+
+    // The note carries a branch id, and that branch really travelled in the file, so the
+    // path can be rebuilt on restore rather than being re-derived from strings.
+    expect(parsed.workspace.branches.map((branch) => branch.id)).toContain(note?.branchId);
+    expect(parsed.workspace.wings.length).toBeGreaterThan(0);
     expect(parsed.notes.documents[0].sceneCompressed).toBeTruthy();
     // The dropped image really came back out of IndexedDB as bytes, not as "{}".
     expect(parsed.notes.media.length).toBeGreaterThan(0);

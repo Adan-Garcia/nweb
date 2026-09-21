@@ -7,16 +7,14 @@ import { getNotesDb } from "./notes-db";
  * "never created here". The document row and its media do not: a tombstone that kept them
  * would grow IndexedDB forever with content nothing can reach.
  *
- * Media is removed by id without checking whether another note references the same file.
- * Excalidraw derives an image's id from its contents, so the same picture dropped into two
- * notes really does share one row. That is the gap `saveSpatialDocumentPayload` already has
- * when a file leaves a scene; closing it needs a reference count across documents, which is
- * a change of its own rather than a rider on this one.
+ * Media is counted before it is removed. Excalidraw derives an image's id from its
+ * contents, so the same picture dropped into two notes really is one row, and it survives
+ * here for as long as another note's scene draws it or a pebble lists it.
  */
 export async function softDeleteNote(documentId: string): Promise<boolean> {
   const database = await getNotesDb();
   const transaction = database.transaction(
-    ["notes-directory", "notes-documents", "notes-media"],
+    ["notes-directory", "notes-documents", "notes-media", "pebbles"],
     "readwrite",
   );
 
@@ -34,12 +32,31 @@ export async function softDeleteNote(documentId: string): Promise<boolean> {
   }
 
   const documentRecord = await documentStore.get(documentId);
-
-  for (const sceneFile of documentRecord?.sceneFiles ?? []) {
-    await mediaStore.delete(sceneFile.id);
-  }
+  const doomedMediaIds = (documentRecord?.sceneFiles ?? []).map((sceneFile) => sceneFile.id);
 
   await documentStore.delete(documentId);
+
+  if (doomedMediaIds.length) {
+    const stillReferenced = new Set<string>();
+
+    for (const survivor of await documentStore.getAll()) {
+      for (const sceneFile of survivor.sceneFiles) {
+        stillReferenced.add(sceneFile.id);
+      }
+    }
+
+    for (const pebble of await transaction.objectStore("pebbles").getAll()) {
+      if (!pebble.deletedAt) {
+        stillReferenced.add(pebble.mediaId);
+      }
+    }
+
+    for (const mediaId of doomedMediaIds) {
+      if (!stillReferenced.has(mediaId)) {
+        await mediaStore.delete(mediaId);
+      }
+    }
+  }
 
   const deletedAt = Date.now();
   await directoryStore.put({ ...entry, deletedAt, updatedAt: deletedAt });

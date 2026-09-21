@@ -1,25 +1,18 @@
 import { openDB } from "idb";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { BRANCH_ID } from "@/test/workspace-fixtures";
+
 import { getNotesDb } from "./notes-db";
 import { softDeleteNote } from "./notes-delete";
 import {
   createNotesDirectoryEntry,
-  findNotesDirectoryEntryByLocation,
+  findNotesDirectoryEntry,
   listNotesDirectoryEntries,
 } from "./notes-directory-storage";
-import type { NotesHierarchyLocation } from "./notes-model";
 
-const location: NotesHierarchyLocation = {
-  wing: "Home",
-  flight: "Fall 2026",
-  branch: "Math",
-  nest: "Unit 1",
-  feather: "Notes A",
-};
-
-async function seedNoteWithMedia(feather: string) {
-  const entry = await createNotesDirectoryEntry({ location: { ...location, feather } });
+async function seedNoteWithMedia(feather: string, mediaId = `media-${feather}`) {
+  const entry = await createNotesDirectoryEntry({ branchId: BRANCH_ID, feather });
   const database = await getNotesDb();
 
   await database.put("notes-documents", {
@@ -28,11 +21,11 @@ async function seedNoteWithMedia(feather: string) {
     linearCompressionAlgorithm: "none",
     sceneCompressed: null,
     sceneCompressionAlgorithm: null,
-    sceneFiles: [{ id: `media-${feather}`, mimeType: "image/webp", created: 1 }],
+    sceneFiles: [{ id: mediaId, mimeType: "image/webp", created: 1 }],
     updatedAt: 1,
   });
   await database.put("notes-media", {
-    id: `media-${feather}`,
+    id: mediaId,
     blob: new Blob([new Uint8Array([9])], { type: "image/webp" }),
     mimeType: "image/webp",
     created: 1,
@@ -48,17 +41,18 @@ beforeEach(async () => {
     database.clear("notes-directory"),
     database.clear("notes-documents"),
     database.clear("notes-media"),
+    database.clear("pebbles"),
   ]);
 });
 
 describe("softDeleteNote", () => {
-  it("tombstones the entry so it stops being listed or found by its path", async () => {
+  it("tombstones the entry so it stops being listed or found by its title", async () => {
     const entry = await seedNoteWithMedia("Notes A");
 
     expect(await softDeleteNote(entry.id)).toBe(true);
 
     expect(await listNotesDirectoryEntries()).toHaveLength(0);
-    expect(await findNotesDirectoryEntryByLocation(entry)).toBeNull();
+    expect(await findNotesDirectoryEntry({ branchId: BRANCH_ID, feather: "Notes A" })).toBeNull();
 
     // The row itself stays, carrying the timestamp a future sync needs.
     const database = await getNotesDb();
@@ -88,6 +82,40 @@ describe("softDeleteNote", () => {
     expect(await database.get("notes-media", "media-Notes B")).toBeDefined();
   });
 
+  it("keeps an image another note still draws", async () => {
+    // Excalidraw derives a file's id from its contents, so the same picture dropped into
+    // two notes really is one row. Deleting either note must not blank out the other.
+    const doomed = await seedNoteWithMedia("Notes A", "shared-media");
+    await seedNoteWithMedia("Notes B", "shared-media");
+
+    await softDeleteNote(doomed.id);
+
+    const database = await getNotesDb();
+    expect(await database.get("notes-media", "shared-media")).toBeDefined();
+  });
+
+  it("keeps an image a pebble still lists", async () => {
+    const entry = await seedNoteWithMedia("Notes A", "filed-media");
+    const database = await getNotesDb();
+    await database.put("pebbles", {
+      id: "pebble-1",
+      branchId: BRANCH_ID,
+      nestIds: [],
+      name: "Diagram",
+      mimeType: "image/webp",
+      size: 1,
+      mediaId: "filed-media",
+      featherId: null,
+      createdAt: 1,
+      updatedAt: 1,
+      deletedAt: null,
+    });
+
+    await softDeleteNote(entry.id);
+
+    expect(await database.get("notes-media", "filed-media")).toBeDefined();
+  });
+
   it("reports nothing to do for an unknown id or a note already deleted", async () => {
     const entry = await seedNoteWithMedia("Notes A");
 
@@ -97,13 +125,14 @@ describe("softDeleteNote", () => {
   });
 
   it("deletes an entry written before deletedAt existed", async () => {
-    // A row from version 2 has no deletedAt key at all, which is not the same as null. The
-    // typed handle cannot express that shape, so this one is written through a raw one.
-    // No version argument: it opens whatever version getNotesDb already created.
+    // A row from an older version has no deletedAt key at all, which is not the same as
+    // null. The typed handle cannot express that shape, so this one is written through a
+    // raw one. No version argument: it opens whatever version getNotesDb already created.
     const rawDatabase = await openDB("cuervo-notes");
     await rawDatabase.put("notes-directory", {
-      ...location,
       id: "legacy-note",
+      branchId: BRANCH_ID,
+      feather: "Legacy",
       createdMode: "linear",
       createdAt: 1,
       updatedAt: 1,

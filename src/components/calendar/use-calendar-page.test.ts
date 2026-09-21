@@ -1,89 +1,109 @@
-import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import type { CalendarEvent } from "@/lib/calendar-event";
+import { createBranch, createFlight, createWing } from "@/lib/entity-storage";
+import { getNotesDb } from "@/lib/notes-db";
+import type { Twig } from "@/lib/twig-model";
+import { createTwig, type TwigDraft } from "@/lib/twig-storage";
 
 import { formatDateKey } from "./calendar-shared";
 import { useCalendarPage } from "./use-calendar-page";
 
-const STORAGE_KEY = "cuervo-calendar-events-v1";
+const STORES = ["twigs", "wings", "flights", "branches", "nests"] as const;
 
 // Mid-month dates in the current month keep the tests independent of "today" and the timezone.
-function seed(events: CalendarEvent[]) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-}
-
 const now = new Date();
 const monthKey = formatDateKey(new Date(now.getFullYear(), now.getMonth(), 15)).slice(0, 8);
 
-function eventOn(day: string, overrides: Partial<CalendarEvent> & { id: number }): CalendarEvent {
-  return {
-    title: `Event ${overrides.id}`,
-    date: `${monthKey}${day}`,
-    time: "9:00 AM",
-    color: "Math",
-    status: "incomplete",
+let mathId = "";
+let physicsId = "";
+
+beforeEach(async () => {
+  const database = await getNotesDb();
+  await Promise.all(STORES.map((store) => database.clear(store)));
+
+  const wing = await createWing("My Wing");
+  const flight = await createFlight({ wingId: wing.id, name: "Fall 2026" });
+  mathId = (await createBranch({ flightId: flight.id, name: "Math" })).id;
+  physicsId = (await createBranch({ flightId: flight.id, name: "Physics" })).id;
+});
+
+function twigOn(day: string, overrides: Partial<TwigDraft> = {}) {
+  return createTwig({
+    branchId: mathId,
+    title: "Event",
+    dueDate: `${monthKey}${day}`,
+    dueTime: "9:00 AM",
     ...overrides,
-  };
+  });
+}
+
+async function mount() {
+  const hook = renderHook(() => useCalendarPage());
+  await waitFor(() => expect(hook.result.current.isLoading).toBe(false));
+  return hook;
 }
 
 describe("useCalendarPage", () => {
-  it("shows this month's active events by default", () => {
-    seed([
-      eventOn("15", { id: 1 }),
-      eventOn("16", { id: 2, status: "complete" }),
-      { ...eventOn("15", { id: 3 }), date: "1999-01-15" },
-    ]);
-    const { result } = renderHook(() => useCalendarPage());
+  it("shows this month's active tasks by default, and leaves undated ones off", async () => {
+    const shown = await twigOn("15", { title: "Shown" });
+    await twigOn("16", { title: "Done", status: "complete" });
+    await twigOn("15", { title: "Ancient", dueDate: "1999-01-15" });
+    await createTwig({ branchId: mathId, title: "Someday" });
+
+    const { result } = await mount();
 
     expect(result.current.viewMode).toBe("month");
-    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([1]);
+    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([shown.id]);
     expect(result.current.visibleDates.length % 7).toBe(0);
   });
 
-  it("switches between the active and completed tabs", () => {
-    seed([eventOn("15", { id: 1 }), eventOn("16", { id: 2, status: "complete" })]);
-    const { result } = renderHook(() => useCalendarPage());
+  it("switches between the active and completed tabs", async () => {
+    await twigOn("15", { title: "Active" });
+    const done = await twigOn("16", { title: "Done", status: "complete" });
+    const { result } = await mount();
 
     act(() => result.current.setEventTab("completed"));
 
-    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([2]);
+    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([done.id]);
   });
 
-  it("filters by search text and class, and lists the classes in view", () => {
-    seed([
-      eventOn("15", { id: 1, title: "Algebra", color: "Math" }),
-      eventOn("16", { id: 2, title: "Optics", color: "Physics" }),
+  it("filters by search text and branch, listing the branches in view", async () => {
+    const algebra = await twigOn("15", { title: "Algebra" });
+    const optics = await twigOn("16", { title: "Optics", branchId: physicsId });
+    const { result } = await mount();
+
+    expect(result.current.eventClasses.map((branch) => branch.label)).toEqual([
+      "Fall 2026 / Math",
+      "Fall 2026 / Physics",
     ]);
-    const { result } = renderHook(() => useCalendarPage());
-    expect(result.current.eventClasses).toEqual(["Math", "Physics"]);
 
     act(() => result.current.setSearchTerm("optic"));
-    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([2]);
+    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([optics.id]);
 
     act(() => {
       result.current.setSearchTerm("");
-      result.current.setSelectedClassFilter("Math");
+      result.current.setSelectedClassFilter(mathId);
     });
-    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([1]);
+    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([algebra.id]);
   });
 
-  it("selecting a date narrows the list to that day, and clearing it restores the list", () => {
-    seed([eventOn("15", { id: 1 }), eventOn("16", { id: 2 })]);
-    const { result } = renderHook(() => useCalendarPage());
+  it("selecting a date narrows the list to that day, and clearing it restores the list", async () => {
+    const first = await twigOn("15");
+    const second = await twigOn("16");
+    const { result } = await mount();
     const day = new Date(now.getFullYear(), now.getMonth(), 16);
 
     act(() => result.current.selectDate(day));
     expect(result.current.selectedDateKey).toBe(`${monthKey}16`);
-    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([2]);
+    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([second.id]);
 
     act(() => result.current.clearDayFilter());
-    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([1, 2]);
+    expect(result.current.filteredEvents.map((item) => item.id)).toEqual([first.id, second.id]);
   });
 
-  it("moves the month forward and back, and returns to today", () => {
-    seed([]);
-    const { result } = renderHook(() => useCalendarPage());
+  it("moves the month forward and back, and returns to today", async () => {
+    const { result } = await mount();
     const start = result.current.monthLabel;
 
     act(() => result.current.goNext());
@@ -97,9 +117,8 @@ describe("useCalendarPage", () => {
     expect(result.current.selectedDateKey).toBeNull();
   });
 
-  it("moves by whole weeks in week view and keeps the month in sync", () => {
-    seed([]);
-    const { result } = renderHook(() => useCalendarPage());
+  it("moves by whole weeks in week view and keeps the month in sync", async () => {
+    const { result } = await mount();
 
     act(() => result.current.setViewMode("week"));
     const firstWeek = result.current.weekLabel;
@@ -114,16 +133,17 @@ describe("useCalendarPage", () => {
     expect(nextWeek.getDay()).toBe(0);
   });
 
-  it("opens the editor to add on the selected day, and closes on Escape", () => {
-    seed([]);
-    const { result } = renderHook(() => useCalendarPage());
+  it("opens the editor to add on the selected day, defaulting to the first branch", async () => {
+    const { result } = await mount();
     const day = new Date(now.getFullYear(), now.getMonth(), 16);
 
     act(() => result.current.selectDate(day));
     act(() => result.current.editor.openAdd());
+
     expect(result.current.editor.isOpen).toBe(true);
-    expect(result.current.editor.editingEventId).toBeNull();
+    expect(result.current.editor.editingTwigId).toBeNull();
     expect(result.current.editor.form.getValues("date")).toBe(`${monthKey}16`);
+    expect(result.current.editor.form.getValues("branchId")).toBe(mathId);
 
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -131,67 +151,72 @@ describe("useCalendarPage", () => {
     expect(result.current.editor.isOpen).toBe(false);
   });
 
-  it("opens the editor pre-filled to edit an event", () => {
-    const existing = eventOn("15", {
-      id: 7,
+  it("opens the editor pre-filled to edit a task", async () => {
+    const existing = await twigOn("15", {
       title: "Lab report",
-      color: "Chemistry",
+      branchId: physicsId,
+      kind: "project",
       status: "inprogress",
     });
-    seed([existing]);
-    const { result } = renderHook(() => useCalendarPage());
+    const { result } = await mount();
 
     act(() => result.current.editor.openEdit(existing));
 
     expect(result.current.editor.isOpen).toBe(true);
-    expect(result.current.editor.editingEventId).toBe(7);
+    expect(result.current.editor.editingTwigId).toBe(existing.id);
     expect(result.current.editor.form.getValues()).toEqual({
       title: "Lab report",
-      date: existing.date,
+      date: existing.dueDate,
       time: "9:00 AM",
-      color: "Chemistry",
+      branchId: physicsId,
+      kind: "project",
       status: "inprogress",
     });
   });
 
-  it("saving a new event adds it, selects its day, and closes the editor", () => {
-    seed([]);
-    const { result } = renderHook(() => useCalendarPage());
+  it("saving a new task adds it, selects its day, and closes the editor", async () => {
+    const { result } = await mount();
     const date = `${monthKey}20`;
 
     act(() => result.current.editor.openAdd(date));
-    act(() =>
-      result.current.editor.submit({
+    await act(async () => {
+      await result.current.editor.submit({
         title: " Review ",
         date,
         time: "1:00 PM",
-        color: "History",
+        branchId: physicsId,
+        kind: "essay",
         status: "incomplete",
-      }),
-    );
+      });
+    });
 
     expect(result.current.editor.isOpen).toBe(false);
     expect(result.current.selectedDateKey).toBe(date);
-    expect(result.current.filteredEvents).toEqual([
-      { id: 1, title: "Review", date, time: "1:00 PM", color: "History", status: "incomplete" },
-    ]);
+    expect(result.current.filteredEvents).toHaveLength(1);
+    expect(result.current.filteredEvents[0]).toMatchObject({
+      title: "Review",
+      dueDate: date,
+      dueTime: "1:00 PM",
+      branchId: physicsId,
+      kind: "essay",
+    });
   });
 
-  it("saving while editing updates that event instead of adding one", () => {
-    const existing = eventOn("15", { id: 7, title: "Old title" });
-    seed([existing]);
-    const { result } = renderHook(() => useCalendarPage());
+  it("saving while editing updates that task instead of adding one", async () => {
+    const existing: Twig = await twigOn("15", { title: "Old title" });
+    const { result } = await mount();
 
     act(() => result.current.editor.openEdit(existing));
-    act(() =>
-      result.current.editor.submit({
+    await act(async () => {
+      await result.current.editor.submit({
         title: "New title",
-        date: existing.date,
-        time: existing.time,
-        color: existing.color,
+        date: existing.dueDate ?? "",
+        time: existing.dueTime,
+        branchId: existing.branchId,
+        kind: existing.kind,
         status: existing.status,
-      }),
-    );
+      });
+    });
 
     expect(result.current.filteredEvents.map((item) => item.title)).toEqual(["New title"]);
   });

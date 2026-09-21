@@ -1,30 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { INITIAL_EVENTS } from "@/components/calendar/calendar-shared";
+import { isDatedTwig } from "@/components/calendar/calendar-shared";
 import { computeDashboardMetrics } from "@/components/dashboard/dashboard-metrics";
-import type { CalendarEvent } from "@/lib/calendar-event";
-import { loadCalendarEvents } from "@/lib/calendar-storage";
+import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
 import { listNotesDirectoryEntries } from "@/lib/notes-directory-storage";
 import type { NotesDirectoryEntry } from "@/lib/notes-model";
+import type { Twig } from "@/lib/twig-model";
+import { listTwigs } from "@/lib/twig-storage";
 
-/** Loads the calendar and notes data and derives the dashboard's numbers. */
+/** Loads the twigs and notes and derives the dashboard's numbers. */
 export function useDashboardData() {
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() =>
-    loadCalendarEvents(INITIAL_EVENTS),
-  );
+  const [twigs, setTwigs] = useState<Twig[]>([]);
   const [notesEntries, setNotesEntries] = useState<NotesDirectoryEntry[]>([]);
   const [isNotesLoading, setIsNotesLoading] = useState(true);
+  const { snapshot, refreshSnapshot } = useWorkspaceSnapshot();
 
   useEffect(() => {
     let isMounted = true;
 
     const loadDashboardData = async () => {
-      setCalendarEvents(loadCalendarEvents(INITIAL_EVENTS));
-
       try {
-        const entries = await listNotesDirectoryEntries();
+        const [entries, nextTwigs] = await Promise.all([
+          listNotesDirectoryEntries(),
+          listTwigs(),
+          refreshSnapshot(),
+        ]);
+
         if (isMounted) {
           setNotesEntries(entries);
+          setTwigs(nextTwigs);
         }
       } finally {
         if (isMounted) {
@@ -38,17 +42,17 @@ export function useDashboardData() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [refreshSnapshot]);
 
   const metrics = useMemo(
     () =>
       computeDashboardMetrics({
-        calendarEvents,
+        calendarEvents: twigs.filter(isDatedTwig),
         notesEntries,
         now: new Date(),
       }),
-    [calendarEvents, notesEntries],
+    [twigs, notesEntries],
   );
 
-  return { ...metrics, isNotesLoading };
+  return { ...metrics, snapshot, isNotesLoading };
 }

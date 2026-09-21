@@ -1,5 +1,9 @@
-import { dateKeyToDate, formatDateKey, startOfWeek } from "@/components/calendar/calendar-shared";
-import type { CalendarEvent } from "@/lib/calendar-event";
+import {
+  type DatedTwig,
+  dateKeyToDate,
+  formatDateKey,
+  startOfWeek,
+} from "@/components/calendar/calendar-shared";
 
 export type CalendarViewMode = "month" | "week";
 export type EventTab = "active" | "completed";
@@ -64,12 +68,12 @@ export function formatWeekLabel(weekDates: Date[]): string {
   return `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
 }
 
-export function groupEventsByDate(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
-  const map = new Map<string, CalendarEvent[]>();
+export function groupEventsByDate(events: DatedTwig[]): Map<string, DatedTwig[]> {
+  const map = new Map<string, DatedTwig[]>();
   events.forEach((event) => {
-    const list = map.get(event.date) ?? [];
+    const list = map.get(event.dueDate) ?? [];
     list.push(event);
-    map.set(event.date, list);
+    map.set(event.dueDate, list);
   });
   return map;
 }
@@ -81,18 +85,18 @@ export function scopeEventsToView({
   currentMonth,
   weekDates,
 }: {
-  events: CalendarEvent[];
+  events: DatedTwig[];
   viewMode: CalendarViewMode;
   currentMonth: Date;
   weekDates: Date[];
-}): CalendarEvent[] {
+}): DatedTwig[] {
   if (viewMode === "week") {
     const weekDateKeys = new Set(weekDates.map((date) => formatDateKey(date)));
-    return events.filter((event) => weekDateKeys.has(event.date));
+    return events.filter((event) => weekDateKeys.has(event.dueDate));
   }
 
   return events.filter((event) => {
-    const eventDate = dateKeyToDate(event.date);
+    const eventDate = dateKeyToDate(event.dueDate);
     return (
       eventDate.getMonth() === currentMonth.getMonth() &&
       eventDate.getFullYear() === currentMonth.getFullYear()
@@ -108,21 +112,21 @@ export function filterVisibleEvents({
   classFilter,
   eventTab,
 }: {
-  events: CalendarEvent[];
+  events: DatedTwig[];
   selectedDateKey: string | null;
   searchTerm: string;
   classFilter: string;
   eventTab: EventTab;
-}): CalendarEvent[] {
+}): DatedTwig[] {
   const dateScopedEvents = selectedDateKey
-    ? events.filter((event) => event.date === selectedDateKey)
+    ? events.filter((event) => event.dueDate === selectedDateKey)
     : events;
 
   const searchAndClassFiltered = dateScopedEvents.filter((event) => {
     const matchesSearch =
       searchTerm.trim().length === 0 ||
       event.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = classFilter === "all" || event.color === classFilter;
+    const matchesClass = classFilter === "all" || event.branchId === classFilter;
 
     return matchesSearch && matchesClass;
   });
@@ -133,12 +137,9 @@ export function filterVisibleEvents({
   return searchAndClassFiltered.filter((event) => event.status !== "complete");
 }
 
-export function listEventClasses(events: CalendarEvent[]): string[] {
-  return Array.from(new Set(events.map((event) => event.color))).sort((a, b) => a.localeCompare(b));
-}
-
-export function nextEventId(events: CalendarEvent[]): number {
-  return events.reduce((maxId, calendarEvent) => Math.max(maxId, calendarEvent.id), 0) + 1;
+/** The branches represented in the visible events, so the filter only offers real ones. */
+export function listEventBranchIds(events: DatedTwig[]): string[] {
+  return Array.from(new Set(events.map((event) => event.branchId)));
 }
 
 export function startOfMonth(date: Date): Date {

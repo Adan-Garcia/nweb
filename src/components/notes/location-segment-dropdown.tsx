@@ -1,3 +1,4 @@
+import type { SegmentOption } from "@/components/notes/location-hierarchy";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,8 +15,8 @@ type NotesLocationSegmentDropdownProps = {
   triggerLabel: string;
   currentLabel: string;
   addLabel: string;
-  options: string[];
-  onSelect: (value: string) => void;
+  options: SegmentOption[];
+  onSelect: (id: string | null) => void;
   onAdd: () => void;
   append?: string;
 };
@@ -42,12 +43,12 @@ export function NotesLocationSegmentDropdown({
             <DropdownMenuLabel>{currentLabel}</DropdownMenuLabel>
             {options.map((option) => (
               <DropdownMenuItem
-                key={option}
+                key={option.id ?? `unfiled:${option.name}`}
                 onClick={() => {
-                  onSelect(option);
+                  onSelect(option.id);
                 }}
               >
-                {option}
+                {option.name}
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />

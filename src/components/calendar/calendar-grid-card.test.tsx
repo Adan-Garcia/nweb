@@ -3,22 +3,15 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { CalendarEvent } from "@/lib/calendar-event";
+import type { DatedTwig } from "@/components/calendar/calendar-shared";
+import { makeSnapshot, makeTwig } from "@/test/workspace-fixtures";
 
 import { CalendarGridCard } from "./calendar-grid-card";
 import { buildWeekDates, groupEventsByDate } from "./calendar-views";
 
-const event = (
-  id: number,
-  date: string,
-  overrides: Partial<CalendarEvent> = {},
-): CalendarEvent => ({
-  id,
-  title: `Event ${id}`,
-  date,
-  time: "9:00 AM",
-  color: "Math",
-  status: "incomplete",
+const event = (id: number, dueDate: string, overrides: Partial<DatedTwig> = {}): DatedTwig => ({
+  ...makeTwig({ id: String(id), title: `Event ${id}`, dueTime: "9:00 AM" }),
+  dueDate,
   ...overrides,
 });
 
@@ -27,6 +20,7 @@ const week = buildWeekDates(new Date(2026, 3, 16));
 
 function setup(overrides: Partial<ComponentProps<typeof CalendarGridCard>> = {}) {
   const props: ComponentProps<typeof CalendarGridCard> = {
+    snapshot: makeSnapshot(),
     viewMode: "week",
     onViewModeChange: vi.fn(),
     monthLabel: "April 2026",

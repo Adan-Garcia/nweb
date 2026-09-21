@@ -1,31 +1,35 @@
 import { useMemo, useState } from "react";
 
+import type { WorkspaceSelection } from "@/components/notes/location-hierarchy";
 import { NotesNoteButton } from "@/components/notes/notes-note-button";
 import { buildTree, getActivePathKeys } from "@/components/notes/notes-tree";
 import { NotesTreeGroup } from "@/components/notes/notes-tree-group";
-import type { NotesDirectoryEntry, NotesHierarchyLocation } from "@/components/notes/types";
+import type { NotesDirectoryEntry } from "@/components/notes/types";
+import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type NotesTreeViewProps = {
+  snapshot: WorkspaceSnapshot;
   entries: NotesDirectoryEntry[];
   activeDocumentId: string | null;
-  activeLocation: NotesHierarchyLocation;
+  activeSelection: WorkspaceSelection;
   isBusy: boolean;
   onOpenDocument: (documentId: string) => void;
 };
 
 /** Saved notes grouped as Wing > Flight > Branch > Nest > Feather. */
 export function NotesTreeView({
+  snapshot,
   entries,
   activeDocumentId,
-  activeLocation,
+  activeSelection,
   isBusy,
   onOpenDocument,
 }: NotesTreeViewProps) {
   const tree = useMemo(() => {
-    return buildTree(entries);
-  }, [entries]);
+    return buildTree(snapshot, entries);
+  }, [snapshot, entries]);
 
-  const activePathKeys = useMemo(() => getActivePathKeys(activeLocation), [activeLocation]);
+  const activePathKeys = useMemo(() => getActivePathKeys(activeSelection), [activeSelection]);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set(activePathKeys));
   const [syncedPathKeys, setSyncedPathKeys] = useState(activePathKeys);
 
@@ -100,6 +104,7 @@ export function NotesTreeView({
                         {nestGroup.feathers.map((entry) => (
                           <NotesNoteButton
                             key={entry.id}
+                            snapshot={snapshot}
                             entry={entry}
                             isActive={activeDocumentId === entry.id}
                             isBusy={isBusy}

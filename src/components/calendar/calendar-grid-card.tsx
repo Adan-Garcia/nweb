@@ -1,11 +1,17 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { EVENT_COLORS, formatDateKey, weekDays } from "@/components/calendar/calendar-shared";
+import {
+  branchLabelFor,
+  type DatedTwig,
+  formatDateKey,
+  weekDays,
+} from "@/components/calendar/calendar-shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { CalendarEvent } from "@/lib/calendar-event";
+import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type CalendarGridCardProps = {
+  snapshot: WorkspaceSnapshot;
   viewMode: "month" | "week";
   onViewModeChange: (mode: "month" | "week") => void;
   monthLabel: string;
@@ -17,11 +23,12 @@ type CalendarGridCardProps = {
   currentMonth: Date;
   today: Date;
   selectedDateKey: string | null;
-  eventsByDate: Map<string, CalendarEvent[]>;
+  eventsByDate: Map<string, DatedTwig[]>;
   onSelectDate: (date: Date) => void;
 };
 
 export function CalendarGridCard({
+  snapshot,
   viewMode,
   onViewModeChange,
   monthLabel,
@@ -119,7 +126,7 @@ export function CalendarGridCard({
                       }`}
                     >
                       <span
-                        className={`mr-1 inline-block size-2 rounded-full ${EVENT_COLORS[event.color] ?? "bg-slate-400"}`}
+                        className={`mr-1 inline-block size-2 rounded-full ${branchLabelFor(snapshot, event.branchId).colorClass}`}
                       />
                       {event.title}
                     </div>

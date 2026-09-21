@@ -1,68 +1,33 @@
 import { z } from "zod";
 
-import {
-  type CalendarEvent,
-  EVENT_COLOR_OPTIONS,
-  EVENT_STATUS_OPTIONS,
-  type EventColor,
-} from "@/lib/calendar-event";
+import { BRANCH_COLORS, type BranchColor } from "@/lib/entity-model";
+import { type Twig, TWIG_KINDS, TWIG_STATUSES } from "@/lib/twig-model";
+import { findBranch, type WorkspaceSnapshot } from "@/lib/workspace-tree";
 
-export const EVENT_COLORS: Record<EventColor, string> = {
-  Math: "bg-emerald-500",
-  History: "bg-rose-500",
-  Physics: "bg-sky-500",
-  GroupWork: "bg-amber-500",
-  Chemistry: "bg-violet-500",
+/** The dot beside a task takes its colour from the branch the task belongs to. */
+export const BRANCH_COLOR_CLASSES: Record<BranchColor, string> = {
+  emerald: "bg-emerald-500",
+  rose: "bg-rose-500",
+  sky: "bg-sky-500",
+  amber: "bg-amber-500",
+  violet: "bg-violet-500",
+  teal: "bg-teal-500",
+  orange: "bg-orange-500",
+  indigo: "bg-indigo-500",
 };
 
-export const INITIAL_EVENTS: CalendarEvent[] = [
-  {
-    id: 1,
-    title: "Math Study Session",
-    date: "2026-04-16",
-    time: "3:30 PM",
-    color: "Math",
-    status: "incomplete",
-  },
-  {
-    id: 2,
-    title: "History Essay Due",
-    date: "2026-04-18",
-    time: "11:59 PM",
-    color: "History",
-    status: "inprogress",
-  },
-  {
-    id: 3,
-    title: "Physics Lab",
-    date: "2026-04-21",
-    time: "9:00 AM",
-    color: "Physics",
-    status: "incomplete",
-  },
-  {
-    id: 4,
-    title: "Team Project Check-in",
-    date: "2026-04-23",
-    time: "1:15 PM",
-    color: "GroupWork",
-    status: "complete",
-  },
-  {
-    id: 5,
-    title: "Chemistry Quiz",
-    date: "2026-04-27",
-    time: "10:00 AM",
-    color: "Chemistry",
-    status: "inprogress",
-  },
-];
+/** A twig that has a due date, and so belongs on the calendar. */
+export type DatedTwig = Twig & { dueDate: string };
+
+export function isDatedTwig(twig: Twig): twig is DatedTwig {
+  return twig.dueDate !== null;
+}
 
 export const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export const statusOrder: CalendarEvent["status"][] = [...EVENT_STATUS_OPTIONS];
+export const statusOrder: Twig["status"][] = [...TWIG_STATUSES];
 
-export const eventFormSchema = z.object({
+export const twigFormSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   date: z
     .string()
@@ -71,13 +36,14 @@ export const eventFormSchema = z.object({
       message: "Enter a valid date",
     }),
   time: z.string().trim().min(1, "Time is required"),
-  color: z.enum(EVENT_COLOR_OPTIONS),
-  status: z.enum(EVENT_STATUS_OPTIONS),
+  branchId: z.string().min(1, "Pick a branch"),
+  kind: z.enum(TWIG_KINDS),
+  status: z.enum(TWIG_STATUSES),
 });
 
-export type EventFormValues = z.infer<typeof eventFormSchema>;
+export type TwigFormValues = z.infer<typeof twigFormSchema>;
 
-export const STATUS_META: Record<CalendarEvent["status"], { label: string; track: string }> = {
+export const STATUS_META: Record<Twig["status"], { label: string; track: string }> = {
   incomplete: {
     label: "Todo",
     track: "bg-slate-300/80 dark:bg-slate-700",
@@ -91,6 +57,22 @@ export const STATUS_META: Record<CalendarEvent["status"], { label: string; track
     track: "bg-emerald-300/80 dark:bg-emerald-700/80",
   },
 };
+
+export function branchColorClass(color: BranchColor | undefined) {
+  return color ? BRANCH_COLOR_CLASSES[color] : "bg-slate-400";
+}
+
+/** The name and dot colour a task shows, read off the branch it belongs to. */
+export function branchLabelFor(snapshot: WorkspaceSnapshot, branchId: string) {
+  const branch = findBranch(snapshot, branchId);
+
+  return {
+    name: branch?.name ?? "No branch",
+    colorClass: branchColorClass(branch?.color),
+  };
+}
+
+export { BRANCH_COLORS };
 
 export function formatDateKey(date: Date) {
   const year = date.getFullYear();

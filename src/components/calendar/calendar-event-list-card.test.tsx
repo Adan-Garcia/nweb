@@ -3,29 +3,23 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { CalendarEvent } from "@/lib/calendar-event";
+import type { DatedTwig } from "@/components/calendar/calendar-shared";
+import { makeSnapshot, makeTwig } from "@/test/workspace-fixtures";
 
 import { CalendarEventListCard } from "./calendar-event-list-card";
 
-const quiz: CalendarEvent = {
-  id: 1,
-  title: "Math Quiz",
-  date: "2026-04-16",
-  time: "9:00 AM",
-  color: "Math",
-  status: "incomplete",
+const quiz: DatedTwig = {
+  ...makeTwig({ id: "1", title: "Math Quiz", dueTime: "9:00 AM" }),
+  dueDate: "2026-04-16",
 };
-const essay: CalendarEvent = {
-  id: 2,
-  title: "History Essay",
-  date: "2026-04-18",
-  time: "11:59 PM",
-  color: "History",
-  status: "complete",
+const essay: DatedTwig = {
+  ...makeTwig({ id: "2", title: "History Essay", dueTime: "11:59 PM", status: "complete" }),
+  dueDate: "2026-04-18",
 };
 
 function setup(overrides: Partial<ComponentProps<typeof CalendarEventListCard>> = {}) {
   const props: ComponentProps<typeof CalendarEventListCard> = {
+    snapshot: makeSnapshot(),
     selectedDateKey: null,
     viewMode: "month",
     weekLabel: "Apr 12-18, 2026",
@@ -37,7 +31,10 @@ function setup(overrides: Partial<ComponentProps<typeof CalendarEventListCard>> 
     onSearchTermChange: vi.fn(),
     selectedClassFilter: "all",
     onSelectedClassFilterChange: vi.fn(),
-    eventClasses: ["History", "Math"],
+    eventClasses: [
+      { id: "branch-history", label: "History" },
+      { id: "branch-1", label: "Biology 101" },
+    ],
     filteredEvents: [quiz, essay],
     onOpenAddEvent: vi.fn(),
     onOpenEditEvent: vi.fn(),
@@ -109,11 +106,11 @@ describe("CalendarEventListCard: filters", () => {
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
       "All Classes",
       "History",
-      "Math",
+      "Biology 101",
     ]);
-    await user.selectOptions(select, "Math");
+    await user.selectOptions(select, "branch-1");
 
-    expect(onSelectedClassFilterChange).toHaveBeenCalledWith("Math");
+    expect(onSelectedClassFilterChange).toHaveBeenCalledWith("branch-1");
   });
 });
 
@@ -123,11 +120,12 @@ describe("CalendarEventListCard: events", () => {
     expect(screen.getByText("Math Quiz")).toBeInTheDocument();
     expect(screen.getByText("History Essay")).toBeInTheDocument();
     expect(screen.getByText(/at 9:00 AM/)).toBeInTheDocument();
-    expect(screen.getByText("Class: History")).toBeInTheDocument();
+    // The branch name comes off the entity, so a rename would change this label.
+    expect(screen.getAllByText(/Biology 101 . Homework/)).toHaveLength(2);
   });
 
   it("labels an event on the 1st of a month with that day, not the day before", () => {
-    setup({ filteredEvents: [{ ...quiz, date: "2026-04-01" }] });
+    setup({ filteredEvents: [{ ...quiz, dueDate: "2026-04-01" }] });
     expect(screen.getByText(/Apr 1 at 9:00 AM/)).toBeInTheDocument();
   });
 

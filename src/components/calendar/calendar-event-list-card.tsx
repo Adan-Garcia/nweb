@@ -2,7 +2,7 @@ import { Plus } from "lucide-react";
 
 import { CalendarEventFilters } from "@/components/calendar/calendar-event-filters";
 import { CalendarEventListItem } from "@/components/calendar/calendar-event-list-item";
-import { formatHumanDate } from "@/components/calendar/calendar-shared";
+import { type DatedTwig, formatHumanDate } from "@/components/calendar/calendar-shared";
 import type { CalendarViewMode, EventTab } from "@/components/calendar/calendar-views";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,9 +12,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { CalendarEvent } from "@/lib/calendar-event";
+import type { TwigStatus } from "@/lib/twig-model";
+import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type CalendarEventListCardProps = {
+  snapshot: WorkspaceSnapshot;
   selectedDateKey: string | null;
   viewMode: CalendarViewMode;
   weekLabel: string;
@@ -26,15 +28,16 @@ type CalendarEventListCardProps = {
   onSearchTermChange: (value: string) => void;
   selectedClassFilter: string;
   onSelectedClassFilterChange: (value: string) => void;
-  eventClasses: string[];
-  filteredEvents: CalendarEvent[];
+  eventClasses: readonly { id: string; label: string }[];
+  filteredEvents: DatedTwig[];
   onOpenAddEvent: (defaultDate?: string | null) => void;
-  onOpenEditEvent: (event: CalendarEvent) => void;
-  onDeleteEvent: (event: CalendarEvent) => void;
-  onSetEventStatus: (eventId: number, nextStatus: CalendarEvent["status"]) => void;
+  onOpenEditEvent: (event: DatedTwig) => void;
+  onDeleteEvent: (event: DatedTwig) => void;
+  onSetEventStatus: (twigId: string, nextStatus: TwigStatus) => void;
 };
 
 export function CalendarEventListCard({
+  snapshot,
   selectedDateKey,
   viewMode,
   weekLabel,
@@ -98,6 +101,7 @@ export function CalendarEventListCard({
           filteredEvents.map((event) => (
             <CalendarEventListItem
               key={event.id}
+              snapshot={snapshot}
               event={event}
               onEdit={onOpenEditEvent}
               onDelete={onDeleteEvent}

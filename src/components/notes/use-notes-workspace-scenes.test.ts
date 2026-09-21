@@ -1,8 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { NotesHierarchyLocation } from "@/lib/notes-model";
-
 import { createPngSceneFile, newSceneFileId } from "./excalidraw-adapter";
 
 // Excalidraw is a heavy browser-only bundle; the hook only needs these two helpers.
@@ -39,13 +37,8 @@ type SpatialAppState = Parameters<Workspace["handleSpatialChange"]>[1];
 const appState = {} as SpatialAppState;
 const imageElement = (fileId: string) => ({ type: "image", fileId }) as SpatialElements[number];
 
-const otherLocation: NotesHierarchyLocation = {
-  wing: "School",
-  flight: "Spring 2027",
-  branch: "Physics",
-  nest: "Labs",
-  feather: "Lab 1",
-};
+// A second note in the branch the bootstrap creates, so switching away really reloads.
+const otherNote = { branchId: null, nestIds: [], feather: "Lab 1" };
 
 async function mountReady() {
   const env = await loadWorkspace();
@@ -95,7 +88,7 @@ describe("useNotesWorkspace: images on the canvas", () => {
       await result.current.saveActiveDocumentNow();
     });
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await result.current.createNoteAt(otherNote);
     });
     await act(async () => {
       await result.current.openDocumentById(firstId);

@@ -1,10 +1,12 @@
 import { Clock3, FileText } from "lucide-react";
 
-import { formatPath, formatUpdatedAt } from "@/components/notes/notes-tree";
+import { formatUpdatedAt } from "@/components/notes/notes-tree";
 import type { NotesDirectoryEntry } from "@/components/notes/types";
 import { cn } from "@/lib/utils";
+import { displayLocation, formatLocationPath, type WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type NotesNoteButtonProps = {
+  snapshot: WorkspaceSnapshot;
   entry: NotesDirectoryEntry;
   isActive: boolean;
   isBusy: boolean;
@@ -12,7 +14,13 @@ type NotesNoteButtonProps = {
 };
 
 /** A saved note (feather) row in the file viewer. */
-export function NotesNoteButton({ entry, isActive, isBusy, onOpen }: NotesNoteButtonProps) {
+export function NotesNoteButton({
+  snapshot,
+  entry,
+  isActive,
+  isBusy,
+  onOpen,
+}: NotesNoteButtonProps) {
   return (
     <button
       type="button"
@@ -33,7 +41,9 @@ export function NotesNoteButton({ entry, isActive, isBusy, onOpen }: NotesNoteBu
           {entry.createdMode}
         </span>
       </span>
-      <span className="truncate text-[0.68rem] text-muted-foreground">{formatPath(entry)}</span>
+      <span className="truncate text-[0.68rem] text-muted-foreground">
+        {formatLocationPath(displayLocation(snapshot, entry))}
+      </span>
       <span className="flex items-center gap-1 text-[0.68rem] text-muted-foreground">
         <Clock3 className="size-3" />
         Updated {formatUpdatedAt(entry.updatedAt)}

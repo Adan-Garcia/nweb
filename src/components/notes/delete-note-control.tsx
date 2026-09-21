@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 
-import { formatPath } from "@/components/notes/notes-tree";
 import type { NotesDirectoryEntry } from "@/components/notes/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,8 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { displayLocation, formatLocationPath, type WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type NotesDeleteNoteControlProps = {
+  snapshot: WorkspaceSnapshot;
   activeEntry: NotesDirectoryEntry | null;
   isDisabled: boolean;
   onDelete: (documentId: string) => void;
@@ -22,6 +23,7 @@ type NotesDeleteNoteControlProps = {
 
 /** Deletes the note that is open, behind a confirmation, because nothing here can undo it. */
 export function NotesDeleteNoteControl({
+  snapshot,
   activeEntry,
   isDisabled,
   onDelete,
@@ -58,7 +60,7 @@ export function NotesDeleteNoteControl({
               Note
             </p>
             <p className="mt-1 rounded-md border bg-muted/40 px-2 py-1 text-sm">
-              {activeEntry ? formatPath(activeEntry) : ""}
+              {activeEntry ? formatLocationPath(displayLocation(snapshot, activeEntry)) : ""}
             </p>
           </div>
 

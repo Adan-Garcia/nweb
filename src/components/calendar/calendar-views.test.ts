@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { CalendarEvent } from "@/lib/calendar-event";
+import { makeTwig } from "@/test/workspace-fixtures";
 
-import { formatDateKey } from "./calendar-shared";
+import { type DatedTwig, formatDateKey } from "./calendar-shared";
 import {
   buildMonthCells,
   buildWeekDates,
@@ -10,21 +10,17 @@ import {
   formatMonthLabel,
   formatWeekLabel,
   groupEventsByDate,
-  listEventClasses,
-  nextEventId,
+  listEventBranchIds,
   scopeEventsToView,
   startOfDay,
   startOfMonth,
 } from "./calendar-views";
 
 // Mid-month dates keep these tests independent of the machine's timezone.
-function event(overrides: Partial<CalendarEvent> & Pick<CalendarEvent, "id">): CalendarEvent {
+function event(overrides: Partial<DatedTwig> & Pick<DatedTwig, "id">): DatedTwig {
   return {
-    title: `Event ${overrides.id}`,
-    date: "2026-04-15",
-    time: "9:00 AM",
-    color: "Math",
-    status: "incomplete",
+    ...makeTwig({ title: `Event ${overrides.id}`, dueDate: "2026-04-15", dueTime: "9:00 AM" }),
+    dueDate: "2026-04-15",
     ...overrides,
   };
 }
@@ -86,21 +82,21 @@ describe("labels", () => {
 describe("groupEventsByDate", () => {
   it("buckets events by their date key", () => {
     const grouped = groupEventsByDate([
-      event({ id: 1, date: "2026-04-15" }),
-      event({ id: 2, date: "2026-04-15" }),
-      event({ id: 3, date: "2026-04-20" }),
+      event({ id: "1", dueDate: "2026-04-15" }),
+      event({ id: "2", dueDate: "2026-04-15" }),
+      event({ id: "3", dueDate: "2026-04-20" }),
     ]);
-    expect(grouped.get("2026-04-15")?.map((item) => item.id)).toEqual([1, 2]);
-    expect(grouped.get("2026-04-20")?.map((item) => item.id)).toEqual([3]);
+    expect(grouped.get("2026-04-15")?.map((item) => item.id)).toEqual(["1", "2"]);
+    expect(grouped.get("2026-04-20")?.map((item) => item.id)).toEqual(["3"]);
     expect(grouped.get("2026-04-21")).toBeUndefined();
   });
 });
 
 describe("scopeEventsToView", () => {
   const events = [
-    event({ id: 1, date: "2026-04-15" }),
-    event({ id: 2, date: "2026-05-15" }),
-    event({ id: 3, date: "2025-04-15" }),
+    event({ id: "1", dueDate: "2026-04-15" }),
+    event({ id: "2", dueDate: "2026-05-15" }),
+    event({ id: "3", dueDate: "2025-04-15" }),
   ];
 
   it("keeps only events in the visible month (and year)", () => {
@@ -110,14 +106,14 @@ describe("scopeEventsToView", () => {
       currentMonth: new Date(2026, 3, 1),
       weekDates: buildWeekDates(new Date(2026, 3, 16)),
     });
-    expect(scoped.map((item) => item.id)).toEqual([1]);
+    expect(scoped.map((item) => item.id)).toEqual(["1"]);
   });
 
   it("puts an event on the 1st, and one on the last day, in their own month", () => {
     const edges = [
-      event({ id: 1, date: "2026-04-01" }),
-      event({ id: 2, date: "2026-04-30" }),
-      event({ id: 3, date: "2026-03-31" }),
+      event({ id: "1", dueDate: "2026-04-01" }),
+      event({ id: "2", dueDate: "2026-04-30" }),
+      event({ id: "3", dueDate: "2026-03-31" }),
     ];
     const scoped = scopeEventsToView({
       events: edges,
@@ -125,36 +121,45 @@ describe("scopeEventsToView", () => {
       currentMonth: new Date(2026, 3, 1),
       weekDates: buildWeekDates(new Date(2026, 3, 16)),
     });
-    expect(scoped.map((item) => item.id)).toEqual([1, 2]);
+    expect(scoped.map((item) => item.id)).toEqual(["1", "2"]);
   });
 
   it("keeps only events in the visible week", () => {
     const scoped = scopeEventsToView({
-      events: [event({ id: 1, date: "2026-04-14" }), event({ id: 2, date: "2026-04-25" })],
+      events: [
+        event({ id: "1", dueDate: "2026-04-14" }),
+        event({ id: "2", dueDate: "2026-04-25" }),
+      ],
       viewMode: "week",
       currentMonth: new Date(2026, 3, 1),
       weekDates: buildWeekDates(new Date(2026, 3, 16)),
     });
-    expect(scoped.map((item) => item.id)).toEqual([1]);
+    expect(scoped.map((item) => item.id)).toEqual(["1"]);
   });
 });
 
 describe("filterVisibleEvents", () => {
   const events = [
-    event({ id: 1, title: "Math Quiz", color: "Math", status: "incomplete", date: "2026-04-15" }),
     event({
-      id: 2,
-      title: "History Essay",
-      color: "History",
-      status: "complete",
-      date: "2026-04-15",
+      id: "1",
+      title: "Math Quiz",
+      branchId: "branch-math",
+      status: "incomplete",
+      dueDate: "2026-04-15",
     }),
     event({
-      id: 3,
+      id: "2",
+      title: "History Essay",
+      branchId: "branch-history",
+      status: "complete",
+      dueDate: "2026-04-15",
+    }),
+    event({
+      id: "3",
       title: "math homework",
-      color: "Math",
+      branchId: "branch-math",
       status: "inprogress",
-      date: "2026-04-16",
+      dueDate: "2026-04-16",
     }),
   ];
   const base = {
@@ -166,51 +171,48 @@ describe("filterVisibleEvents", () => {
   };
 
   it("shows unfinished events on the active tab and finished ones on the completed tab", () => {
-    expect(filterVisibleEvents(base).map((item) => item.id)).toEqual([1, 3]);
+    expect(filterVisibleEvents(base).map((item) => item.id)).toEqual(["1", "3"]);
     expect(filterVisibleEvents({ ...base, eventTab: "completed" }).map((item) => item.id)).toEqual([
-      2,
+      "2",
     ]);
   });
 
   it("filters by selected day", () => {
     expect(
       filterVisibleEvents({ ...base, selectedDateKey: "2026-04-16" }).map((item) => item.id),
-    ).toEqual([3]);
+    ).toEqual(["3"]);
   });
 
   it("searches titles case-insensitively and ignores a blank search", () => {
     expect(filterVisibleEvents({ ...base, searchTerm: "MATH" }).map((item) => item.id)).toEqual([
-      1, 3,
+      "1",
+      "3",
     ]);
     expect(filterVisibleEvents({ ...base, searchTerm: "   " }).map((item) => item.id)).toEqual([
-      1, 3,
+      "1",
+      "3",
     ]);
   });
 
   it("filters by class", () => {
     expect(
-      filterVisibleEvents({ ...base, eventTab: "completed", classFilter: "History" }).map(
+      filterVisibleEvents({ ...base, eventTab: "completed", classFilter: "branch-history" }).map(
         (item) => item.id,
       ),
-    ).toEqual([2]);
-    expect(filterVisibleEvents({ ...base, classFilter: "History" })).toEqual([]);
+    ).toEqual(["2"]);
+    expect(filterVisibleEvents({ ...base, classFilter: "branch-history" })).toEqual([]);
   });
 });
 
 describe("small helpers", () => {
-  it("lists distinct classes alphabetically", () => {
+  it("lists each branch represented once, so the filter only offers real ones", () => {
     expect(
-      listEventClasses([
-        event({ id: 1, color: "Physics" }),
-        event({ id: 2, color: "History" }),
-        event({ id: 3, color: "Physics" }),
+      listEventBranchIds([
+        event({ id: "1", branchId: "branch-physics" }),
+        event({ id: "2", branchId: "branch-history" }),
+        event({ id: "3", branchId: "branch-physics" }),
       ]),
-    ).toEqual(["History", "Physics"]);
-  });
-
-  it("picks the next event id", () => {
-    expect(nextEventId([])).toBe(1);
-    expect(nextEventId([event({ id: 4 }), event({ id: 9 })])).toBe(10);
+    ).toEqual(["branch-physics", "branch-history"]);
   });
 
   it("normalizes dates to the start of the month or day", () => {

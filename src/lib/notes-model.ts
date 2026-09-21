@@ -10,8 +10,17 @@ export type NotesHierarchyLocation = {
   feather: string;
 };
 
-export type NotesDirectoryEntry = NotesHierarchyLocation & {
+/**
+ * A note. Since version 4 it points at a branch rather than repeating its path, so
+ * renaming a wing, flight or branch renames it everywhere at once, and carries its nests
+ * as tags because one note can belong to several units.
+ */
+export type NotesDirectoryEntry = {
   id: string;
+  branchId: string;
+  nestIds: string[];
+  /** The note's own title. The only path segment that still lives on the note. */
+  feather: string;
   createdMode: NotesDocumentMode;
   createdAt: number;
   updatedAt: number;

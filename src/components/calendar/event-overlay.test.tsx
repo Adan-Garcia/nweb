@@ -4,36 +4,35 @@ import userEvent from "@testing-library/user-event";
 import { useForm } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
 
-import { EVENT_COLOR_OPTIONS } from "@/lib/calendar-event";
-
-import { eventFormSchema, type EventFormValues } from "./calendar-shared";
+import { twigFormSchema, type TwigFormValues } from "./calendar-shared";
 import { EventOverlay } from "./event-overlay";
 
 // Drives the overlay with a real react-hook-form instance, as the calendar page does.
 function Harness({
   isOpen = true,
-  editingEventId = null,
+  editingTwigId = null,
   onSubmit,
   onClose,
   defaults = {},
 }: {
   isOpen?: boolean;
-  editingEventId?: number | null;
-  onSubmit: (values: EventFormValues) => void;
+  editingTwigId?: string | null;
+  onSubmit: (values: TwigFormValues) => void;
   onClose: () => void;
-  defaults?: Partial<EventFormValues>;
+  defaults?: Partial<TwigFormValues>;
 }) {
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<EventFormValues>({
-    resolver: zodResolver(eventFormSchema),
+  } = useForm<TwigFormValues>({
+    resolver: zodResolver(twigFormSchema),
     defaultValues: {
       title: "",
       date: "2026-04-16",
       time: "9:00 AM",
-      color: "Math",
+      branchId: "branch-1",
+      kind: "homework",
       status: "incomplete",
       ...defaults,
     },
@@ -42,11 +41,14 @@ function Harness({
   return (
     <EventOverlay
       isOpen={isOpen}
-      editingEventId={editingEventId}
+      editingTwigId={editingTwigId}
       register={register}
       handleSubmit={handleSubmit}
       errors={errors}
-      eventColorOptions={EVENT_COLOR_OPTIONS}
+      branchOptions={[
+        { id: "branch-1", label: "Fall 2026 / Biology 101" },
+        { id: "branch-2", label: "Fall 2026 / History" },
+      ]}
       onSubmit={onSubmit}
       onClose={onClose}
     />
@@ -73,15 +75,22 @@ describe("EventOverlay", () => {
     expect(screen.getByRole("button", { name: "Create event" })).toBeInTheDocument();
     unmount();
 
-    setup({ editingEventId: 3 });
+    setup({ editingTwigId: "twig-3" });
     expect(screen.getByText("Edit event")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeInTheDocument();
   });
 
-  it("offers every class and status, with the defaults selected", () => {
+  it("offers the workspace's branches, every task type and every status", () => {
     setup();
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
-      ...EVENT_COLOR_OPTIONS,
+      "Fall 2026 / Biology 101",
+      "Fall 2026 / History",
+      "Homework",
+      "Exam",
+      "Essay",
+      "Project",
+      "Reading",
+      "Other",
       "Incomplete",
       "In Progress",
       "Complete",
@@ -95,7 +104,8 @@ describe("EventOverlay", () => {
     const { onSubmit } = setup();
 
     await user.type(screen.getByLabelText("Title"), "Study group");
-    await user.selectOptions(screen.getByLabelText("Class"), "Physics");
+    await user.selectOptions(screen.getByLabelText("Branch"), "branch-2");
+    await user.selectOptions(screen.getByLabelText("Type"), "exam");
     await user.selectOptions(screen.getByLabelText("Status"), "inprogress");
     await user.click(screen.getByRole("button", { name: "Create event" }));
 
@@ -104,7 +114,8 @@ describe("EventOverlay", () => {
       title: "Study group",
       date: "2026-04-16",
       time: "9:00 AM",
-      color: "Physics",
+      branchId: "branch-2",
+      kind: "exam",
       status: "inprogress",
     });
   });

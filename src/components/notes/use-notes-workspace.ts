@@ -1,16 +1,11 @@
 import { useCallback, useState } from "react";
 
 import {
-  FALLBACK_LOCATION,
-  normalizeLocation,
-  toLocation,
+  EMPTY_SELECTION,
+  selectionForEntry,
+  type WorkspaceSelection,
 } from "@/components/notes/location-hierarchy";
-import type {
-  NotesDirectoryEntry,
-  NotesDocumentMode,
-  NotesHierarchyLocation,
-  NotesMode,
-} from "@/components/notes/types";
+import type { NotesDirectoryEntry, NotesDocumentMode, NotesMode } from "@/components/notes/types";
 import { useDocumentSwitchQueue } from "@/components/notes/use-document-switch-queue";
 import { useLinearAutosave } from "@/components/notes/use-linear-autosave";
 import { useLinearNoteState } from "@/components/notes/use-linear-note-state";
@@ -19,13 +14,17 @@ import { useNotesDelete } from "@/components/notes/use-notes-delete";
 import { useNotesFlush } from "@/components/notes/use-notes-flush";
 import { useNotesHydration } from "@/components/notes/use-notes-hydration";
 import { useNotesImageIngest } from "@/components/notes/use-notes-image-ingest";
+import type { NoteDraftPlacement } from "@/components/notes/use-notes-location-picker";
 import { useNotesSession } from "@/components/notes/use-notes-session";
 import { useSpatialAutosave } from "@/components/notes/use-spatial-autosave";
+import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
 import {
   createNotesDirectoryEntry,
-  findNotesDirectoryEntryByLocation,
+  findNotesDirectoryEntry,
   listNotesDirectoryEntries,
 } from "@/lib/notes-directory-storage";
+import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
+import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 export function useNotesWorkspace() {
   const { mediaWorker, refs } = useNotesSession();
@@ -37,7 +36,8 @@ export function useNotesWorkspace() {
   const [directoryEntries, setDirectoryEntries] = useState<NotesDirectoryEntry[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [selectedCreatedMode, setSelectedCreatedMode] = useState<NotesDocumentMode>("linear");
-  const [activeLocation, setActiveLocation] = useState<NotesHierarchyLocation>(FALLBACK_LOCATION);
+  const [activeSelection, setActiveSelection] = useState<WorkspaceSelection>(EMPTY_SELECTION);
+  const { snapshot, setSnapshot, refreshSnapshot } = useWorkspaceSnapshot();
 
   // Derived: once the note has a directory entry, the stored mode is the truth.
   const activeCreatedMode =
@@ -131,13 +131,13 @@ export function useNotesWorkspace() {
   /** Makes an existing entry the active note. Shared by opening one and by what follows a delete. */
   const openEntry = useCallback(
     async (entry: NotesDirectoryEntry) => {
-      setActiveLocation(toLocation(entry));
+      setActiveSelection(selectionForEntry(snapshot, entry));
       setSelectedCreatedMode(entry.createdMode);
       setMode(entry.createdMode);
       applyActiveDocumentId(entry.id);
       await hydrateDocument(entry.id, entry.createdMode);
     },
-    [applyActiveDocumentId, hydrateDocument],
+    [applyActiveDocumentId, hydrateDocument, snapshot],
   );
 
   const openDocumentById = useCallback(
@@ -170,31 +170,39 @@ export function useNotesWorkspace() {
     ],
   );
 
-  const createOrOpenDocumentAtLocation = useCallback(
-    async (location: NotesHierarchyLocation, preferredMode?: NotesDocumentMode) => {
-      const normalizedLocation = normalizeLocation(location);
+  /**
+   * Opens the note with this title in this branch, or creates it. A placement with no
+   * branch means nothing has been chosen yet, so the default workspace supplies one.
+   */
+  const createNoteAt = useCallback(
+    async (placement: NoteDraftPlacement, preferredMode?: NotesDocumentMode) => {
       const targetMode = preferredMode ?? mode;
-      const existing = await findNotesDirectoryEntryByLocation(normalizedLocation);
-      const documentId = existing?.id ?? null;
+      const branchId = placement.branchId ?? (await ensureDefaultWorkspace()).path.branch.id;
+      const existing = await findNotesDirectoryEntry({ branchId, feather: placement.feather });
 
-      await runInDocumentSwitchQueue("createOrOpenDocumentAtLocation", async () => {
-        await persistActiveDocumentBeforeSwitch("createOrOpenDocumentAtLocation", documentId ?? "");
+      await runInDocumentSwitchQueue("createNoteAt", async () => {
+        await persistActiveDocumentBeforeSwitch("createNoteAt", existing?.id ?? "");
 
         const entry =
           existing ??
           (await createNotesDirectoryEntry({
-            location: normalizedLocation,
+            branchId,
+            feather: placement.feather,
+            nestIds: placement.nestIds,
             createdMode: targetMode,
           }));
 
-        const nextEntries = await refreshDirectoryEntries();
-        const createdEntry = nextEntries.find((candidate) => candidate.id === entry.id);
+        const [nextEntries, nextSnapshot] = await Promise.all([
+          refreshDirectoryEntries(),
+          refreshSnapshot(),
+        ]);
+        const createdEntry = nextEntries.find((candidate) => candidate.id === entry.id) ?? entry;
 
         applyActiveDocumentId(entry.id);
-        setActiveLocation(createdEntry ? toLocation(createdEntry) : normalizedLocation);
-        setSelectedCreatedMode(createdEntry?.createdMode ?? targetMode);
-        setMode(createdEntry?.createdMode ?? targetMode);
-        await hydrateDocument(entry.id, createdEntry?.createdMode ?? targetMode);
+        setActiveSelection(selectionForEntry(nextSnapshot, createdEntry));
+        setSelectedCreatedMode(createdEntry.createdMode);
+        setMode(createdEntry.createdMode);
+        await hydrateDocument(entry.id, createdEntry.createdMode);
       });
     },
     [
@@ -203,19 +211,25 @@ export function useNotesWorkspace() {
       mode,
       persistActiveDocumentBeforeSwitch,
       refreshDirectoryEntries,
+      refreshSnapshot,
       runInDocumentSwitchQueue,
     ],
   );
 
   const applyInitialEntries = useCallback(
-    (entries: NotesDirectoryEntry[], initialEntry: NotesDirectoryEntry) => {
+    (
+      nextSnapshot: WorkspaceSnapshot,
+      entries: NotesDirectoryEntry[],
+      initialEntry: NotesDirectoryEntry,
+    ) => {
+      setSnapshot(nextSnapshot);
       setDirectoryEntries(entries);
       applyActiveDocumentId(initialEntry.id);
       setSelectedCreatedMode(initialEntry.createdMode);
-      setActiveLocation(toLocation(initialEntry));
+      setActiveSelection(selectionForEntry(nextSnapshot, initialEntry));
       setMode(initialEntry.createdMode);
     },
-    [applyActiveDocumentId],
+    [applyActiveDocumentId, setSnapshot],
   );
 
   const { deleteDocument } = useNotesDelete({
@@ -234,7 +248,9 @@ export function useNotesWorkspace() {
     directoryEntries,
     activeDocumentId,
     activeCreatedMode,
-    activeLocation,
+    activeSelection,
+    snapshot,
+    refreshSnapshot,
     isHydratingDocument,
     linearContent,
     setLinearContent,
@@ -245,7 +261,7 @@ export function useNotesWorkspace() {
     isSpatialEditorReloading,
     spatialEditorReloadKey,
     spatialHostRef: refs.spatialHostRef,
-    createOrOpenDocumentAtLocation,
+    createNoteAt,
     openDocumentById,
     deleteDocument,
     refreshDirectoryEntries,

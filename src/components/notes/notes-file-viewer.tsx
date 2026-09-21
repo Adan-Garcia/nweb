@@ -1,65 +1,69 @@
-import { NotesLocationForm } from "@/components/notes/notes-location-form";
-import { formatPath } from "@/components/notes/notes-tree";
+import type { WorkspaceSelection } from "@/components/notes/location-hierarchy";
+import { segmentLabels } from "@/components/notes/location-hierarchy";
 import { NotesTreeView } from "@/components/notes/notes-tree-view";
-import type {
-  NotesDirectoryEntry,
-  NotesDocumentMode,
-  NotesHierarchyLocation,
-} from "@/components/notes/types";
+import type { NotesDirectoryEntry, NotesDocumentMode } from "@/components/notes/types";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { formatLocationPath, type WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type NotesFileViewerProps = {
+  snapshot: WorkspaceSnapshot;
   entries: NotesDirectoryEntry[];
   activeDocumentId: string | null;
   activeCreatedMode: NotesDocumentMode;
-  activeLocation: NotesHierarchyLocation;
+  activeSelection: WorkspaceSelection;
   isStorageReady: boolean;
   isBusy: boolean;
   onOpenDocument: (documentId: string) => void;
-  onCreateOrOpenLocation: (location: NotesHierarchyLocation) => void;
   onSaveNow: () => void;
 };
 
 export function NotesFileViewer({
+  snapshot,
   entries,
   activeDocumentId,
   activeCreatedMode,
-  activeLocation,
+  activeSelection,
   isStorageReady,
   isBusy,
   onOpenDocument,
-  onCreateOrOpenLocation,
   onSaveNow,
 }: NotesFileViewerProps) {
+  const currentPath = formatLocationPath(segmentLabels(snapshot, entries, activeSelection));
+
   return (
     <aside className="sticky top-4 max-[960px]:static" aria-label="Notes file viewer">
       <Card className="max-h-[calc(100svh-8rem)] max-[960px]:max-h-none" size="sm">
         <CardHeader>
           <CardTitle>File Viewer</CardTitle>
           <CardDescription>
-            Open notes by Wing / Flight / Branch / Nest / Feather and save in the selected location.
+            Open notes by Wing / Flight / Branch / Nest / Feather. Renaming any of those renames it
+            everywhere at once.
           </CardDescription>
         </CardHeader>
 
         <CardContent className="grid gap-4">
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Current path: {formatPath(activeLocation)} | Created for: {activeCreatedMode}
+            Current path: {currentPath} | Created for: {activeCreatedMode}
           </p>
 
-          <NotesLocationForm
-            activeLocation={activeLocation}
-            isDisabled={!isStorageReady || isBusy}
-            onCreateOrOpenLocation={onCreateOrOpenLocation}
-            onSaveNow={onSaveNow}
-          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onSaveNow}
+            disabled={!isStorageReady || isBusy}
+          >
+            Save Active Note
+          </Button>
 
           <Separator />
 
           <NotesTreeView
+            snapshot={snapshot}
             entries={entries}
             activeDocumentId={activeDocumentId}
-            activeLocation={activeLocation}
+            activeSelection={activeSelection}
             isBusy={isBusy}
             onOpenDocument={onOpenDocument}
           />

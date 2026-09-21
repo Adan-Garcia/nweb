@@ -50,7 +50,9 @@ describe("NotesPage", () => {
     );
 
     expect(await screen.findByRole("button", { name: "My Wing" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Inbox" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "General" })).toBeInTheDocument();
+    // A fresh note carries no tag, so the nest level shows the Unfiled group.
+    expect(screen.getByRole("button", { name: "Unfiled" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Untitled note" })).toBeInTheDocument();
   });
 

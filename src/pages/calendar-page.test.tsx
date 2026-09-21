@@ -3,16 +3,21 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getNotesDb } from "@/lib/notes-db";
+import { createTwig, listTwigs } from "@/lib/twig-storage";
+import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
+
 import { CalendarPage } from "./calendar";
 
-const STORAGE_KEY = "cuervo-calendar-events-v1";
+const STORES = ["twigs", "wings", "flights", "branches", "nests"] as const;
 
-beforeEach(() => {
+beforeEach(async () => {
   window.matchMedia = vi
     .fn()
     .mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} });
-  // Start with an empty calendar rather than the seeded sample events.
-  window.localStorage.setItem(STORAGE_KEY, "[]");
+
+  const database = await getNotesDb();
+  await Promise.all(STORES.map((store) => database.clear(store)));
 });
 
 function renderPage() {
@@ -24,19 +29,19 @@ function renderPage() {
 }
 
 describe("CalendarPage", () => {
-  it("shows the month grid, the filters and an empty event list", () => {
+  it("shows the month grid, the filters and an empty event list", async () => {
     renderPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "Calendar" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Today" })).toBeInTheDocument();
-    expect(screen.getByText("No active events match your filters.")).toBeInTheDocument();
+    expect(await screen.findByText("No active events match your filters.")).toBeInTheDocument();
   });
 
   it("adds an event through the form and lists it", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(await screen.findByRole("button", { name: "Add" }));
     await user.click(await screen.findByRole("menuitem", { name: "Add Event" }));
     await user.type(screen.getByLabelText("Title"), "Study group");
     await user.click(screen.getByRole("button", { name: "Create event" }));
@@ -44,14 +49,15 @@ describe("CalendarPage", () => {
     // The event shows in the list and on its day in the grid.
     await waitFor(() => expect(screen.getAllByText("Study group")).toHaveLength(2));
     expect(screen.queryByRole("button", { name: "Create event" })).not.toBeInTheDocument();
-    expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]")).toHaveLength(1);
+    // It is a twig in IndexedDB now, not a row in localStorage.
+    expect(await listTwigs()).toHaveLength(1);
   });
 
   it("keeps the form open and explains a missing title", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(await screen.findByRole("button", { name: "Add" }));
     await user.click(await screen.findByRole("menuitem", { name: "Add Event" }));
     await user.click(screen.getByRole("button", { name: "Create event" }));
 
@@ -63,25 +69,26 @@ describe("CalendarPage", () => {
     const user = userEvent.setup();
     const today = new Date();
     const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-15`;
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify([
-        { id: 1, title: "Old quiz", date, time: "9:00 AM", color: "Math", status: "incomplete" },
-      ]),
-    );
+    const { path } = await ensureDefaultWorkspace();
+    await createTwig({
+      branchId: path.branch.id,
+      title: "Old quiz",
+      dueDate: date,
+      dueTime: "9:00 AM",
+    });
     vi.spyOn(window, "confirm").mockReturnValue(true);
     renderPage();
 
     await user.click(await screen.findByRole("button", { name: "Delete Old quiz" }));
 
-    expect(screen.queryByText("Old quiz")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Old quiz")).not.toBeInTheDocument());
   });
 
   it("closes the form with Escape", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(await screen.findByRole("button", { name: "Add" }));
     await user.click(await screen.findByRole("menuitem", { name: "Add Event" }));
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
     await user.keyboard("{Escape}");

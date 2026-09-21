@@ -2,14 +2,21 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getNotesDb } from "@/lib/notes-db";
+import { createTwig } from "@/lib/twig-storage";
+import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
+
 import { DashboardPage } from "./dashboard";
 
-const STORAGE_KEY = "cuervo-calendar-events-v1";
+const STORES = ["twigs", "notes-directory", "wings", "flights", "branches", "nests"] as const;
 
-beforeEach(() => {
+beforeEach(async () => {
   window.matchMedia = vi
     .fn()
     .mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} });
+
+  const database = await getNotesDb();
+  await Promise.all(STORES.map((store) => database.clear(store)));
 });
 
 function renderPage() {
@@ -22,7 +29,6 @@ function renderPage() {
 
 describe("DashboardPage", () => {
   it("summarizes an empty workspace", async () => {
-    window.localStorage.setItem(STORAGE_KEY, "[]");
     renderPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
@@ -39,19 +45,14 @@ describe("DashboardPage", () => {
   it("features the next event as the priority", async () => {
     const today = new Date();
     const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify([
-        {
-          id: 1,
-          title: "Submit essay",
-          date: key,
-          time: "5:00 PM",
-          color: "History",
-          status: "incomplete",
-        },
-      ]),
-    );
+    const { path } = await ensureDefaultWorkspace();
+    await createTwig({
+      branchId: path.branch.id,
+      title: "Submit essay",
+      kind: "essay",
+      dueDate: key,
+      dueTime: "5:00 PM",
+    });
     renderPage();
 
     expect((await screen.findAllByText(/Submit essay/)).length).toBeGreaterThan(0);

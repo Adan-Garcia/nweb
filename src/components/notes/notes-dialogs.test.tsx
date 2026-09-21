@@ -12,6 +12,8 @@ describe("NotesCreateNoteDialog", () => {
       isOpen: true,
       onOpenChange: vi.fn(),
       selectedLocationSummary: "Home / Fall / Math / Unit 1 / Notes",
+      title: "Notes",
+      onTitleChange: vi.fn(),
       newNoteMode: "linear" as const,
       onModeChange: vi.fn(),
       onCreate: vi.fn(),
@@ -149,7 +151,10 @@ describe("NotesLocationSegmentDropdown", () => {
       triggerLabel: "General",
       currentLabel: "Current Branch",
       addLabel: "Branch",
-      options: ["General", "Math"],
+      options: [
+        { id: "b1", name: "General" },
+        { id: "b2", name: "Math" },
+      ],
       onSelect: vi.fn(),
       onAdd: vi.fn(),
       append: "/",
@@ -174,7 +179,7 @@ describe("NotesLocationSegmentDropdown", () => {
     expect(await screen.findByText("Current Branch")).toBeInTheDocument();
     await user.click(screen.getByRole("menuitem", { name: "Math" }));
 
-    expect(onSelect).toHaveBeenCalledWith("Math");
+    expect(onSelect).toHaveBeenCalledWith("b2");
   });
 
   it("offers to add a new value", async () => {

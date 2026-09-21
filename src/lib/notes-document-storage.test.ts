@@ -47,7 +47,8 @@ describe("notes document storage", () => {
     vi.spyOn(Date, "now").mockReturnValue(100);
     await upsertNotesDirectoryEntry({
       id: "doc-touched",
-      location: { wing: "W", flight: "F", branch: "B", nest: "N", feather: "T" },
+      branchId: "branch-1",
+      feather: "T",
     });
 
     vi.spyOn(Date, "now").mockReturnValue(999);

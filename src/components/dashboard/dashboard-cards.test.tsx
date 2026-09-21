@@ -2,35 +2,27 @@ import { render, screen } from "@testing-library/react";
 import { CalendarClock } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
-import type { CalendarEvent } from "@/lib/calendar-event";
+import type { DatedTwig } from "@/components/calendar/calendar-shared";
 import type { NotesDirectoryEntry } from "@/lib/notes-model";
+import { makeEntry, makeSnapshot, makeTwig } from "@/test/workspace-fixtures";
 
 import { DashboardStatCard } from "./dashboard-stat-card";
 import { NextPriorityCard } from "./next-priority-card";
 import { RecentNotesCard } from "./recent-notes-card";
 import { UpcomingDeadlinesCard } from "./upcoming-deadlines-card";
 
-const event: CalendarEvent = {
-  id: 1,
-  title: "Physics Lab",
-  date: "2026-04-21",
-  time: "9:00 AM",
-  color: "Physics",
-  status: "incomplete",
+const snapshot = makeSnapshot();
+
+const event: DatedTwig = {
+  ...makeTwig({ id: "1", title: "Physics Lab", dueTime: "9:00 AM" }),
+  dueDate: "2026-04-21",
 };
 
-const note: NotesDirectoryEntry = {
+const note: NotesDirectoryEntry = makeEntry({
   id: "n1",
-  wing: "W",
-  flight: "F",
-  branch: "Biology",
-  nest: "Unit 4",
-  feather: "Exam review",
   createdMode: "spatial",
-  createdAt: 0,
   updatedAt: Date.now(),
-  deletedAt: null,
-};
+});
 
 describe("DashboardStatCard", () => {
   it("shows the title, value and caption", () => {
@@ -64,10 +56,10 @@ describe("NextPriorityCard", () => {
 
 describe("UpcomingDeadlinesCard", () => {
   it("lists each event with its date and class, and links to the calendar", () => {
-    render(<UpcomingDeadlinesCard events={[event]} />);
+    render(<UpcomingDeadlinesCard snapshot={snapshot} events={[event]} />);
     expect(screen.getByText("Physics Lab")).toBeInTheDocument();
     expect(screen.getByText("Tue, Apr 21, 2026 at 9:00 AM")).toBeInTheDocument();
-    expect(screen.getByText("Physics")).toBeInTheDocument();
+    expect(screen.getByText("Biology 101")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Review full calendar/ })).toHaveAttribute(
       "href",
       "/calendar",
@@ -75,20 +67,20 @@ describe("UpcomingDeadlinesCard", () => {
   });
 
   it("explains an empty list", () => {
-    render(<UpcomingDeadlinesCard events={[]} />);
+    render(<UpcomingDeadlinesCard snapshot={snapshot} events={[]} />);
     expect(screen.getByText("No upcoming incomplete events in the next week.")).toBeInTheDocument();
   });
 });
 
 describe("RecentNotesCard", () => {
   it("shows a loading message first", () => {
-    render(<RecentNotesCard notes={[]} isLoading />);
+    render(<RecentNotesCard snapshot={snapshot} notes={[]} isLoading />);
     expect(screen.getByText("Loading saved notes...")).toBeInTheDocument();
   });
 
   it("lists notes with their location, mode and age, and links to the workspace", () => {
-    render(<RecentNotesCard notes={[note]} isLoading={false} />);
-    expect(screen.getByText("Biology / Unit 4 / Exam review")).toBeInTheDocument();
+    render(<RecentNotesCard snapshot={snapshot} notes={[note]} isLoading={false} />);
+    expect(screen.getByText("Biology 101 / Exam review")).toBeInTheDocument();
     expect(screen.getByText("Spatial note")).toBeInTheDocument();
     expect(screen.getByText("just now")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Open notes workspace/ })).toHaveAttribute(
@@ -98,12 +90,18 @@ describe("RecentNotesCard", () => {
   });
 
   it("labels linear notes as such", () => {
-    render(<RecentNotesCard notes={[{ ...note, createdMode: "linear" }]} isLoading={false} />);
+    render(
+      <RecentNotesCard
+        snapshot={snapshot}
+        notes={[{ ...note, createdMode: "linear" }]}
+        isLoading={false}
+      />,
+    );
     expect(screen.getByText("Linear note")).toBeInTheDocument();
   });
 
   it("explains when nothing has been saved", () => {
-    render(<RecentNotesCard notes={[]} isLoading={false} />);
+    render(<RecentNotesCard snapshot={snapshot} notes={[]} isLoading={false} />);
     expect(screen.getByText(/No saved notes yet/)).toBeInTheDocument();
   });
 });

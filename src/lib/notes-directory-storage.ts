@@ -1,27 +1,18 @@
 import { getNotesDb } from "./notes-db";
-import type { NotesDirectoryEntry, NotesDocumentMode, NotesHierarchyLocation } from "./notes-model";
+import type { NotesDirectoryEntry, NotesDocumentMode } from "./notes-model";
 
 /**
- * Fills in fields added after a row was written. Entries stored before `deletedAt`
- * existed read back with it `undefined`, which is not `null`, so every caller has to
- * normalize here rather than compare against `null` at the far end.
+ * Fills in fields added after a row was written. Entries stored before `deletedAt` or
+ * `nestIds` existed read back with them `undefined`, which is not `null` or `[]`, so every
+ * caller has to normalize here rather than compare at the far end.
  */
 function normalizeEntry(entry: NotesDirectoryEntry): NotesDirectoryEntry {
   return {
     ...entry,
     createdMode: entry.createdMode ?? "linear",
+    nestIds: entry.nestIds ?? [],
     deletedAt: entry.deletedAt ?? null,
   };
-}
-
-function matchesLocation(entry: NotesDirectoryEntry, location: NotesHierarchyLocation) {
-  return (
-    entry.wing === location.wing &&
-    entry.flight === location.flight &&
-    entry.branch === location.branch &&
-    entry.nest === location.nest &&
-    entry.feather === location.feather
-  );
 }
 
 export async function listNotesDirectoryEntries(): Promise<NotesDirectoryEntry[]> {
@@ -32,15 +23,22 @@ export async function listNotesDirectoryEntries(): Promise<NotesDirectoryEntry[]
   return entries.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-/** The live note at this exact path, or null. Ids no longer encode the path, so this is the lookup. */
-export async function findNotesDirectoryEntryByLocation(
-  location: NotesHierarchyLocation,
-): Promise<NotesDirectoryEntry | null> {
+/**
+ * The live note with this title in this branch, or null. A title is only unique inside a
+ * branch, and nests are tags rather than a level, so they are not part of the lookup.
+ */
+export async function findNotesDirectoryEntry({
+  branchId,
+  feather,
+}: {
+  branchId: string;
+  feather: string;
+}): Promise<NotesDirectoryEntry | null> {
   const database = await getNotesDb();
   const rawEntries = await database.getAll("notes-directory");
   const match = rawEntries
     .map(normalizeEntry)
-    .find((entry) => !entry.deletedAt && matchesLocation(entry, location));
+    .find((entry) => !entry.deletedAt && entry.branchId === branchId && entry.feather === feather);
 
   return match ?? null;
 }
@@ -50,17 +48,23 @@ export async function findNotesDirectoryEntryByLocation(
  * note could not be renamed or moved and two different paths could slug to one id.
  */
 export async function createNotesDirectoryEntry({
-  location,
+  branchId,
+  feather,
+  nestIds,
   createdMode,
 }: {
-  location: NotesHierarchyLocation;
+  branchId: string;
+  feather: string;
+  nestIds?: string[];
   createdMode?: NotesDocumentMode;
 }): Promise<NotesDirectoryEntry> {
   const database = await getNotesDb();
   const now = Date.now();
   const entry: NotesDirectoryEntry = {
     id: crypto.randomUUID(),
-    ...location,
+    branchId,
+    nestIds: nestIds ?? [],
+    feather,
     createdMode: createdMode ?? "linear",
     createdAt: now,
     updatedAt: now,
@@ -74,11 +78,15 @@ export async function createNotesDirectoryEntry({
 /** Writes an entry under a caller-chosen id. Only the legacy single-note import needs this. */
 export async function upsertNotesDirectoryEntry({
   id,
-  location,
+  branchId,
+  feather,
+  nestIds,
   createdMode,
 }: {
   id: string;
-  location: NotesHierarchyLocation;
+  branchId: string;
+  feather: string;
+  nestIds?: string[];
   createdMode?: NotesDocumentMode;
 }): Promise<NotesDirectoryEntry> {
   const database = await getNotesDb();
@@ -86,11 +94,9 @@ export async function upsertNotesDirectoryEntry({
 
   const nextRecord: NotesDirectoryEntry = {
     id,
-    wing: location.wing,
-    flight: location.flight,
-    branch: location.branch,
-    nest: location.nest,
-    feather: location.feather,
+    branchId,
+    nestIds: nestIds ?? existing?.nestIds ?? [],
+    feather,
     createdMode: existing?.createdMode ?? createdMode ?? "linear",
     createdAt: existing?.createdAt ?? Date.now(),
     updatedAt: Date.now(),
@@ -99,6 +105,50 @@ export async function upsertNotesDirectoryEntry({
 
   await database.put("notes-directory", nextRecord);
   return nextRecord;
+}
+
+/** Renames the note itself. Renaming anything above it is a change to that entity's row. */
+export async function renameNotesDirectoryEntry(
+  id: string,
+  feather: string,
+): Promise<NotesDirectoryEntry | null> {
+  const database = await getNotesDb();
+  const existing = await database.get("notes-directory", id);
+
+  if (!existing || existing.deletedAt) {
+    return null;
+  }
+
+  const next: NotesDirectoryEntry = {
+    ...normalizeEntry(existing),
+    feather,
+    updatedAt: Date.now(),
+  };
+
+  await database.put("notes-directory", next);
+  return next;
+}
+
+/** Replaces the note's tags. Moving a note between branches goes through here too. */
+export async function setNotesDirectoryEntryPlacement(
+  id: string,
+  placement: { branchId?: string; nestIds?: string[] },
+): Promise<NotesDirectoryEntry | null> {
+  const database = await getNotesDb();
+  const existing = await database.get("notes-directory", id);
+
+  if (!existing || existing.deletedAt) {
+    return null;
+  }
+
+  const next: NotesDirectoryEntry = {
+    ...normalizeEntry(existing),
+    ...placement,
+    updatedAt: Date.now(),
+  };
+
+  await database.put("notes-directory", next);
+  return next;
 }
 
 export async function touchNotesDirectoryEntry(

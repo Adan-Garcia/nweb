@@ -1,124 +1,124 @@
 import { useMemo, useState } from "react";
 
 import {
-  buildSegmentOptions,
-  getEntryForLocation,
-  listSegmentOptions,
+  formatSelectionSummary,
+  LOCATION_SEGMENTS,
   type LocationSegment,
-  resolveCascadingLocation,
+  resolveCascade,
+  segmentLabels,
   type SegmentModalState,
+  type SegmentOption,
+  segmentOptions,
+  type WorkspaceSelection,
 } from "@/components/notes/location-hierarchy";
-import type {
-  NotesDirectoryEntry,
-  NotesDocumentMode,
-  NotesHierarchyLocation,
-  NotesMode,
-} from "@/components/notes/types";
+import type { NotesDirectoryEntry, NotesDocumentMode, NotesMode } from "@/components/notes/types";
+import { createBranch, createFlight, createNest, createWing } from "@/lib/entity-storage";
+import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
-const SEGMENTS: LocationSegment[] = ["wing", "flight", "branch", "nest", "feather"];
+export type NoteDraftPlacement = {
+  branchId: string | null;
+  nestIds: string[];
+  feather: string;
+};
 
 type UseNotesLocationPickerOptions = {
   mode: NotesMode;
+  snapshot: WorkspaceSnapshot;
+  refreshSnapshot: () => Promise<WorkspaceSnapshot>;
   directoryEntries: NotesDirectoryEntry[];
   activeDocumentId: string | null;
-  activeLocation: NotesHierarchyLocation;
-  createOrOpenDocumentAtLocation: (
-    location: NotesHierarchyLocation,
-    preferredMode?: NotesDocumentMode,
-  ) => Promise<void>;
+  activeSelection: WorkspaceSelection;
+  createNoteAt: (placement: NoteDraftPlacement, preferredMode?: NotesDocumentMode) => Promise<void>;
   openDocumentById: (documentId: string) => Promise<void>;
 };
 
 /**
- * The Wing/Flight/Branch/Nest/Note picker: the draft path, the options for
- * each level, and the "new note" / "new segment" dialogs.
+ * The Wing/Flight/Branch/Nest/Note picker. It works in entity ids and reads the names off
+ * the snapshot, which is what lets any of those levels be renamed underneath it.
  */
 export function useNotesLocationPicker({
   mode,
+  snapshot,
+  refreshSnapshot,
   directoryEntries,
   activeDocumentId,
-  activeLocation,
-  createOrOpenDocumentAtLocation,
+  activeSelection,
+  createNoteAt,
   openDocumentById,
 }: UseNotesLocationPickerOptions) {
-  const [draftLocation, setDraftLocation] = useState<NotesHierarchyLocation>(activeLocation);
-  const [syncedLocation, setSyncedLocation] = useState(activeLocation);
+  const [draftSelection, setDraftSelection] = useState<WorkspaceSelection>(activeSelection);
+  const [syncedSelection, setSyncedSelection] = useState(activeSelection);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newNoteMode, setNewNoteMode] = useState<NotesDocumentMode>(mode);
+  const [newNoteTitle, setNewNoteTitle] = useState("");
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   const [segmentModalState, setSegmentModalState] = useState<SegmentModalState | null>(null);
   const [segmentDraftValue, setSegmentDraftValue] = useState("");
 
   // Whenever the active note changes, the draft path restarts from it.
-  if (syncedLocation !== activeLocation) {
-    setSyncedLocation(activeLocation);
-    setDraftLocation(activeLocation);
+  if (syncedSelection !== activeSelection) {
+    setSyncedSelection(activeSelection);
+    setDraftSelection(activeSelection);
   }
 
-  const segmentOptions = useMemo<Record<LocationSegment, string[]>>(() => {
-    const optionsFor = (segment: LocationSegment) =>
-      buildSegmentOptions(
-        listSegmentOptions(directoryEntries, draftLocation, segment),
-        draftLocation[segment],
-      );
+  const options = useMemo<Record<LocationSegment, SegmentOption[]>>(
+    () => segmentOptions(snapshot, directoryEntries, draftSelection),
+    [snapshot, directoryEntries, draftSelection],
+  );
 
-    return {
-      wing: optionsFor("wing"),
-      flight: optionsFor("flight"),
-      branch: optionsFor("branch"),
-      nest: optionsFor("nest"),
-      feather: optionsFor("feather"),
-    };
-  }, [directoryEntries, draftLocation]);
+  const labels = useMemo<Record<LocationSegment, string>>(
+    () => segmentLabels(snapshot, directoryEntries, draftSelection),
+    [snapshot, directoryEntries, draftSelection],
+  );
 
-  const selectedLocationSummary = SEGMENTS.map((segment) => draftLocation[segment]).join(" / ");
+  const selectedLocationSummary = formatSelectionSummary(
+    snapshot,
+    directoryEntries,
+    draftSelection,
+  );
 
-  const openCreateModal = () => {
+  const openCreateModal = (title: string) => {
+    setNewNoteTitle(title);
     setNewNoteMode(mode);
     setIsCreateModalOpen(true);
   };
 
   const handleCreateNote = async () => {
+    const feather = newNoteTitle.trim().replace(/\s+/g, " ");
+
+    if (!feather.length) {
+      return;
+    }
+
     setIsCreatingNote(true);
 
     try {
-      await createOrOpenDocumentAtLocation(draftLocation, newNoteMode);
+      await createNoteAt(
+        {
+          branchId: draftSelection.branchId,
+          nestIds: draftSelection.nestId ? [draftSelection.nestId] : [],
+          feather,
+        },
+        newNoteMode,
+      );
       setIsCreateModalOpen(false);
     } finally {
       setIsCreatingNote(false);
     }
   };
 
-  /** Adopts `nextLocation`; a chosen note opens if it exists, else offers to create it. */
-  const settleLocation = (segment: LocationSegment, nextLocation: NotesHierarchyLocation) => {
-    setDraftLocation(nextLocation);
+  /** Picking a note opens it; picking anything above it just moves the draft path. */
+  const selectSegmentValue = (segment: LocationSegment, id: string | null) => {
+    const next = resolveCascade(snapshot, directoryEntries, draftSelection, segment, id);
+    setDraftSelection(next);
 
-    if (segment !== "feather") {
-      return;
+    if (segment === "feather" && id && id !== activeDocumentId) {
+      void openDocumentById(id);
     }
-
-    const existingEntry = getEntryForLocation(directoryEntries, nextLocation);
-
-    if (existingEntry) {
-      if (existingEntry.id !== activeDocumentId) {
-        void openDocumentById(existingEntry.id);
-      }
-
-      return;
-    }
-
-    openCreateModal();
-  };
-
-  const selectSegmentValue = (segment: LocationSegment, value: string) => {
-    settleLocation(
-      segment,
-      resolveCascadingLocation(directoryEntries, draftLocation, segment, value),
-    );
   };
 
   const openSegmentModal = (segment: LocationSegment, label: string) => {
-    setSegmentDraftValue(draftLocation[segment]);
+    setSegmentDraftValue("");
     setSegmentModalState({ segment, label });
   };
 
@@ -127,25 +127,45 @@ export function useNotesLocationPicker({
     setSegmentDraftValue("");
   };
 
-  const handleCreateSegment = () => {
+  /**
+   * Adding a level writes a real record, then selects it. A note is the exception: it is
+   * named here but created by the dialog that follows, which also picks its mode.
+   */
+  const handleCreateSegment = async () => {
     if (!segmentModalState) {
       return;
     }
 
-    const sanitized = segmentDraftValue.trim().replace(/\s+/g, " ");
+    const name = segmentDraftValue.trim().replace(/\s+/g, " ");
 
-    if (!sanitized.length) {
+    if (!name.length) {
       return;
     }
 
     const { segment } = segmentModalState;
     closeSegmentModal();
-    selectSegmentValue(segment, sanitized);
+
+    if (segment === "feather") {
+      openCreateModal(name);
+      return;
+    }
+
+    const created = await createSegmentEntity(segment, name, draftSelection);
+
+    if (!created) {
+      return;
+    }
+
+    const nextSnapshot = await refreshSnapshot();
+    setDraftSelection(
+      resolveCascade(nextSnapshot, directoryEntries, draftSelection, segment, created),
+    );
   };
 
   return {
-    draftLocation,
-    segmentOptions,
+    draftSelection,
+    segmentOptions: options,
+    segmentLabels: labels,
     selectedLocationSummary,
     selectSegmentValue,
     createNote: {
@@ -153,6 +173,8 @@ export function useNotesLocationPicker({
       setIsOpen: setIsCreateModalOpen,
       mode: newNoteMode,
       setMode: setNewNoteMode,
+      title: newNoteTitle,
+      setTitle: setNewNoteTitle,
       isCreating: isCreatingNote,
       submit: handleCreateNote,
     },
@@ -166,5 +188,30 @@ export function useNotesLocationPicker({
     },
   };
 }
+
+/** Returns the new record's id, or null when the level above it has not been chosen yet. */
+async function createSegmentEntity(
+  segment: Exclude<LocationSegment, "feather">,
+  name: string,
+  selection: WorkspaceSelection,
+): Promise<string | null> {
+  if (segment === "wing") {
+    return (await createWing(name)).id;
+  }
+
+  if (segment === "flight") {
+    return selection.wingId ? (await createFlight({ wingId: selection.wingId, name })).id : null;
+  }
+
+  if (segment === "branch") {
+    return selection.flightId
+      ? (await createBranch({ flightId: selection.flightId, name })).id
+      : null;
+  }
+
+  return selection.branchId ? (await createNest({ branchId: selection.branchId, name })).id : null;
+}
+
+export { LOCATION_SEGMENTS };
 
 export type NotesLocationPicker = ReturnType<typeof useNotesLocationPicker>;

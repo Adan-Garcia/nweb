@@ -56,7 +56,12 @@ export function NotesCreateSegmentDialog({
 
         <DialogFooter>
           <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-          <Button onClick={onCreateSegment} disabled={!segmentDraftValue.trim().length}>
+          <Button
+            onClick={() => {
+              onCreateSegment();
+            }}
+            disabled={!segmentDraftValue.trim().length}
+          >
             Add {segmentModalState?.label ?? "Value"}
           </Button>
         </DialogFooter>

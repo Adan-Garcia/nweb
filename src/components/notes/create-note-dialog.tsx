@@ -9,11 +9,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type NotesCreateNoteDialogProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   selectedLocationSummary: string;
+  title: string;
+  onTitleChange: (title: string) => void;
   newNoteMode: NotesDocumentMode;
   onModeChange: (mode: NotesDocumentMode) => void;
   onCreate: () => void;
@@ -26,6 +30,8 @@ export function NotesCreateNoteDialog({
   isOpen,
   onOpenChange,
   selectedLocationSummary,
+  title,
+  onTitleChange,
   newNoteMode,
   onModeChange,
   onCreate,
@@ -52,6 +58,18 @@ export function NotesCreateNoteDialog({
             <p className="mt-1 rounded-md border bg-muted/40 px-2 py-1 text-sm">
               {selectedLocationSummary}
             </p>
+          </div>
+
+          <div className="grid gap-1">
+            <Label htmlFor="new-note-title">Note Name</Label>
+            <Input
+              id="new-note-title"
+              value={title}
+              onChange={(event) => {
+                onTitleChange(event.currentTarget.value);
+              }}
+              placeholder="Exam review"
+            />
           </div>
 
           <div>
@@ -89,7 +107,9 @@ export function NotesCreateNoteDialog({
             onClick={() => {
               onCreate();
             }}
-            disabled={!isStorageReady || isHydratingDocument || isCreatingNote}
+            disabled={
+              !isStorageReady || isHydratingDocument || isCreatingNote || !title.trim().length
+            }
           >
             {isCreatingNote ? "Creating..." : "Create and Open Note"}
           </Button>

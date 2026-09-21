@@ -1,103 +1,100 @@
 import { describe, expect, it } from "vitest";
 
-import type { NotesDirectoryEntry } from "@/components/notes/types";
+import {
+  BRANCH_ID,
+  makeBranch,
+  makeEntry,
+  makeFlight,
+  makeNest,
+  makeSnapshot,
+  NEST_ID,
+} from "@/test/workspace-fixtures";
 
-import { buildTree, formatPath, getActivePathKeys } from "./notes-tree";
+import { selectionForEntry } from "./location-hierarchy";
+import { buildTree, formatUpdatedAt, getActivePathKeys } from "./notes-tree";
 
-function entry(
-  path: [string, string, string, string, string],
-  updatedAt: number,
-): NotesDirectoryEntry {
-  const [wing, flight, branch, nest, feather] = path;
-  return {
-    id: path.join("/"),
-    wing,
-    flight,
-    branch,
-    nest,
-    feather,
-    createdMode: "linear",
-    createdAt: 0,
-    deletedAt: null,
-    updatedAt,
-  };
-}
+describe("buildTree", () => {
+  it("groups the notes under the entities they belong to", () => {
+    const snapshot = makeSnapshot();
+    const tree = buildTree(snapshot, [makeEntry()]);
 
-describe("formatPath", () => {
-  it("joins the five segments with slashes", () => {
-    expect(formatPath({ wing: "W", flight: "F", branch: "B", nest: "N", feather: "T" })).toBe(
-      "W / F / B / N / T",
-    );
+    expect(tree).toHaveLength(1);
+    expect(tree[0].name).toBe("My Wing");
+    expect(tree[0].flights[0].name).toBe("Fall 2026");
+    expect(tree[0].flights[0].branches[0].name).toBe("Biology 101");
+    expect(tree[0].flights[0].branches[0].nests[0]).toMatchObject({
+      id: NEST_ID,
+      name: "Unit 1",
+    });
+    expect(tree[0].flights[0].branches[0].nests[0].feathers.map((entry) => entry.id)).toEqual([
+      "note-1",
+    ]);
+  });
+
+  it("lists a note tagged with two nests under both of them", () => {
+    const snapshot = makeSnapshot({
+      nests: [makeNest({ id: "n1", name: "Unit 1" }), makeNest({ id: "n2", name: "Unit 2" })],
+    });
+
+    const [{ nests }] = buildTree(snapshot, [makeEntry({ nestIds: ["n1", "n2"] })])[0].flights[0]
+      .branches;
+
+    expect(nests.map((nest) => nest.name)).toEqual(["Unit 1", "Unit 2"]);
+    expect(nests.every((nest) => nest.feathers[0].id === "note-1")).toBe(true);
+  });
+
+  it("gives the untagged notes a group of their own", () => {
+    const tree = buildTree(makeSnapshot(), [makeEntry({ nestIds: [] })]);
+    const [nest] = tree[0].flights[0].branches[0].nests;
+
+    expect(nest).toMatchObject({ id: null, name: "Unfiled" });
+    expect(nest.feathers).toHaveLength(1);
+  });
+
+  it("drops levels with nothing in them, so an empty flight is not in the way", () => {
+    const snapshot = makeSnapshot({
+      flights: [makeFlight(), makeFlight({ id: "f-empty", name: "Spring 2027" })],
+      branches: [makeBranch(), makeBranch({ id: "b-empty", flightId: "f-empty", name: "Empty" })],
+    });
+
+    const tree = buildTree(snapshot, [makeEntry()]);
+
+    expect(tree[0].flights.map((flight) => flight.name)).toEqual(["Fall 2026"]);
+  });
+
+  it("returns nothing at all when no note has been saved", () => {
+    expect(buildTree(makeSnapshot(), [])).toEqual([]);
+  });
+
+  it("keys every group by its record id, so a rename does not reshuffle the tree", () => {
+    const tree = buildTree(makeSnapshot(), [makeEntry()]);
+
+    expect(tree[0].key).toBe("wing:wing-1");
+    expect(tree[0].flights[0].branches[0].key).toBe(`branch:${BRANCH_ID}`);
   });
 });
 
 describe("getActivePathKeys", () => {
-  it("returns cumulative group keys down to the nest", () => {
-    expect(
-      getActivePathKeys({ wing: "W", flight: "F", branch: "B", nest: "N", feather: "T" }),
-    ).toEqual([
-      "wing:W",
-      "wing:W/flight:F",
-      "wing:W/flight:F/branch:B",
-      "wing:W/flight:F/branch:B/nest:N",
+  it("names the groups on the way to the open note", () => {
+    const selection = selectionForEntry(makeSnapshot(), makeEntry());
+
+    expect(getActivePathKeys(selection)).toEqual([
+      "wing:wing-1",
+      "flight:flight-1",
+      `branch:${BRANCH_ID}`,
+      `nest:${NEST_ID}`,
     ]);
+  });
+
+  it("points at the Unfiled group for a note with no tag", () => {
+    const selection = selectionForEntry(makeSnapshot(), makeEntry({ nestIds: [] }));
+
+    expect(getActivePathKeys(selection).at(-1)).toBe(`nest:unfiled:${BRANCH_ID}`);
   });
 });
 
-describe("buildTree", () => {
-  it("is empty when there are no entries", () => {
-    expect(buildTree([])).toEqual([]);
-  });
-
-  it("groups entries by wing, flight, branch and nest with stable keys", () => {
-    const tree = buildTree([
-      entry(["Home", "Fall", "Math", "Unit 1", "A"], 1),
-      entry(["Home", "Fall", "Math", "Unit 1", "B"], 2),
-      entry(["Home", "Fall", "Math", "Unit 2", "C"], 3),
-    ]);
-
-    expect(tree).toHaveLength(1);
-    const [wing] = tree;
-    expect(wing).toMatchObject({ name: "Home", key: "wing:Home" });
-    expect(wing.flights[0]).toMatchObject({ name: "Fall", key: "wing:Home/flight:Fall" });
-    const branch = wing.flights[0].branches[0];
-    expect(branch.key).toBe("wing:Home/flight:Fall/branch:Math");
-    expect(branch.nests.map((nest) => nest.name)).toEqual(["Unit 1", "Unit 2"]);
-    expect(branch.nests[0].key).toBe("wing:Home/flight:Fall/branch:Math/nest:Unit 1");
-  });
-
-  it("lists the most recently updated notes first within a nest", () => {
-    const [wing] = buildTree([
-      entry(["W", "F", "B", "N", "old"], 1),
-      entry(["W", "F", "B", "N", "new"], 9),
-    ]);
-
-    expect(wing.flights[0].branches[0].nests[0].feathers.map((note) => note.feather)).toEqual([
-      "new",
-      "old",
-    ]);
-  });
-
-  it("sorts every level alphabetically", () => {
-    const tree = buildTree([
-      entry(["Zed", "F", "B", "N", "x"], 1),
-      entry(["Alpha", "F2", "B", "N", "x"], 1),
-      entry(["Alpha", "F1", "B2", "N", "x"], 1),
-      entry(["Alpha", "F1", "B1", "N2", "x"], 1),
-      entry(["Alpha", "F1", "B1", "N1", "x"], 1),
-    ]);
-
-    expect(tree.map((wing) => wing.name)).toEqual(["Alpha", "Zed"]);
-    const [alpha] = tree;
-    expect(alpha.flights.map((flight) => flight.name)).toEqual(["F1", "F2"]);
-    expect(alpha.flights[0].branches.map((branch) => branch.name)).toEqual(["B1", "B2"]);
-    expect(alpha.flights[0].branches[0].nests.map((nest) => nest.name)).toEqual(["N1", "N2"]);
-  });
-
-  it("does not mutate the input order", () => {
-    const entries = [entry(["W", "F", "B", "N", "a"], 1), entry(["W", "F", "B", "N", "b"], 2)];
-    const snapshot = entries.map((item) => item.id);
-    buildTree(entries);
-    expect(entries.map((item) => item.id)).toEqual(snapshot);
+describe("formatUpdatedAt", () => {
+  it("renders a timestamp as a local date and time", () => {
+    expect(formatUpdatedAt(Date.UTC(2026, 3, 16, 12))).toContain("2026");
   });
 });

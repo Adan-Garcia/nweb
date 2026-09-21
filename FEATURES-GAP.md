@@ -23,13 +23,13 @@ Approved on 2026-09-20 and shipped so far:
 | A4 export/import | **Done.** Dated JSON backup of notes, media and calendar, restored through a Zod-validated schema, driven from a new settings page. | `7902ae4` |
 | A2 data model, step 1: stable note ids | **Done.** Notes carry a UUID instead of an id built from their path, so a course can be renamed. Adds a `deletedAt` tombstone. `NOTES_DB_VERSION` 2 to 3, rewriting no rows. | `7fd9346` |
 | A2 data model, step 2: delete a note | **Done.** Deletes the note that is open, behind a confirmation, from the notes path bar. Tombstones the entry and drops the document and its media. | this commit |
-| A2 data model, the rest | Next, and the largest part: Wing/Flight/Branch as real records with rename, Twigs, Pebbles, real wings, calendar events pointing at a Branch. | |
-| Notifications, drag and drop, kanban | After A2. | |
+| A2 data model, the rest | **Done.** Wings, flights, branches and nests are records with UUIDs, timestamps and tombstones, and rename/recolour/cascading-delete storage. Notes point at a branch and carry nests as tags. Twigs replaced calendar events and moved into IndexedDB. Pebbles list files as their own entity. `NOTES_DB_VERSION` 3 to 4, converting every string path and every stored event in one transaction; backup format 1 to 2, still restoring a version 1 file. | this commit |
+| Notifications, drag and drop, kanban | Next. Twigs, their statuses and a sparse `boardOrder` are already in place for the board to drag. | |
 | A3 PWA | After that. | |
 | Crypto seam, then the app lock | Separate version bump, last of the storage work. Confirmed: on by default, no reset. | |
 | WASM Brotli | Last, alone, because of the dependency gauntlet in CLAUDE.md section 9. | |
 
-Two decisions taken while building the above, both worth knowing:
+Decisions taken while building the above, all worth knowing:
 
 - **The copy runs in two passes.** Everything encryption-related now reads "Coming soon", because
   the lock does not exist yet. When it ships, only the narrow wording comes back: "encrypted on this
@@ -40,6 +40,18 @@ Two decisions taken while building the above, both worth knowing:
 - **Backups carry tombstones.** Deleted notes travel in the export file as markers with no content.
   Dropping them would mean a restore could not tell a note that was deleted from one that never
   existed, so under any future merge-style restore every deletion since the backup would come back.
+- **Twigs replaced calendar events rather than sitting beside them.** A homework with a due date and
+  a calendar event were the same record wearing two names, and a board that dragged one of them
+  would have left the other behind. The calendar now draws the twigs that have a due date; an
+  undated twig is still a task, just not a deadline. The old `localStorage` key is deliberately left
+  in place so a failed upgrade can be retried.
+- **A nest became a real tag, but still navigates like a path segment.** `Heirarchy.md` always called
+  it a tag; it was the fourth string in a note's path. It is now a record on a branch that notes,
+  twigs and pebbles carry a list of, and the path bar keeps a Nest dropdown, so a note filed under
+  two units is reachable under both. Notes carrying none are grouped under "Unfiled".
+- **Shared images survive a delete.** Deleting a note, a pebble or a whole branch now counts
+  references across `notes-documents` and `pebbles` before dropping a blob, which closes the gap
+  logged in `CLAUDE.md` section 13. The save path still has it (see that section).
 
 Two things found while building the delete, both logged in CLAUDE.md section 13 rather than fixed
 here:

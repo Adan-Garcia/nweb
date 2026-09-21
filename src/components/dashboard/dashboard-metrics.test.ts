@@ -1,38 +1,24 @@
 import { describe, expect, it } from "vitest";
 
-import type { CalendarEvent } from "@/lib/calendar-event";
+import type { DatedTwig } from "@/components/calendar/calendar-shared";
 import type { NotesDirectoryEntry } from "@/lib/notes-model";
+import { makeEntry, makeSnapshot, makeTwig } from "@/test/workspace-fixtures";
 
 import { computeDashboardMetrics, formatLastUpdated, toLocationLabel } from "./dashboard-metrics";
 
 // Thursday, local time. Local-time constructors keep this timezone-independent.
 const now = new Date(2026, 3, 16, 10, 30);
 
-function event(id: number, date: string, overrides: Partial<CalendarEvent> = {}): CalendarEvent {
+function event(id: number, dueDate: string, overrides: Partial<DatedTwig> = {}): DatedTwig {
   return {
-    id,
-    title: `Event ${id}`,
-    date,
-    time: "9:00 AM",
-    color: "Math",
-    status: "incomplete",
+    ...makeTwig({ id: String(id), title: `Event ${id}`, dueTime: "9:00 AM" }),
+    dueDate,
     ...overrides,
   };
 }
 
 function note(id: string, updatedAt: number): NotesDirectoryEntry {
-  return {
-    id,
-    wing: "W",
-    flight: "F",
-    branch: "Biology",
-    nest: "Unit 4",
-    feather: id,
-    deletedAt: null,
-    createdMode: "linear",
-    createdAt: 0,
-    updatedAt,
-  };
+  return makeEntry({ id, feather: id, updatedAt });
 }
 
 const empty = { calendarEvents: [], notesEntries: [], now };
@@ -58,8 +44,16 @@ describe("formatLastUpdated", () => {
 });
 
 describe("toLocationLabel", () => {
-  it("shows branch, nest and note", () => {
-    expect(toLocationLabel(note("Exam review", 0))).toBe("Biology / Unit 4 / Exam review");
+  it("reads the branch name off the entity, so a rename shows up here too", () => {
+    expect(toLocationLabel(makeSnapshot(), note("Exam review", 0))).toBe(
+      "Biology 101 / Exam review",
+    );
+  });
+
+  it("falls back to the note's own title when its branch is gone", () => {
+    expect(
+      toLocationLabel({ wings: [], flights: [], branches: [], nests: [] }, note("Orphan", 0)),
+    ).toBe("Orphan");
   });
 });
 
@@ -85,7 +79,7 @@ describe("computeDashboardMetrics", () => {
         event(3, "2026-04-17"),
       ],
     });
-    expect(dueToday.map((item) => item.id)).toEqual([1, 2]);
+    expect(dueToday.map((item) => item.id)).toEqual(["1", "2"]);
   });
 
   it("counts only incomplete events before today as overdue", () => {
@@ -114,8 +108,8 @@ describe("computeDashboardMetrics", () => {
       ],
     });
 
-    expect(upcomingEvents.map((item) => item.id)).toEqual([3, 6, 1]);
-    expect(nextPriority?.id).toBe(3);
+    expect(upcomingEvents.map((item) => item.id)).toEqual(["3", "6", "1"]);
+    expect(nextPriority?.id).toBe("3");
     expect(upcomingPreview).toEqual(upcomingEvents);
   });
 
@@ -132,7 +126,7 @@ describe("computeDashboardMetrics", () => {
   it("does not reorder the input list", () => {
     const calendarEvents = [event(1, "2026-04-20"), event(2, "2026-04-17")];
     computeDashboardMetrics({ ...empty, calendarEvents });
-    expect(calendarEvents.map((item) => item.id)).toEqual([1, 2]);
+    expect(calendarEvents.map((item) => item.id)).toEqual(["1", "2"]);
   });
 
   it("shows the five most recently updated notes and counts this week's edits", () => {

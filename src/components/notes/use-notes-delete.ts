@@ -1,11 +1,11 @@
 import { useCallback } from "react";
 
-import { FALLBACK_LOCATION } from "@/components/notes/location-hierarchy";
 import type { NotesDirectoryEntry } from "@/components/notes/types";
 import type { useDocumentSwitchQueue } from "@/components/notes/use-document-switch-queue";
 import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
 import { softDeleteNote } from "@/lib/notes-delete";
 import { createNotesDirectoryEntry } from "@/lib/notes-directory-storage";
+import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
 
 type UseNotesDeleteOptions = {
   refs: NotesSessionRefs;
@@ -89,8 +89,11 @@ export function useNotesDelete({
         // Deleting the last note leaves the workspace in the state a fresh install is in,
         // so it gets the same empty note back rather than an editor with nothing open.
         if (!entries.length) {
+          const { path } = await ensureDefaultWorkspace();
+
           await createNotesDirectoryEntry({
-            location: FALLBACK_LOCATION,
+            branchId: path.branch.id,
+            feather: "Untitled note",
             createdMode: "linear",
           });
           entries = await refreshDirectoryEntries();

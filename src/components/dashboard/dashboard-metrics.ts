@@ -1,6 +1,10 @@
-import { dateKeyToDate, formatDateKey } from "@/components/calendar/calendar-shared";
-import type { CalendarEvent } from "@/lib/calendar-event";
+import {
+  type DatedTwig,
+  dateKeyToDate,
+  formatDateKey,
+} from "@/components/calendar/calendar-shared";
 import type { NotesDirectoryEntry } from "@/lib/notes-model";
+import { branchPath, type WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -32,18 +36,21 @@ export function formatLastUpdated(timestamp: number, now = Date.now()) {
   });
 }
 
-export function toLocationLabel(entry: NotesDirectoryEntry) {
-  return [entry.branch, entry.nest, entry.feather].join(" / ");
+/** Branch / note, read off the entities rather than off strings copied onto the note. */
+export function toLocationLabel(snapshot: WorkspaceSnapshot, entry: NotesDirectoryEntry) {
+  const path = branchPath(snapshot, entry.branchId);
+
+  return [path?.branch.name, entry.feather].filter(Boolean).join(" / ");
 }
 
 export type DashboardMetrics = {
-  dueToday: CalendarEvent[];
+  dueToday: DatedTwig[];
   overdueCount: number;
-  upcomingEvents: CalendarEvent[];
-  upcomingPreview: CalendarEvent[];
+  upcomingEvents: DatedTwig[];
+  upcomingPreview: DatedTwig[];
   recentNotes: NotesDirectoryEntry[];
   notesUpdatedThisWeekCount: number;
-  nextPriority: CalendarEvent | null;
+  nextPriority: DatedTwig | null;
 };
 
 /** Everything the dashboard shows, derived from events and notes as of `now`. */
@@ -52,7 +59,7 @@ export function computeDashboardMetrics({
   notesEntries,
   now,
 }: {
-  calendarEvents: CalendarEvent[];
+  calendarEvents: DatedTwig[];
   notesEntries: NotesDirectoryEntry[];
   now: Date;
 }): DashboardMetrics {
@@ -61,14 +68,14 @@ export function computeDashboardMetrics({
   const upcomingWindowEnd = new Date(todayStart);
   upcomingWindowEnd.setDate(todayStart.getDate() + 7);
 
-  const dueToday = calendarEvents.filter((event) => event.date === todayKey);
+  const dueToday = calendarEvents.filter((event) => event.dueDate === todayKey);
 
   const overdueCount = calendarEvents.filter((event) => {
     if (event.status === "complete") {
       return false;
     }
 
-    return dateKeyToDate(event.date) < todayStart;
+    return dateKeyToDate(event.dueDate) < todayStart;
   }).length;
 
   const upcomingEvents = [...calendarEvents]
@@ -77,11 +84,11 @@ export function computeDashboardMetrics({
         return false;
       }
 
-      const eventDate = dateKeyToDate(event.date);
+      const eventDate = dateKeyToDate(event.dueDate);
       return eventDate >= todayStart && eventDate <= upcomingWindowEnd;
     })
     .sort((left, right) => {
-      return dateKeyToDate(left.date).getTime() - dateKeyToDate(right.date).getTime();
+      return dateKeyToDate(left.dueDate).getTime() - dateKeyToDate(right.dueDate).getTime();
     });
 
   const recentNotes = [...notesEntries].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5);

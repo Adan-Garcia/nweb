@@ -54,8 +54,12 @@ export function DashboardPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <UpcomingDeadlinesCard events={dashboard.upcomingPreview} />
-          <RecentNotesCard notes={dashboard.recentNotes} isLoading={dashboard.isNotesLoading} />
+          <UpcomingDeadlinesCard snapshot={dashboard.snapshot} events={dashboard.upcomingPreview} />
+          <RecentNotesCard
+            snapshot={dashboard.snapshot}
+            notes={dashboard.recentNotes}
+            isLoading={dashboard.isNotesLoading}
+          />
         </div>
       </div>
     </WorkspaceShell>

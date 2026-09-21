@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 
 import { STATUS_META, statusOrder } from "@/components/calendar/calendar-shared";
-import type { CalendarEvent } from "@/lib/calendar-event";
+import type { TwigStatus } from "@/lib/twig-model";
 
 const COMPLETE_COMMIT_DELAY_MS = 150;
 
 type StatusSliderProps = {
-  status: CalendarEvent["status"];
-  onChangeStatus: (nextStatus: CalendarEvent["status"]) => void;
+  status: TwigStatus;
+  onChangeStatus: (nextStatus: TwigStatus) => void;
   eventTitle: string;
 };
 
 export function StatusSlider({ status, onChangeStatus, eventTitle }: StatusSliderProps) {
-  const [optimisticStatus, setOptimisticStatus] = useState<CalendarEvent["status"]>(status);
+  const [optimisticStatus, setOptimisticStatus] = useState<TwigStatus>(status);
   const [isSliding, setIsSliding] = useState(false);
   const completeDelayTimeoutRef = useRef<number | undefined>(undefined);
 
@@ -31,7 +31,7 @@ export function StatusSlider({ status, onChangeStatus, eventTitle }: StatusSlide
     }, COMPLETE_COMMIT_DELAY_MS);
   };
 
-  const commitFromOptimisticState = (nextStatus: CalendarEvent["status"]) => {
+  const commitFromOptimisticState = (nextStatus: TwigStatus) => {
     if (nextStatus === "complete") {
       scheduleCompleteCommit();
       return;

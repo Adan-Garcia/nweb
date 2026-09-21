@@ -29,7 +29,7 @@ describe("useDocumentSwitchQueue", () => {
       await gate.promise;
       log.push("first:end");
     });
-    const second = result.current("createOrOpenDocumentAtLocation", () => {
+    const second = result.current("createNoteAt", () => {
       log.push("second:start");
       return Promise.resolve();
     });

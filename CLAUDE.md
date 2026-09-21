@@ -39,7 +39,7 @@ This document defines the architectural, stylistic, and operational rules for th
 
 ## 2. Architecture & System Boundaries
 
-The app is **local-first**: there is no backend API today. Persistence is IndexedDB (`idb`) and `localStorage`; heavy work runs in a Web Worker.
+The app is **local-first**: there is no backend API today. Persistence is IndexedDB (`idb`), with `localStorage` holding only the theme; heavy work runs in a Web Worker. The workspace hierarchy is a set of entity stores (`wings`, `flights`, `branches`, `nests`, `twigs`, `pebbles`) alongside the note stores, all keyed by UUID and carrying `createdAt` / `updatedAt` / `deletedAt`.
 
 ### 2.1 Layers and dependency direction
 Imports flow **downward only**. A layer never imports from a layer above it. `[REQUIRED]`
@@ -65,7 +65,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 ### 2.3 Data access and persistence
 *   Components **never** touch `indexedDB`, `localStorage`, `Worker`, or `fetch` directly. `[REQUIRED]` Go through a `lib/*-storage.ts` module or a `lib/*-client.ts` worker client. (Legacy exception: `hooks/use-theme-mode.ts` reads `localStorage`.)
 *   **IndexedDB schema changes** must bump `NOTES_DB_VERSION` (or the relevant version constant) and add a migration in the `upgrade` callback. Never edit a shipped store shape in place. `[REQUIRED]`
-*   **Data read from storage is untrusted.** Validate with a Zod schema before use; do not trust a cast. `[REQUIRED]` Define the schema once in `lib/` and infer the type from it (`lib/calendar-event.ts` → `CalendarEvent`; `lib/calendar-storage.ts` parses with it).
+*   **Data read from storage is untrusted.** Validate with a Zod schema before use; do not trust a cast. `[REQUIRED]` Define the schema once in `lib/` and infer the type from it (`lib/entity-model.ts` → `Wing`, `Flight`, `Branch`, `Nest`; `lib/twig-model.ts` → `Twig`).
 *   **Workers** are constructed via `new Worker(new URL("../workers/x.ts", import.meta.url), { type: "module" })` inside a `lib/*-client.ts` file, so Vite bundles them. Move CPU-heavy work (image optimization, compression, PDF processing) off the main thread. The request/response contract lives once in `lib/media-worker-protocol.ts` (types only) and is imported by both the client and the worker; never redeclare it.
 *   **If a network backend is introduced:** all requests go through a dedicated service module (e.g. `src/lib/api/`), responses are Zod-validated, and components consume them through hooks or a data-fetching library. TanStack Query is **not** installed; adding it needs approval.
 
@@ -166,13 +166,13 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 | **Wing** | Workspace / profile | A user can belong to many wings but owns exactly one. |
 | **Flight** | Academic term / semester | Sorted by date into Summer / Fall / Spring + year. |
 | **Branch** | Course / class | |
-| **Nest** | Tag | Marks units, or homework type (projects, units, …). |
+| **Nest** | Tag | Marks units, or homework type (projects, units, …). Belongs to a Branch; a note, twig or pebble carries a list of them, and the path bar navigates by one as if it were a level. |
 | **Twig** | Task | Homework, exams, essays. |
 | **Feather** | Note | JSON document for a class. |
 | **Pebble** | File | PDFs, images, other data. |
 
 *   **Use this vocabulary in identifiers** (types, functions, storage keys). Do not introduce synonyms (`course`, `semester`, `workspace`, `tag`) for these concepts in code. UI copy may use plain-language labels.
-*   The code already models this as `NotesHierarchyLocation` (`wing → flight → branch → nest → feather`) in `components/notes/types.ts`; extend that type rather than creating parallel shapes.
+*   Each term above is a record in its own store, with an id of its own, so any of them can be renamed without touching what points at it. `lib/workspace-tree.ts` resolves ids to the names the UI shows; `NotesHierarchyLocation` is that display projection, not storage. Extend those rather than creating parallel shapes.
 
 ## 8. UI System (shadcn/ui + Tailwind v4)
 
@@ -228,6 +228,7 @@ A change is done only when:
 Pre-existing; not blockers for unrelated work (§0). Highest value first.
 
 1.  **No CI pipeline.** There is no `.github/` (or other CI) config, so nothing runs `format:check`, `typecheck`, `lint`, `test:coverage`, `build` or `test:e2e` automatically. `playwright.config.ts` is already CI-aware (`forbidOnly`, one retry, no server reuse when `CI` is set).
-2.  **`NotesFileViewer` has no render path.** It and the modules under it (`NotesTreeView`, `NotesNoteButton`, `NotesTreeGroup`, `NotesLocationForm`, `notes-tree.ts`) are ~400 lines plus tests that no page renders, and never have since `d03aa1a`. Their coverage is real but reaches no user. Decide whether to wire the sidebar up or delete it; do not add features to it in the meantime.
-3.  **Media rows are shared but deleted as if they were not.** Excalidraw derives a file's id from its contents, so one image dropped into two notes is one `notes-media` row. Both `saveSpatialDocumentPayload` (when a file leaves a scene) and `softDeleteNote` remove it by id without checking for other references. The surviving note then renders without that image: its document row still lists the file in `sceneFiles`, so `loadNotesDocument` reports it in `missingMediaIds` and draws the rest of the scene. Needs a reference count across `notes-documents`.
-4.  **Tombstones are never collected.** `softDeleteNote` drops the document and media, so a tombstone is a few bytes, but nothing ever removes the directory rows themselves. They accumulate for the life of the database.
+2.  **`NotesFileViewer` has no render path.** It and the modules under it (`NotesTreeView`, `NotesNoteButton`, `NotesTreeGroup`, `notes-tree.ts`) are plus tests that no page renders, and never have since `d03aa1a`. Their coverage is real but reaches no user. The entity migration moved them onto the new model rather than leaving them broken, and dropped `NotesLocationForm` with it, because typing a path as free text is exactly what entity ids replace. Still to decide: wire the sidebar up or delete it. Do not add features to it in the meantime.
+3.  **`saveSpatialDocumentPayload` still deletes shared media by id.** `softDeleteNote`, `softDeletePebble` and the entity cascade now count references across `notes-documents` and `pebbles` before dropping a blob, but the save path does not: when a file leaves one scene it is removed even if another note draws it. Same fix, same helper; it just has not been applied there.
+4.  **Tombstones are never collected.** Deletes drop the bytes, so a tombstone is a few bytes, but nothing ever removes the marker rows — for notes, and now for wings, flights, branches, nests, twigs and pebbles too. They accumulate for the life of the database.
+5.  **Renames and deletes have storage but no UI.** `entity-storage.ts` and `entity-delete.ts` expose rename, recolour and cascading delete for every level, and they are covered by tests, but nothing on screen calls them yet: the path bar can only add. The settings page is the obvious home for a workspace editor.

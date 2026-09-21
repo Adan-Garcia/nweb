@@ -24,6 +24,7 @@ export function CalendarPage() {
 
         <div className="grid gap-6 lg:grid-cols-[1fr_2.5fr]">
           <CalendarEventListCard
+            snapshot={calendar.snapshot}
             selectedDateKey={calendar.selectedDateKey}
             viewMode={calendar.viewMode}
             weekLabel={calendar.weekLabel}
@@ -39,10 +40,15 @@ export function CalendarPage() {
             filteredEvents={calendar.filteredEvents}
             onOpenAddEvent={editor.openAdd}
             onOpenEditEvent={editor.openEdit}
-            onDeleteEvent={calendar.deleteEvent}
-            onSetEventStatus={calendar.setEventStatus}
+            onDeleteEvent={(event) => {
+              void calendar.deleteEvent(event);
+            }}
+            onSetEventStatus={(twigId, nextStatus) => {
+              void calendar.setEventStatus(twigId, nextStatus);
+            }}
           />
           <CalendarGridCard
+            snapshot={calendar.snapshot}
             viewMode={calendar.viewMode}
             onViewModeChange={calendar.setViewMode}
             monthLabel={calendar.monthLabel}
@@ -62,12 +68,14 @@ export function CalendarPage() {
 
       <EventOverlay
         isOpen={editor.isOpen}
-        editingEventId={editor.editingEventId}
+        editingTwigId={editor.editingTwigId}
         register={editor.form.register}
         handleSubmit={editor.form.handleSubmit}
         errors={editor.form.formState.errors}
-        eventColorOptions={editor.colorOptions}
-        onSubmit={editor.submit}
+        branchOptions={editor.branchOptions}
+        onSubmit={(values) => {
+          void editor.submit(values);
+        }}
         onClose={editor.close}
       />
     </WorkspaceShell>

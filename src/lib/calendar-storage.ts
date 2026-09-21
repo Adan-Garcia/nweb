@@ -1,6 +1,10 @@
 import { type CalendarEvent, calendarEventSchema } from "./calendar-event";
 
-const CALENDAR_STORAGE_KEY = "cuervo-calendar-events-v1";
+/**
+ * Version 4 moved these events into the `twigs` store. The key stays readable so the
+ * database upgrade can find them, and so a backup written before the move still restores.
+ */
+export const CALENDAR_STORAGE_KEY = "cuervo-calendar-events-v1";
 
 export function loadCalendarEvents(fallbackEvents: CalendarEvent[]): CalendarEvent[] {
   if (typeof window === "undefined") {

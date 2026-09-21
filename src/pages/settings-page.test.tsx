@@ -16,11 +16,9 @@ function renderPage() {
 }
 
 const ENTRY = {
-  id: "notes-home-fall-2026-math-unit-1-lecture",
-  wing: "Home",
-  flight: "Fall 2026",
-  branch: "Math",
-  nest: "Unit 1",
+  id: "note-1",
+  branchId: "branch-1",
+  nestIds: ["nest-1"],
   feather: "Lecture",
   createdMode: "linear" as const,
   createdAt: 1,

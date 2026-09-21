@@ -6,9 +6,11 @@ import { SEGMENT_CONFIGS } from "@/components/notes/notes-segment-config";
 import type { NotesDirectoryEntry } from "@/components/notes/types";
 import type { NotesLocationPicker } from "@/components/notes/use-notes-location-picker";
 import { Card, CardContent } from "@/components/ui/card";
+import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type NotesLocationBarProps = {
   picker: NotesLocationPicker;
+  snapshot: WorkspaceSnapshot;
   autoSaveLabel: string;
   activeEntry: NotesDirectoryEntry | null;
   isStorageReady: boolean;
@@ -19,13 +21,14 @@ type NotesLocationBarProps = {
 /** The path picker across the top of the notes page, plus its dialogs. */
 export function NotesLocationBar({
   picker,
+  snapshot,
   autoSaveLabel,
   activeEntry,
   isStorageReady,
   isHydratingDocument,
   onDeleteDocument,
 }: NotesLocationBarProps) {
-  const { draftLocation, createNote, segmentModal } = picker;
+  const { createNote, segmentModal } = picker;
 
   return (
     <Card className="mb-4">
@@ -34,13 +37,13 @@ export function NotesLocationBar({
           <NotesLocationSegmentDropdown
             prepend={config.prepend}
             key={config.segment}
-            triggerLabel={draftLocation[config.segment]}
+            triggerLabel={picker.segmentLabels[config.segment]}
             currentLabel={config.currentLabel}
             addLabel={config.label}
             options={picker.segmentOptions[config.segment]}
             append={config.append}
-            onSelect={(value) => {
-              picker.selectSegmentValue(config.segment, value);
+            onSelect={(id) => {
+              picker.selectSegmentValue(config.segment, id);
             }}
             onAdd={() => {
               segmentModal.open(config.segment, config.label);
@@ -51,6 +54,7 @@ export function NotesLocationBar({
         <p className="text-xs text-muted-foreground">{autoSaveLabel}</p>
 
         <NotesDeleteNoteControl
+          snapshot={snapshot}
           activeEntry={activeEntry}
           isDisabled={!isStorageReady || isHydratingDocument}
           onDelete={onDeleteDocument}
@@ -60,6 +64,8 @@ export function NotesLocationBar({
           isOpen={createNote.isOpen}
           onOpenChange={createNote.setIsOpen}
           selectedLocationSummary={picker.selectedLocationSummary}
+          title={createNote.title}
+          onTitleChange={createNote.setTitle}
           newNoteMode={createNote.mode}
           onModeChange={createNote.setMode}
           onCreate={() => {
@@ -74,7 +80,9 @@ export function NotesLocationBar({
           segmentModalState={segmentModal.state}
           segmentDraftValue={segmentModal.draftValue}
           onSegmentDraftValueChange={segmentModal.setDraftValue}
-          onCreateSegment={segmentModal.submit}
+          onCreateSegment={() => {
+            void segmentModal.submit();
+          }}
           onClose={segmentModal.close}
         />
       </CardContent>

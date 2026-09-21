@@ -22,6 +22,7 @@ export function NotesPage() {
       <div className="mx-auto max-w-8xl px-4 py-6 sm:px-6 lg:px-8">
         <NotesLocationBar
           picker={picker}
+          snapshot={workspace.snapshot}
           autoSaveLabel={getAutoSaveLabel(workspace)}
           activeEntry={activeEntry}
           isStorageReady={workspace.isStorageReady}

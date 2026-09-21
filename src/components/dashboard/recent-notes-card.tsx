@@ -4,13 +4,15 @@ import { formatLastUpdated, toLocationLabel } from "@/components/dashboard/dashb
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { NotesDirectoryEntry } from "@/lib/notes-model";
+import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type RecentNotesCardProps = {
+  snapshot: WorkspaceSnapshot;
   notes: NotesDirectoryEntry[];
   isLoading: boolean;
 };
 
-export function RecentNotesCard({ notes, isLoading }: RecentNotesCardProps) {
+export function RecentNotesCard({ snapshot, notes, isLoading }: RecentNotesCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -23,7 +25,9 @@ export function RecentNotesCard({ notes, isLoading }: RecentNotesCardProps) {
         ) : notes.length ? (
           notes.map((entry) => (
             <div key={entry.id} className="rounded-lg border border-border/70 bg-muted/20 p-3">
-              <p className="line-clamp-1 text-sm font-semibold">{toLocationLabel(entry)}</p>
+              <p className="line-clamp-1 text-sm font-semibold">
+                {toLocationLabel(snapshot, entry)}
+              </p>
               <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span>{entry.createdMode === "spatial" ? "Spatial" : "Linear"} note</span>
                 <span>{formatLastUpdated(entry.updatedAt)}</span>

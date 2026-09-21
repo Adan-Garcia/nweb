@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 
-import { FALLBACK_LOCATION } from "@/components/notes/location-hierarchy";
 import type { NotesDirectoryEntry, NotesDocumentMode } from "@/components/notes/types";
 import { revokeObjectUrls } from "@/lib/blob-utils";
 import {
@@ -10,17 +9,23 @@ import {
 } from "@/lib/notes-directory-storage";
 import { loadNotesDocument } from "@/lib/notes-document-storage";
 import { DEFAULT_NOTES_DOCUMENT_ID } from "@/lib/notes-model";
+import { ensureDefaultWorkspace, loadWorkspaceSnapshot } from "@/lib/workspace-storage";
+import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type UseNotesBootstrapOptions = {
   hydrateDocument: (documentId: string, targetMode?: NotesDocumentMode) => Promise<void>;
-  applyInitialEntries: (entries: NotesDirectoryEntry[], initialEntry: NotesDirectoryEntry) => void;
+  applyInitialEntries: (
+    snapshot: WorkspaceSnapshot,
+    entries: NotesDirectoryEntry[],
+    initialEntry: NotesDirectoryEntry,
+  ) => void;
   markStorageReady: () => void;
 };
 
 /**
- * On mount: makes sure at least one note exists (adopting the legacy
- * single-document note if present), opens the most recent one, and reports
- * storage as ready.
+ * On mount: makes sure there is a wing, flight and branch to file a note under, that at
+ * least one note exists (adopting the legacy single-document note if present), opens the
+ * most recent one, and reports storage as ready.
  */
 export function useNotesBootstrap({
   hydrateDocument,
@@ -32,6 +37,7 @@ export function useNotesBootstrap({
 
     const hydrateNotes = async () => {
       try {
+        const { path } = await ensureDefaultWorkspace();
         let existingEntries = await listNotesDirectoryEntries();
 
         if (!existingEntries.length) {
@@ -40,17 +46,16 @@ export function useNotesBootstrap({
           if (legacyDocument) {
             await upsertNotesDirectoryEntry({
               id: DEFAULT_NOTES_DOCUMENT_ID,
-              location: {
-                ...FALLBACK_LOCATION,
-                feather: "Legacy note",
-              },
+              branchId: path.branch.id,
+              feather: "Legacy note",
               createdMode: "linear",
             });
 
             revokeObjectUrls(legacyDocument.objectUrls);
           } else {
             await createNotesDirectoryEntry({
-              location: FALLBACK_LOCATION,
+              branchId: path.branch.id,
+              feather: "Untitled note",
               createdMode: "linear",
             });
           }
@@ -58,13 +63,15 @@ export function useNotesBootstrap({
           existingEntries = await listNotesDirectoryEntries();
         }
 
+        const snapshot = await loadWorkspaceSnapshot();
+
         if (!isMounted || !existingEntries.length) {
           return;
         }
 
         const initialEntry = existingEntries[0];
 
-        applyInitialEntries(existingEntries, initialEntry);
+        applyInitialEntries(snapshot, existingEntries, initialEntry);
         await hydrateDocument(initialEntry.id, initialEntry.createdMode);
       } catch {
         return;

@@ -4,9 +4,10 @@ import { useForm } from "react-hook-form";
 
 import {
   dateKeyToDate,
-  eventFormSchema,
-  type EventFormValues,
   formatDateKey,
+  isDatedTwig,
+  twigFormSchema,
+  type TwigFormValues,
 } from "@/components/calendar/calendar-shared";
 import {
   buildMonthCells,
@@ -17,19 +18,20 @@ import {
   formatMonthLabel,
   formatWeekLabel,
   groupEventsByDate,
-  listEventClasses,
+  listEventBranchIds,
   scopeEventsToView,
   startOfDay,
   startOfMonth,
 } from "@/components/calendar/calendar-views";
-import { useCalendarEvents } from "@/components/calendar/use-calendar-events";
-import { type CalendarEvent, EVENT_COLOR_OPTIONS } from "@/lib/calendar-event";
+import { useCalendarTwigs } from "@/components/calendar/use-calendar-twigs";
+import type { Twig } from "@/lib/twig-model";
+import { branchPath } from "@/lib/workspace-tree";
 
 const DEFAULT_EVENT_TIME = "9:00 AM";
 
 /** State and handlers behind the calendar page. */
 export function useCalendarPage() {
-  const { calendarEvents, setEventStatus, saveEvent, deleteEvent } = useCalendarEvents();
+  const { twigs, isLoading, snapshot, setTwigStatus, saveTwig, deleteTwig } = useCalendarTwigs();
 
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(today));
@@ -40,34 +42,55 @@ export function useCalendarPage() {
   const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
   const [eventTab, setEventTab] = useState<EventTab>("active");
   const [isEventOverlayOpen, setIsEventOverlayOpen] = useState(false);
-  const [editingEventId, setEditingEventId] = useState<number | null>(null);
+  const [editingTwigId, setEditingTwigId] = useState<string | null>(null);
 
-  const form = useForm<EventFormValues>({
-    resolver: zodResolver(eventFormSchema),
+  /** Every branch in the workspace, labelled with the flight it belongs to. */
+  const branchOptions = useMemo(
+    () =>
+      snapshot.branches
+        .map((branch) => {
+          const path = branchPath(snapshot, branch.id);
+
+          return {
+            id: branch.id,
+            name: branch.name,
+            color: branch.color,
+            label: path ? `${path.flight.name} / ${branch.name}` : branch.name,
+          };
+        })
+        .sort((left, right) => left.label.localeCompare(right.label)),
+    [snapshot],
+  );
+
+  const form = useForm<TwigFormValues>({
+    resolver: zodResolver(twigFormSchema),
     defaultValues: {
       title: "",
       date: formatDateKey(today),
       time: DEFAULT_EVENT_TIME,
-      color: EVENT_COLOR_OPTIONS[0],
+      branchId: "",
+      kind: "homework",
       status: "incomplete",
     },
   });
 
+  const datedTwigs = useMemo(() => twigs.filter(isDatedTwig), [twigs]);
+
   const monthCells = useMemo(() => buildMonthCells(currentMonth), [currentMonth]);
   const weekDates = useMemo(() => buildWeekDates(focusedDate), [focusedDate]);
-  const eventsByDate = useMemo(() => groupEventsByDate(calendarEvents), [calendarEvents]);
+  const eventsByDate = useMemo(() => groupEventsByDate(datedTwigs), [datedTwigs]);
   const monthLabel = formatMonthLabel(currentMonth);
   const weekLabel = useMemo(() => formatWeekLabel(weekDates), [weekDates]);
 
   const viewScopedEvents = useMemo(
     () =>
       scopeEventsToView({
-        events: calendarEvents,
+        events: datedTwigs,
         viewMode,
         currentMonth,
         weekDates,
       }),
-    [calendarEvents, currentMonth, viewMode, weekDates],
+    [datedTwigs, currentMonth, viewMode, weekDates],
   );
 
   const filteredEvents = useMemo(
@@ -82,7 +105,11 @@ export function useCalendarPage() {
     [eventTab, searchTerm, selectedClassFilter, selectedDateKey, viewScopedEvents],
   );
 
-  const eventClasses = useMemo(() => listEventClasses(viewScopedEvents), [viewScopedEvents]);
+  const eventClasses = useMemo(() => {
+    const visibleIds = new Set(listEventBranchIds(viewScopedEvents));
+
+    return branchOptions.filter((branch) => visibleIds.has(branch.id));
+  }, [branchOptions, viewScopedEvents]);
 
   const focusDate = (date: Date) => {
     setFocusedDate(startOfDay(date));
@@ -113,38 +140,40 @@ export function useCalendarPage() {
 
   const closeEventOverlay = () => {
     setIsEventOverlayOpen(false);
-    setEditingEventId(null);
+    setEditingTwigId(null);
   };
 
   const openAddEventOverlay = (defaultDate?: string | null) => {
-    setEditingEventId(null);
+    setEditingTwigId(null);
     form.reset({
       title: "",
       date: defaultDate ?? selectedDateKey ?? formatDateKey(today),
       time: DEFAULT_EVENT_TIME,
-      color: EVENT_COLOR_OPTIONS[0],
+      branchId: branchOptions[0]?.id ?? "",
+      kind: "homework",
       status: "incomplete",
     });
     setIsEventOverlayOpen(true);
   };
 
-  const openEditEventOverlay = (eventToEdit: CalendarEvent) => {
-    setEditingEventId(eventToEdit.id);
+  const openEditEventOverlay = (twigToEdit: Twig) => {
+    setEditingTwigId(twigToEdit.id);
     form.reset({
-      title: eventToEdit.title,
-      date: eventToEdit.date,
-      time: eventToEdit.time,
-      color: eventToEdit.color,
-      status: eventToEdit.status,
+      title: twigToEdit.title,
+      date: twigToEdit.dueDate ?? formatDateKey(today),
+      time: twigToEdit.dueTime,
+      branchId: twigToEdit.branchId,
+      kind: twigToEdit.kind,
+      status: twigToEdit.status,
     });
     setIsEventOverlayOpen(true);
   };
 
-  const submitEvent = (values: EventFormValues) => {
-    const saved = saveEvent(values, editingEventId);
+  const submitEvent = async (values: TwigFormValues) => {
+    const saved = await saveTwig(values, editingTwigId);
 
-    setSelectedDateKey(saved.date);
-    focusDate(dateKeyToDate(saved.date));
+    setSelectedDateKey(saved.dueDate);
+    focusDate(dateKeyToDate(saved.dueDate));
     closeEventOverlay();
   };
 
@@ -156,7 +185,7 @@ export function useCalendarPage() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsEventOverlayOpen(false);
-        setEditingEventId(null);
+        setEditingTwigId(null);
       }
     };
 
@@ -168,6 +197,8 @@ export function useCalendarPage() {
 
   return {
     today,
+    isLoading,
+    snapshot,
     currentMonth,
     selectedDateKey,
     clearDayFilter: () => setSelectedDateKey(null),
@@ -185,17 +216,17 @@ export function useCalendarPage() {
     eventsByDate,
     eventClasses,
     filteredEvents,
-    setEventStatus,
-    deleteEvent,
+    setEventStatus: setTwigStatus,
+    deleteEvent: deleteTwig,
     goPrevious: () => shiftView(-1),
     goNext: () => shiftView(1),
     goToToday,
     selectDate,
     editor: {
       isOpen: isEventOverlayOpen,
-      editingEventId,
+      editingTwigId,
       form,
-      colorOptions: EVENT_COLOR_OPTIONS,
+      branchOptions,
       openAdd: openAddEventOverlay,
       openEdit: openEditEventOverlay,
       submit: submitEvent,

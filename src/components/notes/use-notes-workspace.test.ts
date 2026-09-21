@@ -1,8 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { NotesHierarchyLocation } from "@/lib/notes-model";
-
 // Excalidraw is a heavy browser-only bundle; the hook only needs these two helpers.
 let sceneVersion = 0;
 vi.mock("@excalidraw/excalidraw", () => ({
@@ -41,13 +39,17 @@ type Workspace = ReturnType<Awaited<ReturnType<typeof loadWorkspace>>["useNotesW
 // A minimal stand-in for Excalidraw's large AppState; the mocked serializer only echoes it.
 const appState = {} as Parameters<Workspace["handleSpatialChange"]>[1];
 
-const otherLocation: NotesHierarchyLocation = {
-  wing: "School",
-  flight: "Spring 2027",
-  branch: "Physics",
-  nest: "Labs",
-  feather: "Lab 1",
-};
+/** The open note's title, read through the selection the path bar renders from. */
+function activeFeather(workspace: Workspace) {
+  return (
+    workspace.directoryEntries.find((entry) => entry.id === workspace.activeSelection.featherId)
+      ?.feather ?? null
+  );
+}
+
+// A second note. `branchId: null` means "wherever the default workspace put the first one",
+// which is what the picker passes before any branch has been chosen.
+const otherNote = { branchId: null, nestIds: [], feather: "Lab 1" };
 
 async function mountReady() {
   const env = await loadWorkspace();
@@ -104,7 +106,7 @@ describe("useNotesWorkspace: bootstrap", () => {
     await waitFor(() => expect(result.current.linearContent).toBe("<p>legacy</p>"));
 
     expect(result.current.activeDocumentId).toBe(env.model.DEFAULT_NOTES_DOCUMENT_ID);
-    expect(result.current.activeLocation.feather).toBe("Legacy note");
+    expect(result.current.directoryEntries[0].feather).toBe("Legacy note");
   });
 });
 
@@ -155,11 +157,11 @@ describe("useNotesWorkspace: switching documents", () => {
 
     act(() => result.current.setLinearContent("<p>unsaved</p>"));
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await result.current.createNoteAt(otherNote);
     });
 
     expect(result.current.activeDocumentId).not.toBe(firstId);
-    expect(result.current.activeLocation).toEqual(otherLocation);
+    expect(activeFeather(result.current)).toBe("Lab 1");
     expect(result.current.directoryEntries).toHaveLength(2);
     expect(result.current.linearContent).not.toBe("<p>unsaved</p>");
     expect(await savedLinearText(documents, firstId)).toBe("<p>unsaved</p>");
@@ -175,7 +177,7 @@ describe("useNotesWorkspace: switching documents", () => {
     const { result, documents } = await mountReady();
     const firstId = result.current.activeDocumentId ?? "";
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await result.current.createNoteAt(otherNote);
     });
     const secondId = result.current.activeDocumentId ?? "";
 
@@ -203,13 +205,13 @@ describe("useNotesWorkspace: switching documents", () => {
 
     await act(async () => {
       await Promise.all([
-        result.current.createOrOpenDocumentAtLocation(otherLocation),
-        result.current.createOrOpenDocumentAtLocation({ ...otherLocation, feather: "Lab 2" }),
+        result.current.createNoteAt(otherNote),
+        result.current.createNoteAt({ ...otherNote, feather: "Lab 2" }),
       ]);
     });
 
     expect(result.current.directoryEntries).toHaveLength(3);
-    expect(result.current.activeLocation.feather).toBe("Lab 2");
+    expect(activeFeather(result.current)).toBe("Lab 2");
   });
 });
 
@@ -251,7 +253,7 @@ describe("useNotesWorkspace: spatial persistence", () => {
       await result.current.saveActiveDocumentNow();
     });
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await result.current.createNoteAt(otherNote);
     });
     await act(async () => {
       await result.current.openDocumentById(firstId);
@@ -270,7 +272,7 @@ describe("useNotesWorkspace: spatial notes", () => {
     expect(result.current.spatialEditorReloadKey).toBe(0);
 
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation, "spatial");
+      await result.current.createNoteAt(otherNote, "spatial");
     });
 
     expect(result.current.mode).toBe("spatial");
@@ -285,7 +287,7 @@ describe("useNotesWorkspace: spatial notes", () => {
     vi.stubGlobal("requestAnimationFrame", undefined);
 
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation, "spatial");
+      await result.current.createNoteAt(otherNote, "spatial");
     });
     vi.unstubAllGlobals();
 
@@ -297,7 +299,7 @@ describe("useNotesWorkspace: spatial notes", () => {
     const { result } = await mountReady();
 
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation, "spatial");
+      await result.current.createNoteAt(otherNote, "spatial");
     });
 
     expect(result.current.spatialInitialData).toBeNull();
@@ -310,7 +312,7 @@ describe("useNotesWorkspace: failures", () => {
     const firstId = result.current.activeDocumentId ?? "";
     act(() => result.current.setLinearContent("<p>custom</p>"));
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await result.current.createNoteAt(otherNote);
     });
 
     spies.loadDocument.mockRejectedValueOnce(new Error("disk unavailable"));
@@ -331,7 +333,7 @@ describe("useNotesWorkspace: failures", () => {
 
     act(() => result.current.setLinearContent("<p>unsaved</p>"));
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await result.current.createNoteAt(otherNote);
     });
 
     expect(result.current.activeDocumentId).not.toBe(firstId);
@@ -345,10 +347,10 @@ describe("useNotesWorkspace: failures", () => {
     sceneVersion = 3;
     act(() => result.current.handleSpatialChange([], appState, {}));
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await result.current.createNoteAt(otherNote);
     });
 
-    expect(result.current.activeLocation).toEqual(otherLocation);
+    expect(activeFeather(result.current)).toBe("Lab 1");
     expect(spies.saveSpatial).toHaveBeenCalledOnce();
   });
 
@@ -420,7 +422,7 @@ describe("useNotesWorkspace: guards and races", () => {
     await waitFor(() => expect(hook.result.current.isStorageReady).toBe(true));
     const firstId = hook.result.current.activeDocumentId ?? "";
     await act(async () => {
-      await hook.result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await hook.result.current.createNoteAt(otherNote);
     });
 
     env.spies.loadDocument.mockImplementationOnce(
@@ -438,7 +440,7 @@ describe("useNotesWorkspace: guards and races", () => {
     await waitFor(() => expect(hook.result.current.isStorageReady).toBe(true));
     const firstId = hook.result.current.activeDocumentId ?? "";
     await act(async () => {
-      await hook.result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await hook.result.current.createNoteAt(otherNote);
     });
 
     env.spies.loadDocument.mockImplementationOnce(
@@ -457,7 +459,7 @@ describe("useNotesWorkspace: deleting a note", () => {
     const { result } = await mountReady();
     const firstId = result.current.activeDocumentId ?? "";
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await result.current.createNoteAt(otherNote);
     });
     const secondId = result.current.activeDocumentId ?? "";
 
@@ -473,7 +475,7 @@ describe("useNotesWorkspace: deleting a note", () => {
     const { result } = await mountReady();
     const firstId = result.current.activeDocumentId ?? "";
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await result.current.createNoteAt(otherNote);
     });
     const secondId = result.current.activeDocumentId ?? "";
 
@@ -482,7 +484,7 @@ describe("useNotesWorkspace: deleting a note", () => {
     });
 
     expect(result.current.activeDocumentId).toBe(secondId);
-    expect(result.current.activeLocation).toEqual(otherLocation);
+    expect(activeFeather(result.current)).toBe("Lab 1");
   });
 
   it("hands back an empty note when the last one is deleted", async () => {
@@ -574,7 +576,7 @@ describe("useNotesWorkspace: deleting while a switch is queued", () => {
     const { result } = await mountReady();
     const firstId = result.current.activeDocumentId ?? "";
     await act(async () => {
-      await result.current.createOrOpenDocumentAtLocation(otherLocation);
+      await result.current.createNoteAt(otherNote);
     });
     const secondId = result.current.activeDocumentId ?? "";
     await act(async () => {

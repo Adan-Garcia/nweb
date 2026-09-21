@@ -1,29 +1,32 @@
 import type { FieldErrors, UseFormHandleSubmit, UseFormRegister } from "react-hook-form";
 
-import type { EventFormValues } from "@/components/calendar/calendar-shared";
+import type { TwigFormValues } from "@/components/calendar/calendar-shared";
+import { EventSelectField, EventTextField } from "@/components/calendar/event-select-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { Field, FieldGroup } from "@/components/ui/field";
+import { TWIG_KIND_LABELS, TWIG_KINDS } from "@/lib/twig-model";
+
+const SELECT_CLASS = "h-9 rounded-md border border-input bg-background px-3 text-sm";
 
 type EventOverlayProps = {
   isOpen: boolean;
-  editingEventId: number | null;
-  register: UseFormRegister<EventFormValues>;
-  handleSubmit: UseFormHandleSubmit<EventFormValues>;
-  errors: FieldErrors<EventFormValues>;
-  eventColorOptions: readonly string[];
-  onSubmit: (values: EventFormValues) => void;
+  editingTwigId: string | null;
+  register: UseFormRegister<TwigFormValues>;
+  handleSubmit: UseFormHandleSubmit<TwigFormValues>;
+  errors: FieldErrors<TwigFormValues>;
+  branchOptions: readonly { id: string; label: string }[];
+  onSubmit: (values: TwigFormValues) => void;
   onClose: () => void;
 };
 
 export function EventOverlay({
   isOpen,
-  editingEventId,
+  editingTwigId,
   register,
   handleSubmit,
   errors,
-  eventColorOptions,
+  branchOptions,
   onSubmit,
   onClose,
 }: EventOverlayProps) {
@@ -46,7 +49,7 @@ export function EventOverlay({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <CardHeader>
-          <CardTitle>{editingEventId === null ? "Add event" : "Edit event"}</CardTitle>
+          <CardTitle>{editingTwigId === null ? "Add event" : "Edit event"}</CardTitle>
         </CardHeader>
         <CardContent>
           <form
@@ -56,78 +59,80 @@ export function EventOverlay({
             }}
           >
             <FieldGroup>
-              <Field data-invalid={!!errors.title}>
-                <FieldLabel htmlFor="event-title">Title</FieldLabel>
-                <Input
-                  {...register("title")}
-                  id="event-title"
-                  placeholder="e.g. Biology review"
-                  aria-invalid={!!errors.title}
-                />
-                <FieldError errors={[errors.title]} />
-              </Field>
+              <EventTextField
+                id="event-title"
+                label="Title"
+                placeholder="e.g. Biology review"
+                field={register("title")}
+                error={errors.title}
+              />
 
-              <Field data-invalid={!!errors.date}>
-                <FieldLabel htmlFor="event-date">Date</FieldLabel>
-                <Input
-                  {...register("date")}
-                  id="event-date"
-                  type="date"
-                  placeholder="YYYY-MM-DD"
-                  aria-invalid={!!errors.date}
-                />
-                <FieldError errors={[errors.date]} />
-              </Field>
+              <EventTextField
+                id="event-date"
+                label="Date"
+                type="date"
+                placeholder="YYYY-MM-DD"
+                field={register("date")}
+                error={errors.date}
+              />
 
-              <Field data-invalid={!!errors.time}>
-                <FieldLabel htmlFor="event-time">Time</FieldLabel>
-                <Input
-                  {...register("time")}
-                  id="event-time"
-                  placeholder="e.g. 3:30 PM"
-                  aria-invalid={!!errors.time}
-                />
-                <FieldError errors={[errors.time]} />
-              </Field>
+              <EventTextField
+                id="event-time"
+                label="Time"
+                placeholder="e.g. 3:30 PM"
+                field={register("time")}
+                error={errors.time}
+              />
 
-              <Field data-invalid={!!errors.color}>
-                <FieldLabel htmlFor="event-class">Class</FieldLabel>
+              <EventSelectField id="event-branch" label="Branch" error={errors.branchId}>
                 <select
-                  id="event-class"
-                  {...register("color")}
-                  aria-invalid={!!errors.color}
-                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  id="event-branch"
+                  {...register("branchId")}
+                  aria-invalid={!!errors.branchId}
+                  className={SELECT_CLASS}
                 >
-                  {eventColorOptions.map((eventColor) => (
-                    <option key={eventColor} value={eventColor}>
-                      {eventColor}
+                  {branchOptions.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.label}
                     </option>
                   ))}
                 </select>
-                <FieldError errors={[errors.color]} />
-              </Field>
+              </EventSelectField>
 
-              <Field data-invalid={!!errors.status}>
-                <FieldLabel htmlFor="event-status">Status</FieldLabel>
+              <EventSelectField id="event-kind" label="Type" error={errors.kind}>
+                <select
+                  id="event-kind"
+                  {...register("kind")}
+                  aria-invalid={!!errors.kind}
+                  className={SELECT_CLASS}
+                >
+                  {TWIG_KINDS.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {TWIG_KIND_LABELS[kind]}
+                    </option>
+                  ))}
+                </select>
+              </EventSelectField>
+
+              <EventSelectField id="event-status" label="Status" error={errors.status}>
                 <select
                   id="event-status"
                   {...register("status")}
                   aria-invalid={!!errors.status}
-                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  className={SELECT_CLASS}
                 >
                   <option value="incomplete">Incomplete</option>
                   <option value="inprogress">In Progress</option>
                   <option value="complete">Complete</option>
                 </select>
-                <FieldError errors={[errors.status]} />
-              </Field>
+              </EventSelectField>
 
               <Field orientation="horizontal" className="justify-end gap-2">
                 <Button type="button" variant="outline" onClick={onClose}>
                   Cancel
                 </Button>
                 <Button type="submit">
-                  {editingEventId === null ? "Create event" : "Save changes"}
+                  {editingTwigId === null ? "Create event" : "Save changes"}
                 </Button>
               </Field>
             </FieldGroup>
