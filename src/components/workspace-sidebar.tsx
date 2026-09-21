@@ -2,6 +2,7 @@ import { MoonIcon, Settings, SunIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 import { BrandIcon } from "@/components/brand-icon";
+import { NotificationBell } from "@/components/notification-bell";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -81,6 +82,7 @@ export function WorkspaceSidebar({
           >
             {isDark ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
           </Button>
+          <NotificationBell />
           <Button
             variant="ghost"
             size="icon"

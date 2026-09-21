@@ -20,6 +20,7 @@ const essay: DatedTwig = {
 function setup(overrides: Partial<ComponentProps<typeof CalendarEventListCard>> = {}) {
   const props: ComponentProps<typeof CalendarEventListCard> = {
     snapshot: makeSnapshot(),
+    isLoading: false,
     selectedDateKey: null,
     viewMode: "month",
     weekLabel: "Apr 12-18, 2026",
@@ -111,6 +112,14 @@ describe("CalendarEventListCard: filters", () => {
     await user.selectOptions(select, "branch-1");
 
     expect(onSelectedClassFilterChange).toHaveBeenCalledWith("branch-1");
+  });
+});
+
+describe("CalendarEventListCard: loading", () => {
+  it("keeps Add shut until the branches are there to file a task under", () => {
+    setup({ isLoading: true });
+
+    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
   });
 });
 

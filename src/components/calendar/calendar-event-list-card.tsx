@@ -17,6 +17,8 @@ import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type CalendarEventListCardProps = {
   snapshot: WorkspaceSnapshot;
+  /** Until this clears there are no branches to file a task under, so Add stays shut. */
+  isLoading: boolean;
   selectedDateKey: string | null;
   viewMode: CalendarViewMode;
   weekLabel: string;
@@ -38,6 +40,7 @@ type CalendarEventListCardProps = {
 
 export function CalendarEventListCard({
   snapshot,
+  isLoading,
   selectedDateKey,
   viewMode,
   weekLabel,
@@ -70,7 +73,7 @@ export function CalendarEventListCard({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" disabled={isLoading}>
                   <Plus className="size-4" />
                   Add
                 </Button>

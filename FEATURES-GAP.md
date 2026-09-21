@@ -24,7 +24,8 @@ Approved on 2026-09-20 and shipped so far:
 | A2 data model, step 1: stable note ids | **Done.** Notes carry a UUID instead of an id built from their path, so a course can be renamed. Adds a `deletedAt` tombstone. `NOTES_DB_VERSION` 2 to 3, rewriting no rows. | `7fd9346` |
 | A2 data model, step 2: delete a note | **Done.** Deletes the note that is open, behind a confirmation, from the notes path bar. Tombstones the entry and drops the document and its media. | this commit |
 | A2 data model, the rest | **Done.** Wings, flights, branches and nests are records with UUIDs, timestamps and tombstones, and rename/recolour/cascading-delete storage. Notes point at a branch and carry nests as tags. Twigs replaced calendar events and moved into IndexedDB. Pebbles list files as their own entity. `NOTES_DB_VERSION` 3 to 4, converting every string path and every stored event in one transaction; backup format 1 to 2, still restoring a version 1 file. | this commit |
-| Notifications, drag and drop, kanban | Next. Twigs, their statuses and a sparse `boardOrder` are already in place for the board to drag. | |
+| Notifications (in-app) | **Done.** A bell in the sidebar lists what is overdue, due today and due in the next week, computed from the twigs, with a count badge for the first two. Push and email still need a server (Part C). | this commit |
+| Drag and drop, kanban | Next. Twigs, their statuses and a sparse `boardOrder` are already in place for the board to drag. | |
 | A3 PWA | After that. | |
 | Crypto seam, then the app lock | Separate version bump, last of the storage work. Confirmed: on by default, no reset. | |
 | WASM Brotli | Last, alone, because of the dependency gauntlet in CLAUDE.md section 9. | |

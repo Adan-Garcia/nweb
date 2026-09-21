@@ -25,6 +25,7 @@ export function CalendarPage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_2.5fr]">
           <CalendarEventListCard
             snapshot={calendar.snapshot}
+            isLoading={calendar.isLoading}
             selectedDateKey={calendar.selectedDateKey}
             viewMode={calendar.viewMode}
             weekLabel={calendar.weekLabel}

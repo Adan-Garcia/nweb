@@ -20,6 +20,14 @@ beforeEach(async () => {
   await Promise.all(STORES.map((store) => database.clear(store)));
 });
 
+/** Add stays disabled until the workspace has loaded, because a task needs a branch. */
+async function findEnabledAddButton() {
+  const button = await screen.findByRole("button", { name: "Add" });
+  await waitFor(() => expect(button).toBeEnabled());
+
+  return button;
+}
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={["/calendar"]}>
@@ -41,7 +49,7 @@ describe("CalendarPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: "Add" }));
+    await user.click(await findEnabledAddButton());
     await user.click(await screen.findByRole("menuitem", { name: "Add Event" }));
     await user.type(screen.getByLabelText("Title"), "Study group");
     await user.click(screen.getByRole("button", { name: "Create event" }));
@@ -57,7 +65,7 @@ describe("CalendarPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: "Add" }));
+    await user.click(await findEnabledAddButton());
     await user.click(await screen.findByRole("menuitem", { name: "Add Event" }));
     await user.click(screen.getByRole("button", { name: "Create event" }));
 
@@ -88,7 +96,7 @@ describe("CalendarPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: "Add" }));
+    await user.click(await findEnabledAddButton());
     await user.click(await screen.findByRole("menuitem", { name: "Add Event" }));
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
     await user.keyboard("{Escape}");
