@@ -230,12 +230,34 @@ A change is done only when:
 *   Do not run destructive or state-changing package commands (`npm audit fix --force`, `rm -rf node_modules`, lockfile regeneration) without asking.
 *   Report outcomes faithfully: failing checks are reported with their output; skipped verification is stated as skipped.
 
-## 13. Known Gaps & Backlog (audited 2026-09-20)
+## 13. Known Gaps & Backlog (audited 2026-09-21)
 
-Pre-existing; not blockers for unrelated work (§0). Highest value first.
+Pre-existing; not blockers for unrelated work (§0). `FEATURES-GAP.md` is the full list and
+the reasoning; this is the short form for someone editing the code.
 
-1.  **No CI pipeline.** There is no `.github/` (or other CI) config, so nothing runs `format:check`, `typecheck`, `lint`, `test:coverage`, `build` or `test:e2e` automatically. `playwright.config.ts` is already CI-aware (`forbidOnly`, one retry, no server reuse when `CI` is set).
-2.  **`NotesFileViewer` has no render path.** It and the modules under it (`NotesTreeView`, `NotesNoteButton`, `NotesTreeGroup`, `notes-tree.ts`) are plus tests that no page renders, and never have since `d03aa1a`. Their coverage is real but reaches no user. The entity migration moved them onto the new model rather than leaving them broken, and dropped `NotesLocationForm` with it, because typing a path as free text is exactly what entity ids replace. Still to decide: wire the sidebar up or delete it. Do not add features to it in the meantime.
-3.  **`saveSpatialDocumentPayload` still deletes shared media by id.** `softDeleteNote`, `softDeletePebble` and the entity cascade now count references across `notes-documents` and `pebbles` before dropping a blob, but the save path does not: when a file leaves one scene it is removed even if another note draws it. Same fix, same helper; it just has not been applied there.
-4.  **Tombstones are never collected.** Deletes drop the bytes, so a tombstone is a few bytes, but nothing ever removes the marker rows — for notes, and now for wings, flights, branches, nests, twigs and pebbles too. They accumulate for the life of the database.
-5.  **Renames and deletes have storage but no UI.** `entity-storage.ts` and `entity-delete.ts` expose rename, recolour and cascading delete for every level, and they are covered by tests, but nothing on screen calls them yet: the path bar can only add. The settings page is the obvious home for a workspace editor.
+1.  **No CI pipeline.** There is no `.github/` (or other CI) config, so nothing runs
+    `format:check`, `typecheck`, `lint`, `test:coverage`, `build` or `test:e2e`
+    automatically. `playwright.config.ts` is already CI-aware (`forbidOnly`, one retry, no
+    server reuse when `CI` is set).
+2.  **Rename and delete have storage but no UI.** `entity-storage.ts` and
+    `entity-delete.ts` expose rename, recolour and cascading delete for every level of the
+    hierarchy, with tests. Nothing on screen calls them; the path bar can only add.
+3.  **`NotesFileViewer` has no render path.** It and the modules under it (`NotesTreeView`,
+    `NotesNoteButton`, `NotesTreeGroup`, `notes-tree.ts`) render nowhere, and have not since
+    `d03aa1a`. They were migrated to the entity model rather than left broken. Decide
+    whether to wire the sidebar up or delete it; do not add features to it meanwhile.
+4.  **The lock does not cover titles.** Note titles, course names, task titles and due
+    dates stay readable with the workspace locked, because they are what the app lists and
+    sorts by. The settings card and the privacy page both say so. Closing it means every
+    list decrypting before it filters.
+5.  **`saveSpatialDocumentPayload` still deletes shared media by id.** `softDeleteNote`,
+    `softDeletePebble` and the entity cascade all count references across `notes-documents`
+    and `pebbles` before dropping a blob. The save path does not: when a file leaves one
+    scene it goes even if another note draws it.
+6.  **Tombstones are never collected.** Deletes drop the bytes, so a tombstone is a few
+    bytes, but nothing removes the marker rows — for notes, and for every entity, twig and
+    pebble. They accumulate for the life of the database.
+7.  **A route never visited is not cached offline.** The service worker caches what it
+    serves and does not control the page that registered it, so opening a route for the
+    first time with no network still fails. From the second visit on, everything the user
+    has touched works.
