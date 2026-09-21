@@ -29,6 +29,7 @@ const note: NotesDirectoryEntry = {
   createdMode: "spatial",
   createdAt: 0,
   updatedAt: Date.now(),
+  deletedAt: null,
 };
 
 describe("DashboardStatCard", () => {

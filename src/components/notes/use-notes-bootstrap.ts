@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 
-import { buildNotesDocumentId } from "@/components/notes/constants";
 import { FALLBACK_LOCATION } from "@/components/notes/location-hierarchy";
 import type { NotesDirectoryEntry, NotesDocumentMode } from "@/components/notes/types";
 import { revokeObjectUrls } from "@/lib/blob-utils";
 import {
+  createNotesDirectoryEntry,
   listNotesDirectoryEntries,
   upsertNotesDirectoryEntry,
 } from "@/lib/notes-directory-storage";
@@ -49,10 +49,7 @@ export function useNotesBootstrap({
 
             revokeObjectUrls(legacyDocument.objectUrls);
           } else {
-            const initialDocumentId = buildNotesDocumentId(FALLBACK_LOCATION);
-
-            await upsertNotesDirectoryEntry({
-              id: initialDocumentId,
+            await createNotesDirectoryEntry({
               location: FALLBACK_LOCATION,
               createdMode: "linear",
             });

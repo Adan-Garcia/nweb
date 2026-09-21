@@ -18,6 +18,7 @@ function entry(
     feather,
     createdMode: "linear",
     createdAt: 0,
+    deletedAt: null,
     updatedAt,
   };
 }

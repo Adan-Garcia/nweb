@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  buildNotesDocumentId,
   createDefaultNotesLocation,
   defaultLinearContent,
   sanitizeLocationSegment,
@@ -35,35 +34,6 @@ describe("sanitizeLocationSegment", () => {
   it("trims and collapses internal whitespace", () => {
     expect(sanitizeLocationSegment("  Bio   101 \n")).toBe("Bio 101");
     expect(sanitizeLocationSegment("   ")).toBe("");
-  });
-});
-
-describe("buildNotesDocumentId", () => {
-  const location = {
-    wing: "My Wing",
-    flight: "Fall 2026",
-    branch: "Bio 101",
-    nest: "Unit 4",
-    feather: "Exam review",
-  };
-
-  it("slugifies each segment into a stable id", () => {
-    expect(buildNotesDocumentId(location)).toBe(
-      "notes-my-wing-fall-2026-bio-101-unit-4-exam-review",
-    );
-  });
-
-  it("collapses punctuation and never returns an empty segment", () => {
-    expect(buildNotesDocumentId({ ...location, wing: "  !!Café & Co.  ", feather: "???" })).toBe(
-      "notes-caf-co-fall-2026-bio-101-unit-4-untitled",
-    );
-  });
-
-  it("gives the same id for the same location, and different ids for different ones", () => {
-    expect(buildNotesDocumentId(location)).toBe(buildNotesDocumentId({ ...location }));
-    expect(buildNotesDocumentId(location)).not.toBe(
-      buildNotesDocumentId({ ...location, feather: "Other" }),
-    );
   });
 });
 

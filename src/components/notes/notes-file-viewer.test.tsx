@@ -11,7 +11,14 @@ function entry(
   updatedAt = 1,
   createdMode: "linear" | "spatial" = "linear",
 ): NotesDirectoryEntry {
-  return { ...location, id: `id-${location.feather}`, createdMode, createdAt: 0, updatedAt };
+  return {
+    ...location,
+    id: `id-${location.feather}`,
+    createdMode,
+    createdAt: 0,
+    updatedAt,
+    deletedAt: null,
+  };
 }
 
 const active: NotesHierarchyLocation = {

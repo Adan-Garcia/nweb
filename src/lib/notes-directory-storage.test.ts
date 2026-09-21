@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { getNotesDb } from "./notes-db";
 import {
+  createNotesDirectoryEntry,
+  findNotesDirectoryEntryByLocation,
   listNotesDirectoryEntries,
   touchNotesDirectoryEntry,
   upsertNotesDirectoryEntry,
 } from "./notes-directory-storage";
-import type { NotesHierarchyLocation } from "./notes-model";
+import type { NotesDirectoryEntry, NotesHierarchyLocation } from "./notes-model";
 
 function location(feather: string): NotesHierarchyLocation {
   return { wing: "Home", flight: "Fall 2026", branch: "Math", nest: "Unit 1", feather };
@@ -22,6 +25,7 @@ describe("notes directory storage", () => {
       createdMode: "linear",
       createdAt: 1000,
       updatedAt: 1000,
+      deletedAt: null,
     });
   });
 
@@ -52,6 +56,7 @@ describe("notes directory storage", () => {
       createdMode: "spatial",
       createdAt: 1000,
       updatedAt: 5000,
+      deletedAt: null,
     });
   });
 
@@ -83,5 +88,66 @@ describe("notes directory storage", () => {
     await touchNotesDirectoryEntry("dir-missing");
     const entries = await listNotesDirectoryEntries();
     expect(entries.some((entry) => entry.id === "dir-missing")).toBe(false);
+  });
+});
+
+describe("stable ids and tombstones", () => {
+  it("gives every new note an id of its own, not one derived from its path", async () => {
+    const first = await createNotesDirectoryEntry({ location: location("Lecture") });
+    const second = await createNotesDirectoryEntry({ location: location("Lecture") });
+
+    expect(first.id).not.toBe(second.id);
+    expect(first.id).not.toContain("lecture");
+    expect(first.deletedAt).toBeNull();
+  });
+
+  it("keeps paths apart that the old slugged id collapsed into one", async () => {
+    const spaced = await createNotesDirectoryEntry({
+      location: { ...location("Notes"), branch: "Math 101" },
+    });
+    const hyphenated = await createNotesDirectoryEntry({
+      location: { ...location("Notes"), branch: "math-101" },
+    });
+
+    expect(spaced.id).not.toBe(hyphenated.id);
+  });
+
+  it("finds a note by its path, and nothing when the path is free", async () => {
+    const created = await createNotesDirectoryEntry({ location: location("Findable") });
+
+    expect(await findNotesDirectoryEntryByLocation(location("Findable"))).toMatchObject({
+      id: created.id,
+    });
+    expect(await findNotesDirectoryEntryByLocation(location("Absent"))).toBeNull();
+  });
+
+  it("lists an entry written before deletedAt existed", async () => {
+    const database = await getNotesDb();
+    // Exactly what a version 2 database holds: the field is absent, not null.
+    const legacy = {
+      id: "legacy-entry",
+      ...location("Legacy"),
+      createdMode: "linear",
+      createdAt: 1,
+      updatedAt: 2,
+    } as NotesDirectoryEntry;
+    await database.put("notes-directory", legacy);
+
+    const entries = await listNotesDirectoryEntries();
+    const found = entries.find((entry) => entry.id === "legacy-entry");
+
+    expect(found).toBeDefined();
+    expect(found?.deletedAt).toBeNull();
+  });
+
+  it("hides a tombstoned entry from the listing and from lookups", async () => {
+    const database = await getNotesDb();
+    const created = await createNotesDirectoryEntry({ location: location("Doomed") });
+    await database.put("notes-directory", { ...created, deletedAt: 1234 });
+
+    const entries = await listNotesDirectoryEntries();
+
+    expect(entries.some((entry) => entry.id === created.id)).toBe(false);
+    expect(await findNotesDirectoryEntryByLocation(location("Doomed"))).toBeNull();
   });
 });

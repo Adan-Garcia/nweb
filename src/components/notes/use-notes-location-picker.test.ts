@@ -12,6 +12,7 @@ function entry(location: NotesHierarchyLocation): NotesDirectoryEntry {
     createdMode: "linear",
     createdAt: 0,
     updatedAt: 0,
+    deletedAt: null,
   };
 }
 

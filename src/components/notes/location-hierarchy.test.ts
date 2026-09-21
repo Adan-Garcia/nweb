@@ -29,6 +29,7 @@ function entry(
     createdMode: "linear",
     createdAt: 0,
     updatedAt: 0,
+    deletedAt: null,
   };
 }
 

@@ -33,29 +33,3 @@ export function createDefaultNotesLocation() {
 export function sanitizeLocationSegment(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
-
-function slugifySegment(value: string) {
-  const normalized = value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  return normalized || "untitled";
-}
-
-export function buildNotesDocumentId(location: {
-  wing: string;
-  flight: string;
-  branch: string;
-  nest: string;
-  feather: string;
-}) {
-  return [
-    "notes",
-    slugifySegment(location.wing),
-    slugifySegment(location.flight),
-    slugifySegment(location.branch),
-    slugifySegment(location.nest),
-    slugifySegment(location.feather),
-  ].join("-");
-}

@@ -15,6 +15,11 @@ export type NotesDirectoryEntry = NotesHierarchyLocation & {
   createdMode: NotesDocumentMode;
   createdAt: number;
   updatedAt: number;
+  /**
+   * Tombstone rather than a hard delete, so a future sync can tell "deleted here" from
+   * "not yet created here". Entries written before this field existed read back as null.
+   */
+  deletedAt: number | null;
 };
 
 export type SceneFileRef = {

@@ -19,6 +19,8 @@ const directoryEntrySchema = z.object({
   createdMode: z.enum(["linear", "spatial"]),
   createdAt: z.number(),
   updatedAt: z.number(),
+  // Older backups predate the tombstone, so it defaults rather than being required.
+  deletedAt: z.number().nullable().default(null),
 });
 
 const sceneFileRefSchema = z.object({

@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 
-import { buildNotesDocumentId } from "@/components/notes/constants";
 import {
   FALLBACK_LOCATION,
   normalizeLocation,
@@ -22,8 +21,9 @@ import { useNotesImageIngest } from "@/components/notes/use-notes-image-ingest";
 import { useNotesSession } from "@/components/notes/use-notes-session";
 import { useSpatialAutosave } from "@/components/notes/use-spatial-autosave";
 import {
+  createNotesDirectoryEntry,
+  findNotesDirectoryEntryByLocation,
   listNotesDirectoryEntries,
-  upsertNotesDirectoryEntry,
 } from "@/lib/notes-directory-storage";
 
 export function useNotesWorkspace() {
@@ -145,26 +145,28 @@ export function useNotesWorkspace() {
   const createOrOpenDocumentAtLocation = useCallback(
     async (location: NotesHierarchyLocation, preferredMode?: NotesDocumentMode) => {
       const normalizedLocation = normalizeLocation(location);
-      const documentId = buildNotesDocumentId(normalizedLocation);
       const targetMode = preferredMode ?? mode;
+      const existing = await findNotesDirectoryEntryByLocation(normalizedLocation);
+      const documentId = existing?.id ?? null;
 
       await runInDocumentSwitchQueue("createOrOpenDocumentAtLocation", async () => {
-        await persistActiveDocumentBeforeSwitch("createOrOpenDocumentAtLocation", documentId);
+        await persistActiveDocumentBeforeSwitch("createOrOpenDocumentAtLocation", documentId ?? "");
 
-        await upsertNotesDirectoryEntry({
-          id: documentId,
-          location: normalizedLocation,
-          createdMode: targetMode,
-        });
+        const entry =
+          existing ??
+          (await createNotesDirectoryEntry({
+            location: normalizedLocation,
+            createdMode: targetMode,
+          }));
 
         const nextEntries = await refreshDirectoryEntries();
-        const createdEntry = nextEntries.find((entry) => entry.id === documentId);
+        const createdEntry = nextEntries.find((candidate) => candidate.id === entry.id);
 
-        setActiveDocumentId(documentId);
+        setActiveDocumentId(entry.id);
         setActiveLocation(createdEntry ? toLocation(createdEntry) : normalizedLocation);
         setSelectedCreatedMode(createdEntry?.createdMode ?? targetMode);
         setMode(createdEntry?.createdMode ?? targetMode);
-        await hydrateDocument(documentId, createdEntry?.createdMode ?? targetMode);
+        await hydrateDocument(entry.id, createdEntry?.createdMode ?? targetMode);
       });
     },
     [

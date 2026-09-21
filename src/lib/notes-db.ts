@@ -3,7 +3,13 @@ import { type DBSchema, type IDBPDatabase, openDB } from "idb";
 import type { NotesDirectoryEntry, NotesDocumentRecord, NotesMediaRecord } from "./notes-model";
 
 const NOTES_DB_NAME = "cuervo-notes";
-const NOTES_DB_VERSION = 2;
+
+/**
+ * 3 added `deletedAt` to the directory entries. The bump deliberately rewrites no rows:
+ * `listNotesDirectoryEntries` fills the field in on read, which also covers a database
+ * whose upgrade never ran or died partway through.
+ */
+const NOTES_DB_VERSION = 3;
 
 interface NotesDbSchema extends DBSchema {
   "notes-documents": {

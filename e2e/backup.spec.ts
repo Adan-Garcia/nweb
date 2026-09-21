@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { expect, test } from "./fixtures";
 import { createNote, openNotes } from "./helpers";
 
@@ -53,12 +55,7 @@ test.describe("exporting and restoring the workspace", () => {
 
     expect(download.suggestedFilename()).toMatch(/^cuervo-planner-backup-\d{4}-\d{2}-\d{2}\.json$/);
 
-    const stream = await download.createReadStream();
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(Buffer.from(chunk));
-    }
-    const backup: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const backup: unknown = JSON.parse(await readFile(await download.path(), "utf8"));
 
     expect(backup).toMatchObject({ format: "cuervo-planner-backup", version: 1 });
 

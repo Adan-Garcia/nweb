@@ -43,6 +43,7 @@ const ENTRY = {
   createdMode: "linear" as const,
   createdAt: 1,
   updatedAt: 2,
+  deletedAt: null,
 };
 
 const EVENT = {
@@ -147,6 +148,30 @@ describe("workspace backup", () => {
 
     expect(await database.get("notes-directory", "notes-stale")).toBeUndefined();
     expect(await database.count("notes-directory")).toBe(1);
+  });
+
+  it("restores a backup written before the tombstone field existed", async () => {
+    const backup = {
+      format: "cuervo-planner-backup",
+      version: 1,
+      exportedAt: "2026-09-20T00:00:00.000Z",
+      notes: {
+        directory: [{ ...ENTRY, deletedAt: undefined }],
+        documents: [],
+        media: [],
+      },
+      calendar: [],
+    };
+    // A file exported by the shipped version has no deletedAt key at all.
+    const file = JSON.stringify(backup);
+    expect(file).not.toContain("deletedAt");
+
+    const parsed = parseWorkspaceBackup(file);
+    if ("error" in parsed) throw new Error(parsed.error);
+    await restoreWorkspaceBackup(parsed.backup);
+
+    const database = await getNotesDb();
+    expect(await database.get("notes-directory", ENTRY.id)).toMatchObject({ deletedAt: null });
   });
 
   it("rejects a file that is not JSON", () => {

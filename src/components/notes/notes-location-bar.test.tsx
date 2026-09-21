@@ -22,6 +22,7 @@ const entry = (feather: string): NotesDirectoryEntry => ({
   createdMode: "linear",
   createdAt: 0,
   updatedAt: 0,
+  deletedAt: null,
 });
 
 // Wires the bar to the real picker hook, as the notes page does.

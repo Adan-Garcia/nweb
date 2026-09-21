@@ -25,6 +25,7 @@ const ENTRY = {
   createdMode: "linear" as const,
   createdAt: 1,
   updatedAt: 2,
+  deletedAt: null,
 };
 
 let downloaded: { name: string; contents: string } | null = null;

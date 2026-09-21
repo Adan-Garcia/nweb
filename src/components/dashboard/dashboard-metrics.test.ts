@@ -28,6 +28,7 @@ function note(id: string, updatedAt: number): NotesDirectoryEntry {
     branch: "Biology",
     nest: "Unit 4",
     feather: id,
+    deletedAt: null,
     createdMode: "linear",
     createdAt: 0,
     updatedAt,
