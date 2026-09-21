@@ -39,12 +39,12 @@ export default defineConfig({
       thresholds: {
         lines: 97,
         statements: 97,
-        functions: 95,
+        functions: 96,
         branches: 92,
         // Hooks require 100% logic coverage.
         "src/hooks/**": { lines: 100, functions: 100, branches: 100, statements: 100 },
         // Feature hooks live next to their components; a few defensive branches remain.
-        "src/components/**/use-*.ts": { lines: 97, functions: 97, branches: 88, statements: 97 },
+        "src/components/**/use-*.ts": { lines: 97, functions: 98, branches: 88, statements: 97 },
         "src/lib/**": { lines: 97, functions: 99, branches: 93, statements: 97 },
         "src/workers/**": { lines: 100, functions: 100, branches: 90, statements: 100 },
       },

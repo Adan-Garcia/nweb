@@ -5,6 +5,7 @@ import {
   createAesGcmCipher,
   decryptWith,
   getActiveCipher,
+  isLockedError,
   plaintextCipher,
   resetActiveCipher,
   setActiveCipher,
@@ -106,5 +107,16 @@ describe("decryptWith", () => {
     // Returning the raw bytes would hand the editor ciphertext, and autosave would then
     // write it back as if it were the note.
     await expect(decryptWith(sealed, "aes-gcm")).rejects.toBeInstanceOf(CipherUnavailableError);
+  });
+});
+
+describe("isLockedError", () => {
+  it("recognises the one failure a page's data hook should treat as nothing to load", () => {
+    expect(isLockedError(new CipherUnavailableError("aes-gcm"))).toBe(true);
+  });
+
+  it("does not swallow anything else", () => {
+    expect(isLockedError(new Error("the database is gone"))).toBe(false);
+    expect(isLockedError("not an error at all")).toBe(false);
   });
 });
