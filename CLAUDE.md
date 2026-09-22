@@ -39,7 +39,9 @@ This document defines the architectural, stylistic, and operational rules for th
 
 ## 2. Architecture & System Boundaries
 
-The app is **local-first**: there is no backend API today. Persistence is IndexedDB (`idb`); `localStorage` holds only what the first paint needs before an async read could answer — the theme, the workspace-lock hint, and which way the notes page is navigated — and never user content. Heavy work runs in a Web Worker. The workspace hierarchy is a set of entity stores (`wings`, `flights`, `branches`, `nests`, `twigs`, `pebbles`) alongside the note stores, all keyed by UUID and carrying `createdAt` / `updatedAt` / `deletedAt`.
+The app is **local-first**: it works with no server, and it reads its own notes with no server even when it has one. Persistence is IndexedDB (`idb`); `localStorage` holds only what the first paint needs before an async read could answer — the theme, the workspace-lock hint, and which way the notes page is navigated — and never user content. Heavy work runs in a Web Worker.
+
+There *is* a backend now, in `server/`, and it is optional in the strongest sense: a build with no `VITE_API_URL` never calls it, and a build with one still opens the workspace from the passphrase alone. It is a row store that holds ciphertext it cannot read. `BACKEND.md` is the design and `server/CLAUDE.md` the rules for writing it; requests go through `src/lib/api/`, responses are Zod-validated, and no component calls `fetch`. The workspace hierarchy is a set of entity stores (`wings`, `flights`, `branches`, `nests`, `twigs`, `pebbles`) alongside the note stores, all keyed by UUID and carrying `createdAt` / `updatedAt` / `deletedAt`.
 
 ### 2.1 Layers and dependency direction
 Imports flow **downward only**. A layer never imports from a layer above it. `[REQUIRED]`
@@ -67,7 +69,9 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   **IndexedDB schema changes** must bump `NOTES_DB_VERSION` (or the relevant version constant) and add a migration in the `upgrade` callback. Never edit a shipped store shape in place. `[REQUIRED]`
 *   **Data read from storage is untrusted.** Validate with a Zod schema before use; do not trust a cast. `[REQUIRED]` Define the schema once in `lib/` and infer the type from it (`lib/entity-model.ts` → `Wing`, `Flight`, `Branch`, `Nest`; `lib/twig-model.ts` → `Twig`).
 *   **Workers** are constructed via `new Worker(new URL("../workers/x.ts", import.meta.url), { type: "module" })` inside a `lib/*-client.ts` file, so Vite bundles them. Move CPU-heavy work (image optimization, compression, PDF processing) off the main thread. The request/response contract lives once in `lib/media-worker-protocol.ts` (types only) and is imported by both the client and the worker; never redeclare it.
-*   **If a network backend is introduced:** all requests go through a dedicated service module (e.g. `src/lib/api/`), responses are Zod-validated, and components consume them through hooks or a data-fetching library. TanStack Query is **not** installed; adding it needs approval.
+*   **Network access goes through `src/lib/api/`.** `[REQUIRED]` `client.ts` is the only place that calls `fetch`; every response is parsed with the schema `shared/` declares, because a server is trusted no more than a file is. Components consume it through a hook. TanStack Query is **not** installed; adding it needs approval.
+*   **An account never gates reading.** `[REQUIRED]` The keys are on disk, sealed: `unlockAccount` opens the workspace from the passphrase with no network at all, and a failed session is not a failed sign-in. Anything that makes the notes unreadable when the server is unreachable is a bug.
+*   **A session token lives in memory and nowhere else.** `[REQUIRED]` Writing one to IndexedDB would leave a working credential on disk beside the ciphertext it is meant to be separate from.
 
 ### 2.4 State management
 *   Default to local `useState` / `useReducer`. Prefer **derived state** over duplicated state.
@@ -159,6 +163,8 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | E2E | `npm run test:e2e` | Playwright against a production build; first run on a machine needs `npx playwright install chromium`. |
 | Visual | `npm run test:visual` | Local pixel comparison; see §4. |
 | Build | `npm run build` | `tsc -b && vite build` |
+| Build the server | `npm run build:server` | Bundles `server/src/main.ts`; Node cannot resolve `./app` or `@shared/…` on its own. |
+| Run the server | `npm run start:server` | Needs `DATABASE_URL` and `SERVER_SECRET`; see `server/CLAUDE.md` §5. |
 | Test | `npm run test` | Vitest; see §4. |
 
 *   **Before reporting completion run:** `npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build`. All pass on a clean tree today; keep them clean.
@@ -251,6 +257,12 @@ without a server has shipped, so what is left here is inherent or waiting on the
     same note both keep the later `updatedAt`; there is no field-level merge and no way to
     see what was dropped. That is the rule sync will need too, so it is the place to start
     when B2 lands rather than a second implementation.
-4.  **A rekey holds one key per browser.** `lib/cipher.ts` has one active cipher, so a
-    shared wing cannot have a key of its own. The seam allows it — every row records which
-    cipher wrote it — but nothing does it, and sharing (B3) needs it.
+4.  **Only the wing has a key of its own.** `lib/cipher.ts` holds a keyring now, so a row
+    opens with whichever registered key sealed it, and adopting an account moves the
+    workspace onto a key rather than onto a passphrase. What nothing does yet is mint a key
+    *per course or per note*, so what can actually be shared is a whole wing. The machinery
+    below that is built and tested (`src/lib/keys/`): what is missing is the screen that
+    picks a thing and the storage change that seals its rows under that thing's key.
+5.  **Sharing and reminders have no screen.** `share`, `revoke`, the shares list, rotation
+    and the push subscribe/unsubscribe calls are all reachable and none of them is reachable
+    from the app. Sync is a button in settings; there is no periodic or on-change sync.

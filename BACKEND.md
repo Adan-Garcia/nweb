@@ -4,8 +4,9 @@ Written 2026-09-21. This is the plan for the half of the app that needs a server
 accounts, sync, sharing and push. `FEATURES-GAP.md` says what is missing; this says how
 the missing part is meant to be built, and why it is shaped the way it is.
 
-Nothing here exists yet. It replaces `Todo.md`, which described a different architecture
-than the one that shipped.
+Phases 0 to 4 are built: `server/` runs, and the app has an account, a sync button and a
+key graph. What is left is listed under "What is still missing" at the end. It replaces
+`Todo.md`, which described a different architecture than the one that shipped.
 
 ## What the client already decided
 
@@ -209,18 +210,37 @@ them drift the first time one gains a field.
 5.  **Paid tiers.** Not started, and needs billing infrastructure this repository has none
     of. Out of scope until the four above are wired into the app.
 
+### Running it
+
+```
+DATABASE_URL=postgres://… SERVER_SECRET=… ALLOWED_ORIGINS=https://app.example.com \
+  npm run build:server && npm run start:server
+```
+
+`server/src/config.ts` refuses to start with a list of everything that is missing rather
+than a default for a secret. `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` are
+all three or none; without them the server runs and sends no reminders, which is a choice
+rather than a failure. The client is pointed at it with `VITE_API_URL` at build time.
+
+The server is bundled with Vite rather than run from source: Node can strip types now but
+cannot resolve `./app` or `@shared/…`, which this codebase writes everywhere because the
+browser build resolves them.
+
 ### What is still missing
 
-*   **The app does not use any of it yet.** `src/lib/sync/`, `src/lib/push/` and
-    `src/lib/keys/` are written and tested against the contract, but no page calls them and
-    no storage module asks for a per-object key: `lib/cipher.ts` still holds one active
-    cipher for the whole workspace (§13.4 of `CLAUDE.md`).
-*   **There is no migration from a local lock to an account.** A workspace locked on this
-    device has a passphrase of its own; adopting an account means resealing under the
-    account key, and nothing does that.
-*   **The server cannot bind a port.** `@hono/node-server` is not installed, because every
-    test drives the `Hono` instance directly and nothing needs a socket until there is
-    somewhere to deploy.
+*   **Only the wing has a key of its own.** Adoption puts the workspace on one key and
+    `lib/cipher.ts` now holds a set, so a shared course opens beside your own notes — but
+    nothing yet mints a key *per course or per note*, so what can actually be shared is a
+    whole wing. The machinery below it is built and tested (`src/lib/keys/`); what is
+    missing is the UI that picks a thing and the storage change that seals its rows under
+    its own key.
+*   **Sharing has no screen.** `share`, `revoke`, the shares list and rotation are all
+    reachable over the API and none of them is reachable from the app.
+*   **Sync is a button, not a background job.** "Sync now" in settings runs a round. There
+    is no periodic sync, no sync on change, and no conflict display beyond last-write-wins.
+*   **Reminders have no toggle.** `enablePush`/`disablePush` exist on the account hook and
+    no card calls them, because turning them on needs a VAPID public key the app has no
+    way to be told yet.
 
 ## What it costs, stated plainly
 

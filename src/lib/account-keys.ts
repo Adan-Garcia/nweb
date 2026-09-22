@@ -150,9 +150,14 @@ export async function createAccountKeys(
     "wrapKey",
     "unwrapKey",
   ]);
+  // `wrapKey`/`unwrapKey` as well as `encrypt`/`decrypt`: a grant is a key sealed under
+  // this pair, and `openKeyGraph` unwraps it as a key rather than decrypting it as bytes.
+  // Without the usage the unwrap throws, and nothing anyone shares would ever open.
   const identity = await crypto.subtle.generateKey(IDENTITY_ALGORITHM, true, [
     "encrypt",
     "decrypt",
+    "wrapKey",
+    "unwrapKey",
   ]);
 
   const publicKey = bytesToBase64(
@@ -197,7 +202,7 @@ export async function openAccountKeys(
       material.sealedPrivateKey,
       accountKey,
       { name: "RSA-OAEP", hash: "SHA-256" },
-      ["decrypt"],
+      ["decrypt", "unwrapKey"],
     );
 
     return { accountKey, privateKey, publicKey: material.publicKey };

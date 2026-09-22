@@ -82,11 +82,14 @@ afterEach(() => {
 });
 
 describe("SettingsPage", () => {
-  it("says plainly that there is no account and no server", () => {
+  it("says plainly that this build has no server to sign in to", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByText(/There is no account yet/)).toBeInTheDocument();
+    // No `VITE_API_URL` is compiled into a test build, which is the same state a local
+    // build is in: the account card offers nothing and says why rather than going quiet.
+    expect(screen.getByText(/no server configured/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create an account" })).not.toBeInTheDocument();
   });
 
   it("downloads a dated backup of what is stored", async () => {

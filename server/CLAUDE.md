@@ -84,9 +84,20 @@ fall back to a default for a secret. `[REQUIRED]`
 | `SERVER_SECRET` | Decoy KDF parameters derive from it, so it must outlive a restart or the decoys change and become the tell they exist to avoid. |
 | `ALLOWED_ORIGINS` | Comma-separated, for CORS. |
 
-## 6. Not built yet
+## 6. Running it
 
-`@hono/node-server` is needed to bind a port; the app is a `Hono` instance and every test
-drives it directly, so nothing depends on it until there is somewhere to deploy. Phases 1
-to 4 of `BACKEND.md` — accounts, sync, reminders and sharing — are written and tested;
-what is left is listed at the end of that file.
+`main.ts` is the composition root and the only file that reaches for the environment, a
+socket or a real Postgres. It is excluded from coverage for exactly that reason, and is
+kept thin enough to read in one go; everything it wires together is tested without any of
+the three.
+
+*   `npm run build:server` bundles it with Vite, because Node can strip types but cannot
+    resolve `./app` or `@shared/…`. `npm run start:server` runs the bundle.
+*   `web-push` is CommonJS, so it is used through its namespace (`webpush.sendNotification`).
+    A named import works from source and fails in the bundle. `[REQUIRED]`
+*   The reminder loop is a **chained timeout, never an interval** `[REQUIRED]`: a round that
+    outlasts its period must not have a second one started behind it, or the same reminder
+    goes out twice.
+
+Phases 1 to 4 of `BACKEND.md` — accounts, sync, reminders and sharing — are written and
+tested; what is left is listed at the end of that file.
