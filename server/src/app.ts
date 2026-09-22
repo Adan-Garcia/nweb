@@ -5,7 +5,12 @@ import {
   registerRequestSchema,
   sessionRequestSchema,
 } from "@shared/account-contract";
-import { MEDIA_MAX_BYTES, mediaMetaSchema, syncRequestSchema } from "@shared/sync-contract";
+import {
+  MEDIA_MAX_BYTES,
+  mediaMetaSchema,
+  pushSubscriptionSchema,
+  syncRequestSchema,
+} from "@shared/sync-contract";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
@@ -20,6 +25,7 @@ import {
 } from "./accounts";
 import type { Sql } from "./db";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
+import { forgetSubscription, saveSubscription } from "./reminders";
 import { getMedia, listMedia, putMedia, sync } from "./sync";
 import { bearerToken } from "./tokens";
 
@@ -225,6 +231,44 @@ export function createApp({ sql, serverSecret, allowedOrigins, limiter }: AppOpt
         "x-media-encryption": stored.meta.encryption,
       },
     });
+  });
+
+  app.post("/v1/push/subscribe", async (context) => {
+    const session = await authenticate(context.req.header("authorization"));
+
+    if (!session?.user) {
+      return fail("unauthorized");
+    }
+
+    const parsed = pushSubscriptionSchema.safeParse(await context.req.json().catch(() => null));
+
+    if (!parsed.success) {
+      return fail("invalid_request");
+    }
+
+    await saveSubscription(sql, session.user.id, parsed.data);
+
+    return new Response(null, { status: 204 });
+  });
+
+  app.delete("/v1/push/subscribe", async (context) => {
+    const session = await authenticate(context.req.header("authorization"));
+
+    if (!session?.user) {
+      return fail("unauthorized");
+    }
+
+    const parsed = pushSubscriptionSchema
+      .pick({ endpoint: true })
+      .safeParse(await context.req.json().catch(() => null));
+
+    if (!parsed.success) {
+      return fail("invalid_request");
+    }
+
+    await forgetSubscription(sql, session.user.id, parsed.data.endpoint);
+
+    return new Response(null, { status: 204 });
   });
 
   app.delete("/v1/auth/session", async (context) => {

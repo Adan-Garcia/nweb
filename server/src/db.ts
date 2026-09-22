@@ -62,6 +62,16 @@ export const SCHEMA_STATEMENTS = [
   /* What the reminder sweep reads, and the only index that is about meaning. */
   `create index if not exists rows_due_idx on rows (due_date)
      where due_date is not null and deleted_at is null`,
+  `create table if not exists push_subscriptions (
+     user_id uuid not null references users(id) on delete cascade,
+     endpoint text not null,
+     p256dh text not null,
+     auth text not null,
+     created_at timestamptz not null default now(),
+     primary key (user_id, endpoint)
+   )`,
+  /* When this row was last spoken about, so a reminder is sent once and not every sweep. */
+  `alter table rows add column if not exists reminded_at bigint`,
   `create table if not exists media (
      user_id uuid not null references users(id) on delete cascade,
      id text not null,

@@ -115,3 +115,53 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(networkFirst(request));
 });
+
+/*
+ * A reminder arriving while the app is closed.
+ *
+ * The payload says how many things are due and when, and nothing about what: the server
+ * that composed it holds ciphertext and no key. Reading a title here is not possible
+ * either — this worker has no access to the page's key, and none at all while the
+ * workspace is locked — so the notification says what is true and the app fills in the
+ * rest when it is opened.
+ */
+self.addEventListener("push", (event) => {
+  let due = { count: 1, dueAt: Date.now() };
+
+  try {
+    due = { ...due, ...(event.data ? event.data.json() : {}) };
+  } catch {
+    // A payload from something that is not this server. The generic text still applies.
+  }
+
+  const at = new Date(due.dueAt).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const body =
+    due.count === 1 ? `Something is due at ${at}.` : `${due.count} things are due at ${at}.`;
+
+  event.waitUntil(
+    self.registration.showNotification("Cuervo Planner", {
+      body,
+      tag: "cuervo-due",
+      data: { url: "/calendar" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const url = event.notification.data?.url ?? "/";
+
+  // Focus a tab that is already open before opening another: someone with the app up does
+  // not want a second copy of it.
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const open = clients.find((client) => new URL(client.url).pathname === url);
+
+      return open ? open.focus() : self.clients.openWindow(url);
+    }),
+  );
+});

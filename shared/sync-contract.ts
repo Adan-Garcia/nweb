@@ -99,3 +99,20 @@ export type MediaMeta = z.infer<typeof mediaMetaSchema>;
 export const mediaListSchema = z.object({
   media: z.array(mediaMetaSchema),
 });
+
+/**
+ * A device asking to be told when something is due.
+ *
+ * The subscription is the browser's own: an endpoint at a push service and the two keys
+ * that service needs to encrypt to it. The server keeps it and nothing else — it cannot
+ * say what is due, only that something is (see `BACKEND.md`, "what it costs").
+ */
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.url(),
+  keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
+});
+
+export type PushSubscription = z.infer<typeof pushSubscriptionSchema>;
+
+/** How close a task has to be before it is worth saying anything. */
+export const REMINDER_WINDOW_MS = 15 * 60 * 1000;
