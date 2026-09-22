@@ -1,41 +1,13 @@
+import { type KdfParams } from "@shared/kdf-params";
 import { argon2id } from "hash-wasm";
-import { z } from "zod";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
 
 /**
- * How a passphrase becomes a key.
- *
- * The parameters travel with whatever they protect — a backup envelope, the workspace lock
- * record — rather than living as constants this module happens to hold today. Raising a
- * cost or moving to a different KDF is then a new value in new rows and never a migration:
- * anything written earlier still says how to open itself.
+ * Turning a passphrase into key material. The parameters this reads travel with whatever
+ * they protect and are defined in `@shared/kdf-params`, because a server hands them back
+ * to a device that has never seen this workspace.
  */
-export const pbkdf2ParamsSchema = z.object({
-  name: z.literal("PBKDF2"),
-  hash: z.literal("SHA-256"),
-  iterations: z.number().int().positive(),
-  salt: z.string(),
-});
-
-export const argon2idParamsSchema = z.object({
-  name: z.literal("Argon2id"),
-  /** KiB the hash has to fill. Memory is what costs an attacker with GPUs their advantage. */
-  memorySize: z.number().int().positive(),
-  iterations: z.number().int().positive(),
-  parallelism: z.number().int().positive(),
-  salt: z.string(),
-});
-
-export const kdfParamsSchema = z.discriminatedUnion("name", [
-  pbkdf2ParamsSchema,
-  argon2idParamsSchema,
-]);
-
-export type KdfParams = z.infer<typeof kdfParamsSchema>;
-
-/** OWASP's 2023 floor for PBKDF2-HMAC-SHA256. Only read now; nothing new is written with it. */
-export const PBKDF2_ITERATIONS = 600_000;
 
 /**
  * OWASP's 2023 Argon2id recommendation: 64 MiB, three passes, one lane. The memory is the
@@ -58,16 +30,19 @@ export function createKdfParams(
   return { name: "Argon2id", ...ARGON2ID_DEFAULTS, salt: bytesToBase64(salt) };
 }
 
-async function derivePbkdf2(passphrase: string, params: z.infer<typeof pbkdf2ParamsSchema>) {
+async function derivePbkdf2Bits(
+  passphrase: string,
+  params: Extract<KdfParams, { name: "PBKDF2" }>,
+) {
   const baseKey = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(passphrase),
     "PBKDF2",
     false,
-    ["deriveKey"],
+    ["deriveBits"],
   );
 
-  return crypto.subtle.deriveKey(
+  const bits = await crypto.subtle.deriveBits(
     {
       name: "PBKDF2",
       salt: base64ToBytes(params.salt),
@@ -75,18 +50,20 @@ async function derivePbkdf2(passphrase: string, params: z.infer<typeof pbkdf2Par
       hash: params.hash,
     },
     baseKey,
-    { name: "AES-GCM", length: KEY_BITS },
-    false,
-    ["encrypt", "decrypt"],
+    KEY_BITS,
   );
+
+  return new Uint8Array(bits);
 }
 
 /**
- * WebCrypto has no Argon2, so the raw bytes come from WASM and are imported as an AES key
- * afterwards. `hash-wasm` carries its own module inline, so this needs no bundler rule and
- * no fetch at runtime.
+ * WebCrypto has no Argon2, so the bytes come from WASM. `hash-wasm` carries its own module
+ * inline, so this needs no bundler rule and no fetch at runtime.
  */
-async function deriveArgon2id(passphrase: string, params: z.infer<typeof argon2idParamsSchema>) {
+async function deriveArgon2idBits(
+  passphrase: string,
+  params: Extract<KdfParams, { name: "Argon2id" }>,
+) {
   const raw = await argon2id({
     password: passphrase,
     salt: base64ToBytes(params.salt),
@@ -97,14 +74,37 @@ async function deriveArgon2id(passphrase: string, params: z.infer<typeof argon2i
     outputType: "binary",
   });
 
-  return crypto.subtle.importKey("raw", new Uint8Array(raw), "AES-GCM", false, [
-    "encrypt",
-    "decrypt",
-  ]);
+  return new Uint8Array(raw);
 }
 
-export function deriveKey(passphrase: string, params: KdfParams): Promise<CryptoKey> {
+/**
+ * The KDF's raw output, before it is turned into a key for anything in particular.
+ *
+ * An account needs this rather than a finished key: one passphrase has to yield both the
+ * proof it sends to a server and the key that unwraps its content, and those have to be
+ * derived from the same bytes without either one revealing the other (`account-keys.ts`).
+ * A workspace lock with no account goes straight to `deriveKey` and never sees them.
+ */
+export function deriveMasterBits(
+  passphrase: string,
+  params: KdfParams,
+): Promise<Uint8Array<ArrayBuffer>> {
   return params.name === "PBKDF2"
-    ? derivePbkdf2(passphrase, params)
-    : deriveArgon2id(passphrase, params);
+    ? derivePbkdf2Bits(passphrase, params)
+    : deriveArgon2idBits(passphrase, params);
+}
+
+/**
+ * The same bytes as an AES-GCM key. Imported non-extractable, so nothing downstream can
+ * read them back out — which is why this and `deriveMasterBits` are separate calls rather
+ * than one returning both.
+ */
+export async function deriveKey(passphrase: string, params: KdfParams): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    "raw",
+    await deriveMasterBits(passphrase, params),
+    "AES-GCM",
+    false,
+    ["encrypt", "decrypt"],
+  );
 }

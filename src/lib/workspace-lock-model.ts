@@ -1,6 +1,5 @@
+import { kdfParamsSchema } from "@shared/kdf-params";
 import { z } from "zod";
-
-import { kdfParamsSchema } from "./kdf";
 
 /**
  * The one row that says a workspace is locked, and how to derive its key.

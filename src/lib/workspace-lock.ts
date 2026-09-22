@@ -1,3 +1,5 @@
+import { type KdfParams } from "@shared/kdf-params";
+
 import { base64ToBytes, bytesToBase64 } from "./base64";
 import {
   type Cipher,
@@ -6,7 +8,7 @@ import {
   resetActiveCipher,
   setActiveCipher,
 } from "./cipher";
-import { deriveKey, type KdfParams } from "./kdf";
+import { deriveKey } from "./kdf";
 import { getNotesDb } from "./notes-db";
 import { readRekeyJournal } from "./rekey-journal";
 import {

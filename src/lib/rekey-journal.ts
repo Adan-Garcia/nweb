@@ -1,6 +1,6 @@
+import { kdfParamsSchema } from "@shared/kdf-params";
 import { z } from "zod";
 
-import { kdfParamsSchema } from "./kdf";
 import { getNotesDb } from "./notes-db";
 
 /**

@@ -9,6 +9,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // The wire contract, shared with the server that will read it. A plain folder and an
+      // alias rather than a workspace package: nothing is published, both sides compile
+      // from source, and there is no dependency tree to keep separate yet.
+      "@shared": fileURLToPath(new URL("./shared", import.meta.url)),
     },
   },
   test: {
@@ -28,7 +32,7 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       provider: "v8",
-      include: ["src/**/*.{ts,tsx}"],
+      include: ["src/**/*.{ts,tsx}", "shared/**/*.ts"],
       exclude: [
         "src/**/*.test.{ts,tsx}",
         "src/test/**",
