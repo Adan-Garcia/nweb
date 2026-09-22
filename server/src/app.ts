@@ -14,6 +14,8 @@ export type AppOptions = {
   serverSecret: string;
   allowedOrigins: string[];
   limiter?: RateLimiter;
+  /** Published at `/v1/push/key`. Null when this deployment sends no reminders. */
+  vapidPublicKey?: string | null;
 };
 
 /**
@@ -24,13 +26,20 @@ export type AppOptions = {
  * at the root because the paths are already absolute — splitting them was about keeping
  * each file readable, not about giving anything a prefix.
  */
-export function createApp({ sql, serverSecret, allowedOrigins, limiter }: AppOptions) {
+export function createApp({
+  sql,
+  serverSecret,
+  allowedOrigins,
+  limiter,
+  vapidPublicKey,
+}: AppOptions) {
   // Five attempts a minute per address. Enough that nobody notices a typo, far too few to
   // work through a list.
   const deps: RouteDeps = {
     sql,
     serverSecret,
     attempts: limiter ?? createRateLimiter({ limit: 5, windowMs: 60_000 }),
+    vapidPublicKey: vapidPublicKey ?? null,
   };
   const app = new Hono();
 

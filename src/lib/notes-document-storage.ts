@@ -1,5 +1,6 @@
 import { blobToDataUrl } from "./blob-utils";
-import { decryptWith, getActiveCipher } from "./cipher";
+import { decryptWith } from "./cipher";
+import { cipherForObject } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { touchNotesDirectoryEntry } from "./notes-directory-storage";
 import {
@@ -94,6 +95,17 @@ export async function loadNotesDocument(
   };
 }
 
+/**
+ * The key a note's content is sealed with is the note's own, and a document is keyed by the
+ * same id as its directory entry — so the entry's cipher marker is where to look. A document
+ * with no entry yet, or a workspace with no account, falls back to the active cipher.
+ */
+async function cipherForDocument(documentId: string) {
+  const database = await getNotesDb();
+
+  return cipherForObject((await database.get("notes-directory", documentId))?.keyId);
+}
+
 export async function saveLinearDocumentPayload({
   documentId = DEFAULT_NOTES_DOCUMENT_ID,
   compressionAlgorithm,
@@ -109,7 +121,7 @@ export async function saveLinearDocumentPayload({
   const existingDocument =
     (await database.get("notes-documents", documentId)) ?? buildEmptyDocument(documentId);
 
-  const cipher = getActiveCipher();
+  const cipher = await cipherForDocument(documentId);
   const sealed = await cipher.encrypt(compressed);
 
   await database.put("notes-documents", {
@@ -143,7 +155,7 @@ export async function saveSpatialDocumentPayload({
   // Sealed before the transaction opens, not inside it: awaiting anything that is not an
   // IndexedDB request lets the transaction auto-commit, and the puts below would then fail
   // with TransactionInactiveError in a real browser.
-  const cipher = getActiveCipher();
+  const cipher = await cipherForDocument(documentId);
   const sealed = await cipher.encrypt(compressed);
   const sealedFiles = await Promise.all(
     files.map(async (file) => ({

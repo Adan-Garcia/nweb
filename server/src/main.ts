@@ -44,6 +44,7 @@ async function main(): Promise<void> {
     sql,
     serverSecret: config.serverSecret,
     allowedOrigins: config.allowedOrigins,
+    vapidPublicKey: config.vapid?.publicKey ?? null,
   });
 
   const server = serve({ fetch: app.fetch, port: config.port }, ({ port }) =>

@@ -35,6 +35,8 @@ export type RouteDeps = {
   /** Decoy KDF parameters are derived from this, so it must outlive a restart. */
   serverSecret: string;
   attempts: RateLimiter;
+  /** Published so a device can subscribe. Null when this deployment sends no reminders. */
+  vapidPublicKey: string | null;
 };
 
 export type Caller = { token: string; user: UserRow };

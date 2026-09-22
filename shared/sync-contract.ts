@@ -114,5 +114,17 @@ export const pushSubscriptionSchema = z.object({
 
 export type PushSubscription = z.infer<typeof pushSubscriptionSchema>;
 
+/**
+ * What a device needs before it can subscribe: the server's VAPID public key.
+ *
+ * Public in the strict sense — it is what a browser encrypts a subscription to, and it is
+ * meaningless without the private half. Served rather than compiled into the app so that
+ * pointing a build at a different deployment does not mean rebuilding it. `publicKey` is
+ * null when this deployment sends no reminders, which is a choice and not a failure.
+ */
+export const pushKeySchema = z.object({ publicKey: z.string().min(1).nullable() });
+
+export type PushKey = z.infer<typeof pushKeySchema>;
+
 /** How close a task has to be before it is worth saying anything. */
 export const REMINDER_WINDOW_MS = 15 * 60 * 1000;

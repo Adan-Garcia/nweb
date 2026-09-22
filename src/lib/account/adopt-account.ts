@@ -8,13 +8,15 @@ import {
   registerCipher,
   setActiveCipher,
 } from "../cipher";
-import { createObjectKey, wrapForRecipient } from "../keys/key-graph";
+import { createObjectKey, extendKeyring, type Keyring, wrapForRecipient } from "../keys/key-graph";
+import { forgetKeyring, holdKeyring } from "../keys/object-keys";
 import { rotateRowsToKey } from "../keys/rotate-rows";
 import { readLockRecord, unlockWorkspace, writeLockHint } from "../workspace-lock";
 import {
   type AccountRecord,
   forgetAccountRecord,
   readAccountRecord,
+  updateAccountGraph,
   writeAccountRecord,
 } from "./account-record";
 import { unwrapWingKey, wrapWingKey } from "./wing-key";
@@ -114,6 +116,9 @@ export async function adoptAccount(options: AdoptAccountOptions): Promise<Adopti
     graph: newWorkspaceGraph(wing.keyId),
   });
 
+  // From here on, anything created gets a key of its own hung under the wing.
+  await adoptKeyring(wing.keyId, wing.key, record.graph);
+
   return { ok: true, record, moved };
 }
 
@@ -181,6 +186,7 @@ export async function unlockAccount(passphrase: string): Promise<SignInOutcome> 
   const cipher = createAesGcmCipher(wingKey, record.wingKeyId);
 
   setActiveCipher(cipher);
+  await adoptKeyring(record.wingKeyId, wingKey, record.graph);
 
   return { ok: true, keys, cipher };
 }
@@ -192,5 +198,24 @@ export async function unlockAccount(passphrase: string): Promise<SignInOutcome> 
  * nothing is destroyed and nothing is left readable. Signing back in opens it again.
  */
 export async function forgetAccount(): Promise<void> {
+  forgetKeyring();
   await forgetAccountRecord();
+}
+
+/**
+ * Walks the cached graph from the wing key and puts every key it yields in hand, then keeps
+ * the record in step as more are minted.
+ *
+ * Done from the cache rather than from the server on purpose: a device that has signed in
+ * once opens every note it holds with no network, including the ones under courses it made
+ * on a plane.
+ */
+async function adoptKeyring(wingKeyId: string, wingKey: CryptoKey, cached: KeyGraph) {
+  const keyring: Keyring = new Map([[wingKeyId, wingKey]]);
+
+  await extendKeyring(cached, keyring);
+
+  holdKeyring(keyring, cached, (next) => {
+    void updateAccountGraph(next);
+  });
 }

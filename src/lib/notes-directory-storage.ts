@@ -1,3 +1,4 @@
+import { cipherForObject, provisionObjectKey, wrapUnderAlso } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import type { NotesDirectoryEntry, NotesDocumentMode } from "./notes-model";
 import { openRow, openRows, sealRow } from "./sealed-text";
@@ -56,6 +57,22 @@ export async function findNotesDirectoryEntry({
 }
 
 /**
+ * Every container a note belongs to: its course, and each tag it carries.
+ *
+ * A note's key is wrapped under all of them, because a nest is a tag and either route has
+ * to be enough to reach it. That is what makes sharing a tag hand over the notes in it.
+ */
+async function containerKeyIds(branchId: string, nestIds: string[]): Promise<string[]> {
+  const database = await getNotesDb();
+  const branchKey = (await database.get("branches", branchId))?.keyId;
+  const nestKeys = await Promise.all(
+    nestIds.map(async (nestId) => (await database.get("nests", nestId))?.keyId),
+  );
+
+  return [branchKey, ...nestKeys].filter((id): id is string => Boolean(id));
+}
+
+/**
  * Creates a note with an id of its own. Ids used to be built from the path, which meant a
  * note could not be renamed or moved and two different paths could slug to one id.
  */
@@ -83,7 +100,12 @@ export async function createNotesDirectoryEntry({
     deletedAt: null,
   };
 
-  await database.put("notes-directory", await sealRow(entry, "feather"));
+  const cipher = await provisionObjectKey(
+    "feather",
+    await containerKeyIds(branchId, entry.nestIds),
+  );
+
+  await database.put("notes-directory", await sealRow(entry, "feather", cipher));
   return entry;
 }
 
@@ -115,7 +137,13 @@ export async function upsertNotesDirectoryEntry({
     deletedAt: existing?.deletedAt ?? null,
   };
 
-  await database.put("notes-directory", await sealRow(nextRecord, "feather"));
+  // An upsert may be creating or replacing: an existing row keeps the key it had, and a
+  // new one gets its own like any other note.
+  const cipher = existing?.keyId
+    ? cipherForObject(existing.keyId)
+    : await provisionObjectKey("feather", await containerKeyIds(branchId, nextRecord.nestIds));
+
+  await database.put("notes-directory", await sealRow(nextRecord, "feather", cipher));
   return nextRecord;
 }
 
@@ -138,7 +166,10 @@ export async function renameNotesDirectoryEntry(
     encryption: undefined,
   };
 
-  await database.put("notes-directory", await sealRow(next, "feather"));
+  await database.put(
+    "notes-directory",
+    await sealRow(next, "feather", cipherForObject(existing.keyId)),
+  );
   return next;
 }
 
@@ -163,6 +194,13 @@ export async function setNotesDirectoryEntryPlacement(
   };
 
   await database.put("notes-directory", next);
+
+  // Re-tagging has to hang the note's key under the tags it has just been given, or the
+  // tag would be shareable and lead nowhere.
+  for (const parentKeyId of await containerKeyIds(next.branchId, next.nestIds)) {
+    await wrapUnderAlso(next.keyId, parentKeyId);
+  }
+
   return openRow(next, "feather");
 }
 

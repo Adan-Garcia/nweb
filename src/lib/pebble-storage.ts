@@ -1,4 +1,5 @@
-import { decryptWith, getActiveCipher } from "./cipher";
+import { decryptWith } from "./cipher";
+import { cipherForObject, provisionObjectKey, wrapUnderAlso } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { type Pebble } from "./pebble-model";
 import { openRow, openRows, sealRow } from "./sealed-text";
@@ -13,6 +14,20 @@ export async function listPebbles(): Promise<Pebble[]> {
   );
 
   return live.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/**
+ * Every container this row belongs to: its course, and each tag it carries. Its key is
+ * wrapped under all of them, so sharing either one reaches it.
+ */
+async function containerKeyIds(branchId: string, nestIds: string[]): Promise<string[]> {
+  const database = await getNotesDb();
+  const branchKey = (await database.get("branches", branchId))?.keyId;
+  const nestKeys = await Promise.all(
+    nestIds.map(async (nestId) => (await database.get("nests", nestId))?.keyId),
+  );
+
+  return [branchKey, ...nestKeys].filter((id): id is string => Boolean(id));
 }
 
 /**
@@ -56,8 +71,11 @@ export async function createPebble({
   // Everything that needs the cipher happens before the transaction opens: awaiting
   // anything that is not an IndexedDB request lets the transaction auto-commit, and the
   // puts below would then fail with TransactionInactiveError in a real browser.
-  const cipher = getActiveCipher();
-  const sealedPebble = await sealRow(pebble, "name");
+  const cipher = await provisionObjectKey(
+    "pebble",
+    await containerKeyIds(branchId, pebble.nestIds),
+  );
+  const sealedPebble = await sealRow(pebble, "name", cipher);
   const sealedBlob =
     cipher.name === "none"
       ? blob
@@ -131,7 +149,12 @@ export async function updatePebble(
   const existing = await openRow(stored, "name");
   const next: Pebble = { ...existing, ...changes, updatedAt: Date.now() };
 
-  await database.put("pebbles", await sealRow(next, "name"));
+  await database.put("pebbles", await sealRow(next, "name", cipherForObject(stored.keyId)));
+
+  for (const parentKeyId of await containerKeyIds(next.branchId, next.nestIds)) {
+    await wrapUnderAlso(stored.keyId, parentKeyId);
+  }
+
   return next;
 }
 

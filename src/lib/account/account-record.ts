@@ -71,6 +71,23 @@ export async function writeAccountRecord(
 }
 
 /**
+ * Keeps the cached graph in step as keys are minted. Written straight over the record,
+ * because the graph is a cache of something the server also holds and the newest local copy
+ * is always the one to keep.
+ */
+export async function updateAccountGraph(graph: AccountRecord["graph"]): Promise<void> {
+  const existing = await readAccountRecord();
+
+  if (!existing) {
+    return;
+  }
+
+  const database = await getNotesDb();
+
+  await database.put("account", { ...existing, graph, updatedAt: Date.now() });
+}
+
+/**
  * Forgets the account without touching a note.
  *
  * The rows stay sealed under the wing key, which is only reachable through the account, so

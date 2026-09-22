@@ -5,7 +5,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getActiveCipher, resetActiveCipher } from "../cipher";
-import { createBranch, listBranches } from "../entity-storage";
+import { createBranch, createFlight, listBranches } from "../entity-storage";
 import { getNotesDb } from "../notes-db";
 import { loadNotesDocument, saveLinearDocumentPayload } from "../notes-document-storage";
 import { createWorkspaceLock } from "../workspace-passphrase";
@@ -54,6 +54,7 @@ afterEach(async () => {
   const database = await getNotesDb();
 
   for (const store of [
+    "flights",
     "notes-documents",
     "notes-media",
     "notes-directory",
@@ -178,6 +179,28 @@ describe("adopting an account", () => {
     expect(seen[0].authKey).not.toContain(PASSPHRASE);
     expect(seen[0].material.sealedAccountKey).not.toContain(PASSPHRASE);
     expect(JSON.stringify(seen[0])).not.toContain(PASSPHRASE);
+  });
+});
+
+describe("keys minted after adoption", () => {
+  it("are kept in the record, so a cold load still opens them", async () => {
+    await seedWorkspace();
+    await adoptAccount(options());
+
+    const before = (await readAccountRecord())?.graph.keys.length ?? 0;
+
+    // Anything made from now on gets a key of its own, hung under the wing.
+    const flight = await createFlight({ wingId: "wing-1", name: "Fall 2026" });
+    await createBranch({ flightId: flight.id, name: "Optics" });
+
+    const after = await readAccountRecord();
+
+    expect(after?.graph.keys.length).toBeGreaterThan(before);
+
+    // And it really opens on a cold load, from the cached graph alone.
+    resetActiveCipher();
+    expect((await unlockAccount(PASSPHRASE)).ok).toBe(true);
+    expect((await listBranches()).map((branch) => branch.name)).toContain("Optics");
   });
 });
 

@@ -4,6 +4,7 @@ import { LockScreen } from "@/components/lock-screen";
 import { RekeyResumeScreen } from "@/components/rekey-resume-screen";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { WorkspaceSidebar } from "@/components/workspace-sidebar";
+import { useBackgroundSync } from "@/hooks/use-background-sync";
 import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
 import { collectTombstonesOnce } from "@/lib/tombstones";
 
@@ -30,6 +31,9 @@ export function WorkspaceShell({ children, isDark, onToggleTheme }: WorkspaceShe
       void collectTombstonesOnce();
     }
   }, [isUsable]);
+
+  // Runs for as long as the workspace is open, and does nothing until there is a session.
+  useBackgroundSync(isUsable);
 
   // Checked before the lock screen: a half-converted workspace cannot be unlocked, only
   // finished, and offering a passphrase box that cannot work would be a dead end.

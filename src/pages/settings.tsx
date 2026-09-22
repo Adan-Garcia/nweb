@@ -1,7 +1,11 @@
 import { AccountCard } from "@/components/settings/account-card";
 import { BackupCard } from "@/components/settings/backup-card";
 import { LockCard } from "@/components/settings/lock-card";
+import { RemindersCard } from "@/components/settings/reminders-card";
+import { SharingCard } from "@/components/settings/sharing-card";
 import { useAccount } from "@/components/settings/use-account";
+import { useReminders } from "@/components/settings/use-reminders";
+import { useSharing } from "@/components/settings/use-sharing";
 import { useWorkspaceBackup } from "@/components/settings/use-workspace-backup";
 import { useWorkspaceEditor } from "@/components/settings/use-workspace-editor";
 import { WorkspaceEditorCard } from "@/components/settings/workspace-editor-card";
@@ -15,6 +19,8 @@ export function SettingsPage() {
   const lock = useWorkspaceLock();
   const editor = useWorkspaceEditor();
   const account = useAccount();
+  const reminders = useReminders(account.sessionFor);
+  const sharing = useSharing(account.sessionFor, account.record?.material.publicKey ?? null);
 
   return (
     <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
@@ -66,6 +72,25 @@ export function SettingsPage() {
             onSignIn={(passphrase) => void account.signIn(passphrase)}
             onSignOut={() => void account.signOut()}
             onSync={() => void account.sync()}
+          />
+
+          <SharingCard
+            isConnected={account.isConnected}
+            shareable={sharing.shareable}
+            shares={sharing.shares}
+            selected={sharing.selected}
+            error={sharing.error}
+            isWorking={sharing.isWorking}
+            onSelect={sharing.select}
+            onShare={(keyId, email, role) => void sharing.share(keyId, email, role)}
+            onRevoke={(keyId, email) => void sharing.revoke(keyId, email)}
+          />
+
+          <RemindersCard
+            state={reminders.state}
+            isWorking={reminders.isWorking}
+            onEnable={() => void reminders.enable()}
+            onDisable={() => void reminders.disable()}
           />
         </div>
       </div>

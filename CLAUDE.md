@@ -71,7 +71,9 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   **Workers** are constructed via `new Worker(new URL("../workers/x.ts", import.meta.url), { type: "module" })` inside a `lib/*-client.ts` file, so Vite bundles them. Move CPU-heavy work (image optimization, compression, PDF processing) off the main thread. The request/response contract lives once in `lib/media-worker-protocol.ts` (types only) and is imported by both the client and the worker; never redeclare it.
 *   **Network access goes through `src/lib/api/`.** `[REQUIRED]` `client.ts` is the only place that calls `fetch`; every response is parsed with the schema `shared/` declares, because a server is trusted no more than a file is. Components consume it through a hook. TanStack Query is **not** installed; adding it needs approval.
 *   **An account never gates reading.** `[REQUIRED]` The keys are on disk, sealed: `unlockAccount` opens the workspace from the passphrase with no network at all, and a failed session is not a failed sign-in. Anything that makes the notes unreadable when the server is unreachable is a bug.
-*   **A session token lives in memory and nowhere else.** `[REQUIRED]` Writing one to IndexedDB would leave a working credential on disk beside the ciphertext it is meant to be separate from.
+*   **A session token lives in memory and nowhere else.** `[REQUIRED]` `lib/api/session-store.ts` holds it; writing one to IndexedDB would leave a working credential on disk beside the ciphertext it is meant to be separate from.
+*   **Every shareable object gets its own key, and only with an account.** `[REQUIRED]` `lib/keys/object-keys.ts` is the one place a key is minted; a storage module asks it for the cipher to write with and never reaches for `getActiveCipher()` itself. Reads pass no cipher at all, so the keyring resolves each row by the `keyId` it carries — a list can hold rows on several keys. With no account it all falls back to the active cipher, which is what keeps a purely local workspace unchanged.
+*   **An optional callback never wraps the work.** `[REQUIRED]` Write `const x = await work(); on?.(x)`, never `on?.(await work())`: an optional call does not evaluate its arguments, so the work silently never happens when nobody is listening. This has bitten twice — the reminder sweep and the background sync.
 
 ### 2.4 State management
 *   Default to local `useState` / `useReducer`. Prefer **derived state** over duplicated state.
@@ -257,12 +259,11 @@ without a server has shipped, so what is left here is inherent or waiting on the
     same note both keep the later `updatedAt`; there is no field-level merge and no way to
     see what was dropped. That is the rule sync will need too, so it is the place to start
     when B2 lands rather than a second implementation.
-4.  **Only the wing has a key of its own.** `lib/cipher.ts` holds a keyring now, so a row
-    opens with whichever registered key sealed it, and adopting an account moves the
-    workspace onto a key rather than onto a passphrase. What nothing does yet is mint a key
-    *per course or per note*, so what can actually be shared is a whole wing. The machinery
-    below that is built and tested (`src/lib/keys/`): what is missing is the screen that
-    picks a thing and the storage change that seals its rows under that thing's key.
-5.  **Sharing and reminders have no screen.** `share`, `revoke`, the shares list, rotation
-    and the push subscribe/unsubscribe calls are all reachable and none of them is reachable
-    from the app. Sync is a button in settings; there is no periodic or on-change sync.
+4.  **A key is only ever rotated on a revoke.** `lib/keys/object-keys.ts` gives every
+    shareable object a key of its own and `rotate-key.ts` replaces one when somebody is
+    removed, but nothing rotates on a schedule: a key shared and re-shared for years is the
+    same key.
+5.  **A shared course arrives without its path.** The recipient gets the course and
+    everything in it; the term and wing above are names under keys they do not hold, so the
+    app shows a course with no home. That is the honest consequence of sharing narrowly and
+    it is not yet pretty.

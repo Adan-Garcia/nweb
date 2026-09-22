@@ -1,4 +1,5 @@
 import { currentTimeZone, parseDueTime } from "./due-time";
+import { cipherForObject, provisionObjectKey, wrapUnderAlso } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { openRow, openRows, sealRow } from "./sealed-text";
 import {
@@ -65,6 +66,20 @@ async function nextBoardOrder(status: TwigStatus) {
   return Math.max(...column.map((twig) => twig.boardOrder)) + BOARD_ORDER_STEP;
 }
 
+/**
+ * Every container this row belongs to: its course, and each tag it carries. Its key is
+ * wrapped under all of them, so sharing either one reaches it.
+ */
+async function containerKeyIds(branchId: string, nestIds: string[]): Promise<string[]> {
+  const database = await getNotesDb();
+  const branchKey = (await database.get("branches", branchId))?.keyId;
+  const nestKeys = await Promise.all(
+    nestIds.map(async (nestId) => (await database.get("nests", nestId))?.keyId),
+  );
+
+  return [branchKey, ...nestKeys].filter((id): id is string => Boolean(id));
+}
+
 export async function createTwig(draft: TwigDraft): Promise<Twig> {
   const database = await getNotesDb();
   const now = Date.now();
@@ -88,7 +103,12 @@ export async function createTwig(draft: TwigDraft): Promise<Twig> {
     deletedAt: null,
   };
 
-  await database.put("twigs", await sealRow(twig, "title"));
+  const cipher = await provisionObjectKey(
+    "twig",
+    await containerKeyIds(twig.branchId, twig.nestIds),
+  );
+
+  await database.put("twigs", await sealRow(twig, "title", cipher));
   return twig;
 }
 
@@ -115,7 +135,14 @@ export async function updateTwig(
     next.timeZone = changes.timeZone ?? next.timeZone ?? currentTimeZone();
   }
 
-  await database.put("twigs", await sealRow(next, "title"));
+  await database.put("twigs", await sealRow(next, "title", cipherForObject(stored.keyId)));
+
+  // Re-tagging hangs the task's key under whatever it now carries, or the tag would be
+  // shareable and lead nowhere.
+  for (const parentKeyId of await containerKeyIds(next.branchId, next.nestIds)) {
+    await wrapUnderAlso(stored.keyId, parentKeyId);
+  }
+
   return next;
 }
 

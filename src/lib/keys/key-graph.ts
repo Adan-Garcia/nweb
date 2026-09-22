@@ -117,6 +117,17 @@ export async function openKeyGraph(graph: KeyGraph, privateKey: CryptoKey): Prom
     }
   }
 
+  return extendKeyring(graph, keyring);
+}
+
+/**
+ * The same walk, from keys this device already holds rather than from grants.
+ *
+ * That is what an offline unlock needs: the wing key comes out of the account record, not
+ * out of a grant, and everything under it has to be derivable from the cached graph without
+ * the server having said anything. Mutates and returns the keyring it was given.
+ */
+export async function extendKeyring(graph: KeyGraph, keyring: Keyring): Promise<Keyring> {
   const byParent = new Map<string, KeyGraph["wraps"]>();
 
   for (const wrap of graph.wraps) {

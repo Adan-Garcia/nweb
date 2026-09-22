@@ -14,8 +14,13 @@ import { getMedia, listMedia, putMedia, sync } from "./sync";
  * Rows in, rows out, and the blobs that are too big to travel with them. Everything here is
  * opaque: the server orders it by `updatedAt` and counts it, and reads none of it.
  */
-export function syncRoutes({ sql }: RouteDeps) {
+export function syncRoutes({ sql, vapidPublicKey }: RouteDeps) {
   const routes = new Hono();
+
+  // No session: a VAPID public key is what a browser encrypts a subscription *to*, and it
+  // is the same key for everybody. Putting it behind a session would only mean a device
+  // could not find out whether reminders exist before signing in.
+  routes.get("/v1/push/key", () => Response.json({ publicKey: vapidPublicKey ?? null }));
 
   routes.post("/v1/sync", async (context) => {
     const caller = await callerFor(sql, context.req.header("authorization"));

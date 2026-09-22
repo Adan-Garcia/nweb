@@ -3,10 +3,12 @@ import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { readAccountRecord } from "@/lib/account/account-record";
+import { setApiSession } from "@/lib/api/session-store";
 import { cipherForRow, getActiveCipher, resetActiveCipher } from "@/lib/cipher";
 import { createBranch, listBranches } from "@/lib/entity-storage";
 import { createObjectKey, wrapForRecipient } from "@/lib/keys/key-graph";
 import { getNotesDb } from "@/lib/notes-db";
+import { resetSyncState } from "@/lib/sync/sync-service";
 import { server } from "@/test/server";
 
 import { useAccount } from "./use-account";
@@ -92,6 +94,10 @@ async function clearDatabase() {
 beforeEach(async () => {
   build.baseUrl = BASE;
   resetActiveCipher();
+  // The session and the cursor are module-level on purpose, so a suite has to put them
+  // back: a token left over from the test before would make the next one pass by accident.
+  setApiSession(null);
+  resetSyncState();
   await clearDatabase();
 });
 
@@ -271,7 +277,7 @@ describe("useAccount", () => {
       await result.current.sync();
     });
 
-    expect(result.current.lastSync).toEqual({ pushed: 0, applied: 0, media: 0 });
+    expect(result.current.lastSync).toMatchObject({ pushed: 0, applied: 0, media: 0 });
   });
 
   it("reports a server it cannot reach without losing anything local", async () => {
@@ -377,21 +383,6 @@ describe("useAccount", () => {
     expect(result.current.error).toMatch(/no server configured/i);
   });
 
-  it("will not turn reminders on or off without a session", async () => {
-    const { result } = renderHook(() => useAccount());
-
-    await waitFor(() => {
-      expect(result.current.status).toBe("none");
-    });
-
-    await act(async () => {
-      expect(await result.current.enablePush("a-vapid-key")).toBe("failed");
-      expect(await result.current.disablePush()).toBe(false);
-    });
-
-    expect(result.current.error).toMatch(/reminders cannot be turned on/);
-  });
-
   it("registers a key somebody shared, so their course opens beside your own", async () => {
     acceptingServer();
     const first = renderHook(() => useAccount());
@@ -435,28 +426,6 @@ describe("useAccount", () => {
 
     // A row sealed under their key now has a key on this device to open it with.
     expect(cipherForRow({ encryption: "aes-gcm", keyId: shared.keyId })).not.toBeNull();
-  });
-
-  it("turns reminders off through the session it holds", async () => {
-    acceptingServer();
-    server.use(
-      http.delete(`${BASE}/v1/push/subscribe`, () => new HttpResponse(null, { status: 204 })),
-    );
-
-    const { result } = renderHook(() => useAccount());
-
-    await waitFor(() => {
-      expect(result.current.status).toBe("none");
-    });
-    await act(async () => {
-      await result.current.createAccount("owner@example.com", "a long passphrase");
-    });
-
-    await act(async () => {
-      // jsdom has no service worker, so there is no subscription to forget — which is the
-      // honest answer, and not an error.
-      expect(await result.current.disablePush()).toBe(false);
-    });
   });
 
   it("changes nothing when the session cannot be opened", async () => {

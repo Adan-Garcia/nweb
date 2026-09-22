@@ -13,7 +13,7 @@ type AccountCardProps = {
   isWorking: boolean;
   isLockSet: boolean;
   error: string | null;
-  lastSync: SyncReport;
+  lastSync: SyncReport | null;
   onCreate: (email: string, passphrase: string, currentPassphrase?: string) => void;
   onSignIn: (passphrase: string) => void;
   onSignOut: () => void;

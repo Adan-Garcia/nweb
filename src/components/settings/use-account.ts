@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { AccountRecord } from "@/lib/account/account-record";
 import { readAccountRecord } from "@/lib/account/account-record";
@@ -13,11 +13,10 @@ import {
   registerAccount,
 } from "@/lib/api/account-api";
 import type { ApiSession } from "@/lib/api/client";
+import { getApiSession, setApiSession } from "@/lib/api/session-store";
 import { registerCipher } from "@/lib/cipher";
 import { cipherForKey, openKeyGraph } from "@/lib/keys/key-graph";
-import { subscribeToPush, unsubscribeFromPush } from "@/lib/push/subscribe";
-import { EMPTY_SYNC_STATE, type SyncState, syncUntilSettled } from "@/lib/sync/run-sync";
-import { syncMedia } from "@/lib/sync/sync-media";
+import { resetSyncState, runSyncRound, type SyncReport } from "@/lib/sync/sync-service";
 
 /**
  * The account, as the settings screen sees it.
@@ -29,22 +28,14 @@ import { syncMedia } from "@/lib/sync/sync-media";
  */
 export type AccountStatus = "loading" | "none" | "locked" | "ready";
 
-export type SyncReport = { pushed: number; applied: number; media: number } | null;
+export type { SyncReport } from "@/lib/sync/sync-service";
 
 export function useAccount() {
   const [record, setRecord] = useState<AccountRecord | null>(null);
   const [status, setStatus] = useState<AccountStatus>("loading");
   const [error, setError] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
-  const [lastSync, setLastSync] = useState<SyncReport>(null);
-
-  /**
-   * The session token and the sync cursor live in memory and nowhere else. A token is a
-   * credential: writing it to IndexedDB would leave a working one on disk beside the
-   * ciphertext it is supposed to be separate from.
-   */
-  const tokenRef = useRef<string | null>(null);
-  const syncStateRef = useRef<SyncState>(EMPTY_SYNC_STATE);
+  const [lastSync, setLastSync] = useState<SyncReport | null>(null);
 
   const baseUrl = apiBaseUrl();
 
@@ -59,8 +50,14 @@ export function useAccount() {
     void refresh();
   }, [refresh]);
 
+  /**
+   * The session lives in `session-store`, not in this hook: a background sync loop needs it
+   * too, and a token held in a component would be gone the moment the settings page is.
+   * Without one, a base URL alone is still a session — enough to ask what this deployment
+   * offers, and not enough to reach anything behind a sign-in.
+   */
   const sessionFor = useCallback(
-    (): ApiSession | null => (baseUrl ? { baseUrl, token: tokenRef.current ?? undefined } : null),
+    (): ApiSession | null => getApiSession() ?? (baseUrl ? { baseUrl } : null),
     [baseUrl],
   );
 
@@ -100,7 +97,7 @@ export function useAccount() {
               return false;
             }
 
-            tokenRef.current = session.value.token;
+            setApiSession({ baseUrl, token: session.value.token });
 
             // The wing key is recorded before a row moves, so a rewrite that dies partway
             // leaves rows that are still openable by an account that exists.
@@ -164,7 +161,7 @@ export function useAccount() {
           // A failed session is not a failed sign-in: the notes are already open, and the
           // only thing missing is the part that needs a network.
           if (session.ok) {
-            tokenRef.current = session.value.token;
+            setApiSession({ baseUrl, token: session.value.token });
             await adoptGraph({ baseUrl, token: session.value.token }, opened.keys.privateKey);
           }
         }
@@ -184,8 +181,8 @@ export function useAccount() {
       await endSession(session);
     }
 
-    tokenRef.current = null;
-    syncStateRef.current = EMPTY_SYNC_STATE;
+    setApiSession(null);
+    resetSyncState();
     await forgetAccount();
     await refresh();
   }, [refresh, sessionFor]);
@@ -203,47 +200,19 @@ export function useAccount() {
     setError(null);
 
     try {
-      const result = await syncUntilSettled(session, syncStateRef.current);
+      const report = await runSyncRound();
 
-      if (!result) {
+      if (!report) {
         setError("Could not reach the server. Nothing local was changed.");
         return false;
       }
 
-      syncStateRef.current = result.state;
-
-      const media = await syncMedia(session);
-
-      setLastSync({
-        pushed: result.outcome.pushed,
-        applied: result.outcome.applied,
-        media: (media?.uploaded ?? 0) + (media?.downloaded ?? 0),
-      });
+      setLastSync(report);
 
       return true;
     } finally {
       setIsWorking(false);
     }
-  }, [sessionFor]);
-
-  const enablePush = useCallback(
-    async (vapidPublicKey: string) => {
-      const session = sessionFor();
-
-      if (!session?.token) {
-        setError("Not connected to the server, so reminders cannot be turned on.");
-        return "failed" as const;
-      }
-
-      return subscribeToPush(session, vapidPublicKey);
-    },
-    [sessionFor],
-  );
-
-  const disablePush = useCallback(async () => {
-    const session = sessionFor();
-
-    return session?.token ? unsubscribeFromPush(session) : false;
   }, [sessionFor]);
 
   return {
@@ -252,14 +221,15 @@ export function useAccount() {
     error,
     isWorking,
     lastSync,
+    setLastSync,
     hasServer: Boolean(baseUrl),
     isConnected: Boolean(record) && status === "ready",
     createAccount,
     signIn,
     signOut,
     sync,
-    enablePush,
-    disablePush,
+    /** The session as it stands, for anything that needs one — reminders, sharing. */
+    sessionFor,
     refresh,
   };
 }

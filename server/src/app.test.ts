@@ -376,6 +376,31 @@ describe("requests that are not requests", () => {
   });
 });
 
+describe("the push key", () => {
+  it("is served to anybody, because that is what a public key is for", async () => {
+    app = createApp({
+      sql: database,
+      serverSecret: SERVER_SECRET,
+      allowedOrigins: [],
+      vapidPublicKey: "a-vapid-public-key",
+    });
+
+    const response = await app.request("/v1/push/key");
+
+    // No session: it is the same key for everybody, and putting it behind a sign-in would
+    // only mean a device could not find out whether reminders exist before signing in.
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ publicKey: "a-vapid-public-key" });
+  });
+
+  it("is null when this deployment sends no reminders", async () => {
+    const response = await app.request("/v1/push/key");
+
+    // A choice, not a failure: the app offers nothing rather than a switch that cannot work.
+    expect(await response.json()).toEqual({ publicKey: null });
+  });
+});
+
 describe("cross-origin requests", () => {
   it("are answered for an allowed origin and not for another", async () => {
     const allowed = await app.request("/v1/auth/prelogin", {

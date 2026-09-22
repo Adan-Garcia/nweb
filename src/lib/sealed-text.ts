@@ -93,11 +93,15 @@ export async function sealRow<Key extends string, Row extends Record<Key, string
  * The inverse. Rows leave a storage module in plaintext and with no marker on them, so
  * that a caller which writes one back — a tombstone, a restore — stores a readable name
  * that says it is readable, rather than plaintext labelled as ciphertext.
+ *
+ * No cipher means "whichever key sealed this row", which is what an ordinary list wants:
+ * once objects have keys of their own, the rows in one list are not all on one key. Naming
+ * a cipher still means that one and no other, which is what a rekey needs.
  */
 export async function openRow<Key extends string, Row extends Record<Key, string> & SealedRow>(
   row: Row,
   key: Key,
-  cipher: Cipher = getActiveCipher(),
+  cipher?: Cipher,
 ): Promise<Row> {
   return {
     ...row,
@@ -118,7 +122,7 @@ export function sealRows<Key extends string, Row extends Record<Key, string> & S
 export function openRows<Key extends string, Row extends Record<Key, string> & SealedRow>(
   rows: Row[],
   key: Key,
-  cipher: Cipher = getActiveCipher(),
+  cipher?: Cipher,
 ): Promise<Row[]> {
   return Promise.all(rows.map((row) => openRow(row, key, cipher)));
 }

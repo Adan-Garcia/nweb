@@ -126,7 +126,7 @@ describe("AccountCard", () => {
     setup({
       status: "ready",
       email: "owner@example.com",
-      lastSync: { pushed: 3, applied: 2, media: 1 },
+      lastSync: { pushed: 3, applied: 2, media: 1, at: Date.now() },
     });
 
     expect(screen.getByText(/Sent 3, received 2, and 1 file\./)).toBeInTheDocument();
@@ -136,7 +136,7 @@ describe("AccountCard", () => {
     setup({
       status: "ready",
       email: "owner@example.com",
-      lastSync: { pushed: 0, applied: 0, media: 2 },
+      lastSync: { pushed: 0, applied: 0, media: 2, at: Date.now() },
     });
 
     expect(screen.getByText(/and 2 files\./)).toBeInTheDocument();

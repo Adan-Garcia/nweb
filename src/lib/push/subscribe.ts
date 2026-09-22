@@ -36,6 +36,26 @@ export function decodeVapidKey(base64Url: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
+/**
+ * Whether this browser already holds a subscription, without asking for permission.
+ *
+ * "unsupported" is distinct from "none" on purpose: a browser that cannot do push should be
+ * told so, not offered a switch that will never work.
+ */
+export async function currentPushSubscription(): Promise<"unsupported" | boolean> {
+  if (!isSupported()) {
+    return "unsupported";
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+
+    return Boolean(await registration.pushManager.getSubscription());
+  } catch {
+    return false;
+  }
+}
+
 export async function subscribeToPush(
   session: ApiSession,
   vapidPublicKey: string,

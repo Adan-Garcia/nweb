@@ -226,21 +226,34 @@ The server is bundled with Vite rather than run from source: Node can strip type
 cannot resolve `./app` or `@shared/…`, which this codebase writes everywhere because the
 browser build resolves them.
 
+### Keys, as built
+
+Every object that can be shared on its own gets a key of its own, minted by
+`lib/keys/object-keys.ts` when the thing is created and wrapped under every container it
+sits in — a note tagged twice is wrapped three times, under its course and under each tag,
+because a nest is a tag and either route has to reach it.
+
+The key an object's rows are sealed under is recorded as the cipher marker the row already
+carried. There is no second table saying which key belongs to what: the row says it, which
+is also what a recipient reads. Reads resolve through the keyring by that marker, so one
+list can hold rows on several keys — your own course beside one somebody shared.
+
+**Without an account there are no object keys at all.** A local workspace has one key, or
+none, and nothing to hang a graph on; every function there falls back to the active cipher
+and the app behaves exactly as it did before. Sharing needs an account, so keys that exist
+to make sharing possible need one too.
+
 ### What is still missing
 
-*   **Only the wing has a key of its own.** Adoption puts the workspace on one key and
-    `lib/cipher.ts` now holds a set, so a shared course opens beside your own notes — but
-    nothing yet mints a key *per course or per note*, so what can actually be shared is a
-    whole wing. The machinery below it is built and tested (`src/lib/keys/`); what is
-    missing is the UI that picks a thing and the storage change that seals its rows under
-    its own key.
-*   **Sharing has no screen.** `share`, `revoke`, the shares list and rotation are all
-    reachable over the API and none of them is reachable from the app.
-*   **Sync is a button, not a background job.** "Sync now" in settings runs a round. There
-    is no periodic sync, no sync on change, and no conflict display beyond last-write-wins.
-*   **Reminders have no toggle.** `enablePush`/`disablePush` exist on the account hook and
-    no card calls them, because turning them on needs a VAPID public key the app has no
-    way to be told yet.
+*   **Nothing rotates on a schedule.** Revoking rotates the key it was asked about, and
+    only that one. A key shared and re-shared for years is the same key.
+*   **A shared course arrives without its path.** A recipient gets the course and everything
+    in it; the term and wing above it are names under keys they do not hold. The app shows
+    it as a course with no home, which is honest and is not yet pretty.
+*   **Sync is last-write-wins and says nothing about it.** Two devices that changed the same
+    note both keep the later `updatedAt`, and there is no way to see what was dropped.
+*   **Paid tiers.** Not started, and needs billing infrastructure this repository has none
+    of.
 
 ## What it costs, stated plainly
 
