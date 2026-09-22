@@ -8,6 +8,7 @@ function setup(overrides: Partial<Parameters<typeof BackupCard>[0]> = {}) {
   const props = {
     status: { kind: "idle" } as const,
     needsPassphrase: false,
+    isLockSet: false,
     restoreMode: "replace" as const,
     onChooseRestoreMode: vi.fn(),
     onExport: vi.fn(),
@@ -53,6 +54,20 @@ describe("BackupCard", () => {
 
     expect(screen.queryByLabelText("Passphrase for this backup")).not.toBeInTheDocument();
     expect(onExport).not.toHaveBeenCalled();
+  });
+
+  it("says a plain download is not encrypted", () => {
+    setup();
+
+    expect(screen.getByText(/A plain download is not encrypted\./)).toBeVisible();
+  });
+
+  it("says it louder when the workspace has a passphrase the file will not carry", () => {
+    setup({ isLockSet: true });
+
+    expect(
+      screen.getByText(/writes every note, title and file to disk in the clear/),
+    ).toBeVisible();
   });
 
   it("offers to replace or to merge, and says what each does to what is here", async () => {

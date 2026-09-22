@@ -46,8 +46,8 @@ export function useWorkspaceBackup() {
       );
       setStatus({
         kind: "done",
-        message: `Saved ${backup.notes.directory.length} notes and ${backup.twigs.length} tasks${
-          isEncrypted ? ", encrypted" : ""
+        message: `Saved ${backup.notes.directory.length} notes and ${backup.twigs.length} tasks, ${
+          isEncrypted ? "encrypted" : "unencrypted"
         }.`,
       });
     } catch {

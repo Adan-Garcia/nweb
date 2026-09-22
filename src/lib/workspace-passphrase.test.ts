@@ -139,6 +139,29 @@ describe("the journal", () => {
     expect(await getWorkspaceLockState()).toBe("interrupted");
   });
 
+  it("refuses a change or a removal over an unfinished one too, not just a new lock", async () => {
+    await seed(1);
+    await createWorkspaceLock(FIRST);
+    await writeRekeyJournal({
+      id: REKEY_JOURNAL_ID,
+      source: null,
+      target: null,
+      store: "notes-documents",
+      lastKey: null,
+      done: 0,
+      total: 1,
+      startedAt: 1,
+    });
+
+    // Either one would overwrite the journal, losing the record of the key half the rows
+    // are under. The shell hides these behind the resume screen; the library says no too.
+    await expect(changeWorkspacePassphrase(FIRST, SECOND)).rejects.toThrow(
+      /has to be finished first/,
+    );
+    await expect(removeWorkspaceLock(FIRST)).rejects.toThrow(/has to be finished first/);
+    expect(await readRekeyJournal()).not.toBeNull();
+  });
+
   it("refuses to start a second rekey over an unfinished one", async () => {
     await writeRekeyJournal({
       id: REKEY_JOURNAL_ID,

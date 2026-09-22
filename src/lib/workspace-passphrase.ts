@@ -70,7 +70,21 @@ async function finishRekey(target: RekeySide, createdAt: number) {
   await clearRekeyJournal();
 }
 
+/**
+ * A second rekey started over an unfinished one would overwrite its journal, and with it
+ * the only record of the key half the rows are under. The shell does not offer the chance
+ * — an interrupted workspace shows the resume screen instead of the settings page — but
+ * the state that cannot be recovered from is not one to leave guarded only by a screen.
+ */
+async function refuseIfUnfinished() {
+  if (await readRekeyJournal()) {
+    throw new Error("A passphrase change was interrupted and has to be finished first.");
+  }
+}
+
 async function runRekey({ source, target, from, to, createdAt, onProgress }: RekeyRun) {
+  await refuseIfUnfinished();
+
   const journal: RekeyJournal = {
     id: REKEY_JOURNAL_ID,
     source,
@@ -99,10 +113,6 @@ export async function createWorkspaceLock(
   passphrase: string,
   onProgress?: (progress: RekeyProgress) => void,
 ): Promise<void> {
-  if (await readRekeyJournal()) {
-    throw new Error("A passphrase change was interrupted and has to be finished first.");
-  }
-
   if (await isWorkspaceLockSet()) {
     throw new Error("This workspace already has a passphrase.");
   }

@@ -41,6 +41,7 @@ export function SettingsPage() {
           <BackupCard
             status={backup.status}
             needsPassphrase={backup.needsPassphrase}
+            isLockSet={lock.state !== "unset"}
             restoreMode={backup.restoreMode}
             onChooseRestoreMode={backup.chooseRestoreMode}
             onExport={(passphrase) => void backup.exportWorkspace(passphrase)}
