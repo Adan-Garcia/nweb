@@ -39,14 +39,20 @@ a workspace nobody opens never sweeps its tombstones, and a first visit closed b
 browser goes idle leaves routes that will not open offline. Neither has a fix that does
 not need a server or a background process.
 
+An earlier plan wanted a Tauri wrapper, for native performance and for WebCrypto. The PWA
+has WebCrypto and installs, so the reason has gone; it is not listed as a gap because
+nothing is missing without it.
+
 ---
 
 # Part B. Needs a backend
 
 None of these can be true without a server, because each one involves identity, a second
 device, a second person, or money. In dependency order; each depends on the one before.
-`CLAUDE.md` section 2.3 says how: a dedicated `src/lib/api/` service module, Zod-validated
-responses, and approval before adding a data-fetching library.
+**`BACKEND.md` is the plan for all of it** — the key model, the schema, the endpoints and
+what the design costs. `CLAUDE.md` §2.3 says how the client half attaches: a dedicated
+`src/lib/api/` service module, Zod-validated responses, and approval before adding a
+data-fetching library.
 
 ## B1. Accounts and identity
 
@@ -67,8 +73,8 @@ passphrase on this browser, with no recovery.
 | --- | --- | --- |
 | Fast syncing across all devices | `landing-benefits.tsx` (marked Coming soon) | **Absent.** |
 | "Your data will sync once you're back online" | `landing-benefits.tsx` | **Absent.** |
-| Real-time sync, Supabase, optimistic concurrency | `documentation-content.ts`, `Todo.md` section 2 | **Absent.** |
-| Encrypted sync (zero-knowledge envelope) | `Todo.md` section 3 | The client half is done. Every row's content and name is sealed before it is stored, and each one records which cipher wrote it, so a server could hold exactly these rows and read none of them. The server storing them is what is missing. |
+| Real-time sync, optimistic concurrency | `documentation-content.ts` | **Absent.** `BACKEND.md` has the protocol: a server-assigned sequence, last write wins on the client. |
+| Encrypted sync (zero-knowledge envelope) | `BACKEND.md` | The client half is done. Every row's content and name is sealed before it is stored, and each one records which cipher wrote it, so a server could hold exactly these rows and read none of them. The server storing them is what is missing. |
 
 **The prerequisites are already met:** every record has a UUID, `updatedAt` and a
 `deletedAt` tombstone, which is what makes a merge and a delete safe — and its dates are
@@ -84,7 +90,7 @@ backup, not sync, and the site should not call it sync.
 | Share notes and homework | `landing-benefits.tsx` (Coming soon), `unlogged.tsx` | **Absent.** |
 | Invite Your Flock: members, permissions, real-time collaboration | `onboarding-steps.ts` | **Absent.** The step is text only. |
 | A user belongs to many wings but owns exactly one | `Heirarchy.md`, `documentation-content.ts` | **Half.** Several local wings work, and can now be renamed and deleted. Membership and ownership need users. |
-| Key exchange, RLS, revocation, key rotation | `documentation-content.ts`, `Todo.md` section 4 | **Absent.** Needs a server to hold public keys and enforce access. A shared workspace also needs a key per wing rather than one per browser, which the cipher seam allows but does not yet do. |
+| Key exchange, RLS, revocation, key rotation | `documentation-content.ts`, `BACKEND.md` | **Absent.** Needs a server to hold public keys and enforce access. Sharing is meant to work at any level of the hierarchy — a wing, a course, a tag or one note — which needs a key per object wrapped under the containers above it, not the single key per browser the cipher seam holds today. |
 
 ## B4. Paid tiers
 
