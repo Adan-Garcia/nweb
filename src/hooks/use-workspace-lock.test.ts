@@ -202,6 +202,7 @@ describe("useWorkspaceLock", () => {
       source: null,
       target: {
         kdf: { name: "Argon2id", memorySize: 1024, iterations: 1, parallelism: 1, salt: "AAAA" },
+        keyId: "target-key",
         verifier: "AAAA",
       },
       store: "notes-documents",
@@ -229,6 +230,7 @@ describe("useWorkspaceLock", () => {
       source: null,
       target: {
         kdf: { name: "Argon2id", memorySize: 1024, iterations: 1, parallelism: 1, salt: "AAAA" },
+        keyId: "target-key",
         verifier: "AAAA",
       },
       store: "notes-documents",
@@ -273,7 +275,7 @@ describe("useWorkspaceLock", () => {
     const record = await database.get("workspace-keys", "workspace");
     await writeRekeyJournal({
       id: REKEY_JOURNAL_ID,
-      source: { kdf: record!.kdf, verifier: record!.verifier },
+      source: { kdf: record!.kdf, keyId: record!.keyId ?? "", verifier: record!.verifier },
       target: null,
       store: "notes-documents",
       lastKey: null,

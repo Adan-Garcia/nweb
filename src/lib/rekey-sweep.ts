@@ -1,4 +1,4 @@
-import type { Cipher } from "./cipher";
+import type { Cipher, CipherMarker } from "./cipher";
 import {
   REKEY_STORES,
   type RekeyJournal,
@@ -19,27 +19,14 @@ export type CipherPair = { from: Cipher; to: Cipher };
 const CHECKPOINT_EVERY = 25;
 
 /**
- * Opens a payload with the cipher the rewrite is moving away from, or reports that this
- * row has already been moved.
+ * Whether this row has already been moved to the far side of the rewrite.
  *
- * A resumed rekey walks rows it may have converted already, and they cannot be told apart
- * by their marker: changing a passphrase leaves both sides saying `aes-gcm`. So the answer
- * comes from trying. A row that opens with neither key is a real failure, raised as the
- * first of the two, because "the key this row names does not work" is the useful half.
+ * It is a comparison rather than an attempt because a key has an id. Before ids the only
+ * way to ask was to try both keys and see which one worked — which is ambiguous exactly
+ * when it matters, since a passphrase change leaves both sides saying `aes-gcm`.
  */
-export async function openEither<T>(
-  open: (cipher: Cipher) => Promise<T>,
-  { from, to }: CipherPair,
-): Promise<{ value: T; alreadyMoved: boolean }> {
-  try {
-    return { value: await open(from), alreadyMoved: false };
-  } catch (fromError) {
-    try {
-      return { value: await open(to), alreadyMoved: true };
-    } catch {
-      throw fromError;
-    }
-  }
+export function alreadyMoved(marker: CipherMarker, to: Cipher): boolean {
+  return (marker.keyId ?? "") === to.keyId && (marker.encryption ?? "none") === to.name;
 }
 
 /**

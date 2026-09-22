@@ -2,9 +2,9 @@ import { type Cipher, decryptWith } from "./cipher";
 import { getNotesDb } from "./notes-db";
 import { REKEY_STORES, type RekeyJournal, type RekeyStore } from "./rekey-journal";
 import {
+  alreadyMoved,
   type CipherPair,
   createRekeyCursor,
-  openEither,
   type RekeyCursor,
   type RekeyProgress,
 } from "./rekey-sweep";
@@ -42,25 +42,20 @@ async function rewriteDocuments(pair: CipherPair, cursor: RekeyCursor): Promise<
       continue;
     }
 
-    const wroteWith = record.encryption ?? "none";
-    const opened = await openEither(
-      async (cipher) => ({
-        linear: record.linearCompressed
-          ? await decryptWith(record.linearCompressed, wroteWith, cipher)
-          : null,
-        scene: record.sceneCompressed
-          ? await decryptWith(record.sceneCompressed, wroteWith, cipher)
-          : null,
-      }),
-      pair,
-    );
+    if (!alreadyMoved(record, pair.to)) {
+      const linear = record.linearCompressed
+        ? await decryptWith(record.linearCompressed, record, pair.from)
+        : null;
+      const scene = record.sceneCompressed
+        ? await decryptWith(record.sceneCompressed, record, pair.from)
+        : null;
 
-    if (!opened.alreadyMoved) {
       await database.put("notes-documents", {
         ...record,
-        linearCompressed: opened.value.linear ? await pair.to.encrypt(opened.value.linear) : null,
-        sceneCompressed: opened.value.scene ? await pair.to.encrypt(opened.value.scene) : null,
+        linearCompressed: linear ? await pair.to.encrypt(linear) : null,
+        sceneCompressed: scene ? await pair.to.encrypt(scene) : null,
         encryption: pair.to.name,
+        keyId: pair.to.keyId || undefined,
       });
       rewritten += 1;
     }
@@ -86,12 +81,9 @@ async function rewriteMedia(pair: CipherPair, cursor: RekeyCursor): Promise<numb
       continue;
     }
 
-    const wroteWith = record.encryption ?? "none";
-    const bytes = new Uint8Array(await record.blob.arrayBuffer());
-    const opened = await openEither((cipher) => decryptWith(bytes, wroteWith, cipher), pair);
-
-    if (!opened.alreadyMoved) {
-      const sealed = await pair.to.encrypt(opened.value);
+    if (!alreadyMoved(record, pair.to)) {
+      const bytes = new Uint8Array(await record.blob.arrayBuffer());
+      const sealed = await pair.to.encrypt(await decryptWith(bytes, record, pair.from));
 
       await database.put("notes-media", {
         ...record,
@@ -101,6 +93,7 @@ async function rewriteMedia(pair: CipherPair, cursor: RekeyCursor): Promise<numb
           type: pair.to.name === "none" ? record.mimeType : "",
         }),
         encryption: pair.to.name,
+        keyId: pair.to.keyId || undefined,
       });
       rewritten += 1;
     }
@@ -134,10 +127,8 @@ async function rewriteNames<Key extends string, Row extends Record<Key, string> 
       continue;
     }
 
-    const opened = await openEither((cipher) => openRow(row, field, cipher), pair);
-
-    if (!opened.alreadyMoved) {
-      await put(await sealRow(opened.value, field, pair.to));
+    if (!alreadyMoved(row, pair.to)) {
+      await put(await sealRow(await openRow(row, field, pair.from), field, pair.to));
       rewritten += 1;
     }
 

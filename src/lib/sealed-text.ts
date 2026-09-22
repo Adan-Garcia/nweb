@@ -1,8 +1,9 @@
 import { base64ToBytes, bytesToBase64 } from "./base64";
 import {
   type Cipher,
-  type CipherName,
+  type CipherMarker,
   CipherUnavailableError,
+  cipherWroteRow,
   decryptWith,
   getActiveCipher,
 } from "./cipher";
@@ -26,7 +27,7 @@ import {
  * no schema stops being a string. The row's `encryption` marker says which cipher wrote
  * it, exactly as `NotesDocumentRecord.encryption` does for content.
  */
-export type SealedRow = { encryption?: CipherName };
+export type SealedRow = CipherMarker;
 
 export async function sealText(text: string, cipher: Cipher = getActiveCipher()): Promise<string> {
   if (cipher.name === "none") {
@@ -43,20 +44,22 @@ export async function sealText(text: string, cipher: Cipher = getActiveCipher())
  */
 export async function openText(
   stored: string,
-  wroteWith: CipherName | undefined,
+  marker: CipherMarker,
   cipher: Cipher = getActiveCipher(),
 ): Promise<string> {
-  if (!wroteWith || wroteWith === "none") {
+  const wroteWith = marker.encryption ?? "none";
+
+  if (wroteWith === "none") {
     return stored;
   }
 
   // Checked before the base64 is decoded, so "this workspace is locked" is not reported as
   // "that is not valid base64" for a row some other key wrote.
-  if (cipher.name !== wroteWith) {
+  if (!cipherWroteRow(marker, cipher)) {
     throw new CipherUnavailableError(wroteWith);
   }
 
-  return new TextDecoder().decode(await decryptWith(base64ToBytes(stored), wroteWith, cipher));
+  return new TextDecoder().decode(await decryptWith(base64ToBytes(stored), marker, cipher));
 }
 
 /**
@@ -75,6 +78,7 @@ export async function sealRow<Key extends string, Row extends Record<Key, string
     // No marker on a plaintext row: "absent" is what every row written before this reads
     // as, and one spelling of "readable" is easier to reason about than two.
     encryption: cipher.name === "none" ? undefined : cipher.name,
+    keyId: cipher.keyId || undefined,
   };
 }
 
@@ -90,8 +94,9 @@ export async function openRow<Key extends string, Row extends Record<Key, string
 ): Promise<Row> {
   return {
     ...row,
-    [key]: await openText(row[key], row.encryption, cipher),
+    [key]: await openText(row[key], row, cipher),
     encryption: undefined,
+    keyId: undefined,
   };
 }
 

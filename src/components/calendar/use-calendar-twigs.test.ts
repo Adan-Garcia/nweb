@@ -145,7 +145,7 @@ describe("useCalendarTwigs", () => {
       "encrypt",
       "decrypt",
     ]);
-    setActiveCipher(createAesGcmCipher(key));
+    setActiveCipher(createAesGcmCipher(key, "test-key"));
     await createTwig({ branchId: branch.id, title: "Sealed task" });
     resetActiveCipher();
 

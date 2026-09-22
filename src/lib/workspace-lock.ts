@@ -101,8 +101,12 @@ export async function getWorkspaceLockState(): Promise<WorkspaceLockState> {
   return getActiveCipher().name === "aes-gcm" ? "unlocked" : "locked";
 }
 
-export async function cipherFor(passphrase: string, kdf: KdfParams): Promise<Cipher> {
-  return createAesGcmCipher(await deriveKey(passphrase, kdf));
+export async function cipherFor(
+  passphrase: string,
+  kdf: KdfParams,
+  keyId: string,
+): Promise<Cipher> {
+  return createAesGcmCipher(await deriveKey(passphrase, kdf), keyId);
 }
 
 /**
@@ -141,7 +145,7 @@ export async function unlockWorkspace(passphrase: string): Promise<boolean> {
   // an empty one, which Argon2id rejects outright — is a wrong passphrase like any other,
   // and the caller has nothing different to do about it.
   try {
-    const cipher = await cipherFor(passphrase, record.kdf);
+    const cipher = await cipherFor(passphrase, record.kdf, record.keyId ?? "");
 
     if (!(await opensVerifier(cipher, record.verifier))) {
       return false;

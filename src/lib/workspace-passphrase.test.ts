@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getActiveCipher, resetActiveCipher } from "./cipher";
 import { createBranch, listBranches } from "./entity-storage";
 import { getNotesDb } from "./notes-db";
-import { saveLinearDocumentPayload } from "./notes-document-storage";
+import { saveLinearDocumentPayload, saveSpatialDocumentPayload } from "./notes-document-storage";
 import { readRekeyJournal, REKEY_JOURNAL_ID, writeRekeyJournal } from "./rekey-journal";
 import { getWorkspaceLockState, unlockWorkspace } from "./workspace-lock";
 import {
@@ -41,10 +41,26 @@ async function seed(count = 3) {
     });
     await createBranch({ flightId: "flight-1", name: `Course ${index}` });
   }
+
+  // A drawing as well as text: a rekey has to move a document with a scene and no linear
+  // payload as readily as one with the reverse, and only one of those was ever seeded.
+  await saveSpatialDocumentPayload({
+    documentId: "doc-spatial",
+    compressionAlgorithm: "none",
+    compressed: new TextEncoder().encode("SECRET-SCENE"),
+    files: [],
+  });
 }
 
 /** Branches come back in key order, which is UUID order, so a name check has to sort. */
 const branchNames = async () => (await listBranches()).map((branch) => branch.name).sort();
+
+const storedScene = async (id: string) => {
+  const database = await getNotesDb();
+  const row = await database.get("notes-documents", id);
+
+  return new TextDecoder().decode(row?.sceneCompressed ?? new Uint8Array());
+};
 
 const storedText = async (id: string) => {
   const database = await getNotesDb();
@@ -214,6 +230,7 @@ describe("resumeRekey", () => {
     expect(await readRekeyJournal()).toBeNull();
     expect(await getWorkspaceLockState()).toBe("unlocked");
     expect(await storedText("doc-0")).not.toContain("SECRET-0");
+    expect(await storedScene("doc-spatial")).not.toContain("SECRET-SCENE");
     expect(await branchNames()).toEqual(["Course 0", "Course 1", "Course 2"]);
   });
 
@@ -344,5 +361,66 @@ describe("the sweep's cursor", () => {
     await database.put("branches", { ...branch, name: "not base64 at all" });
 
     await expect(changeWorkspacePassphrase(FIRST, SECOND)).rejects.toThrow();
+  });
+});
+
+describe("the key id", () => {
+  it("is stamped on every row the lock seals", async () => {
+    await seed(1);
+    await createWorkspaceLock(FIRST);
+
+    const database = await getNotesDb();
+    const record = await database.get("workspace-keys", "workspace");
+    const [branch] = await database.getAll("branches");
+    const [document] = await database.getAll("notes-documents");
+
+    expect(record?.keyId).not.toHaveLength(0);
+    expect(branch.keyId).toBe(record?.keyId);
+    expect(document.keyId).toBe(record?.keyId);
+  });
+
+  it("changes with the key, which is what tells one aes-gcm row from another", async () => {
+    await seed(1);
+    await createWorkspaceLock(FIRST);
+    const database = await getNotesDb();
+    const before = (await database.get("workspace-keys", "workspace"))?.keyId;
+
+    await changeWorkspacePassphrase(FIRST, SECOND);
+
+    const after = (await database.get("workspace-keys", "workspace"))?.keyId;
+    expect(after).not.toBe(before);
+    expect((await database.getAll("branches"))[0].keyId).toBe(after);
+  });
+
+  it("is what a resume uses to know a row has already moved", async () => {
+    await seed(30);
+    await createWorkspaceLock(FIRST);
+    await interruptAfter(() => changeWorkspacePassphrase(FIRST, SECOND), 20);
+
+    const database = await getNotesDb();
+    const target = (await readRekeyJournal())!.target!.keyId;
+    const movedBefore = (await database.getAll("notes-documents")).filter(
+      (row) => row.keyId === target,
+    ).length;
+    expect(movedBefore).toBeGreaterThan(0);
+
+    resetActiveCipher();
+    expect(await resumeRekey({ source: FIRST, target: SECOND })).toBe(true);
+
+    // Every row ends under the new key, and the ones already there were left alone rather
+    // than run through the cipher a second time.
+    const stamped = (await database.getAll("notes-documents")).every((row) => row.keyId === target);
+    expect(stamped).toBe(true);
+    expect(await branchNames()).toContain("Course 0");
+  });
+
+  it("is dropped when the lock comes off, because there is no key to name", async () => {
+    await seed(1);
+    await createWorkspaceLock(FIRST);
+    await removeWorkspaceLock(FIRST);
+
+    const database = await getNotesDb();
+    expect((await database.getAll("branches"))[0].keyId).toBeUndefined();
+    expect((await database.getAll("notes-documents"))[0].keyId).toBeUndefined();
   });
 });

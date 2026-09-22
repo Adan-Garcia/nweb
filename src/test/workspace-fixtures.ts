@@ -79,6 +79,8 @@ export function makeTwig(overrides: Partial<Twig> = {}): Twig {
     kind: "homework",
     dueDate: "2026-04-16",
     dueTime: "3:30 PM",
+    dueMinutes: 15 * 60 + 30,
+    timeZone: "America/New_York",
     status: "incomplete",
     boardOrder: 0,
     featherId: null,

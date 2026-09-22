@@ -21,6 +21,11 @@ export const workspaceLockRecordSchema = z.object({
    * apart by `name`, and nothing has to be rewritten for a lock to move between them.
    */
   kdf: kdfParamsSchema,
+  /**
+   * The id of the key this passphrase derives, stamped on every row it seals. Absent on a
+   * lock set before keys had ids, whose rows carry none either.
+   */
+  keyId: z.string().optional(),
   verifier: z.string(),
   createdAt: z.number(),
   updatedAt: z.number(),

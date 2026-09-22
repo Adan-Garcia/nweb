@@ -38,7 +38,19 @@ export const twigSchema = entityBaseSchema.extend({
   kind: z.enum(TWIG_KINDS).default("homework"),
   /** `YYYY-MM-DD`, or null for a task with no date. Only dated twigs reach the calendar. */
   dueDate: z.string().nullable().default(null),
+  /** What the user typed, and what the calendar shows. Free text: "3:30 PM". */
   dueTime: z.string().default(""),
+  /**
+   * The same time as minutes since midnight, parsed from `dueTime` on write, or null when
+   * there was nothing to parse. This is the half a server can schedule from; `dueTime` is
+   * the half a person reads. Both stay in the clear on purpose — see `sealed-text.ts`.
+   */
+  dueMinutes: z.number().int().min(0).max(1439).nullable().default(null),
+  /**
+   * The IANA zone the wall clock above is a wall clock in. Stored per twig rather than per
+   * account, because "the exam is at nine" means nine where it was set.
+   */
+  timeZone: z.string().default(""),
   status: z.enum(TWIG_STATUSES).default("incomplete"),
   /** Position inside its board column. Sparse, so a drop between two rows needs no rewrite. */
   boardOrder: z.number().default(0),

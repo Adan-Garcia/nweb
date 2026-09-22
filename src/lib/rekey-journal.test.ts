@@ -21,7 +21,7 @@ const KDF = {
 const JOURNAL: RekeyJournal = {
   id: REKEY_JOURNAL_ID,
   source: null,
-  target: { kdf: KDF, verifier: "AAAA" },
+  target: { kdf: KDF, keyId: "a-key", verifier: "AAAA" },
   store: "notes-documents",
   lastKey: null,
   done: 0,
@@ -52,7 +52,7 @@ describe("the rekey journal", () => {
     // written to.
     await database.put("workspace-rekey", {
       ...JOURNAL,
-      target: { kdf: { ...KDF, memorySize: 0 }, verifier: "AAAA" },
+      target: { kdf: { ...KDF, memorySize: 0 }, keyId: "a-key", verifier: "AAAA" },
     });
 
     await expect(readRekeyJournal()).rejects.toThrow(/not one this version can read/);
@@ -66,14 +66,17 @@ describe("passphrasesNeeded", () => {
 
   it("asks for the old one when it was being unlocked for good", () => {
     expect(
-      passphrasesNeeded({ ...JOURNAL, source: { kdf: KDF, verifier: "AAAA" }, target: null }),
+      passphrasesNeeded({
+        ...JOURNAL,
+        source: { kdf: KDF, keyId: "a-key", verifier: "AAAA" },
+        target: null,
+      }),
     ).toEqual(["source"]);
   });
 
   it("asks for both when it was moving between two, because half the rows are under each", () => {
-    expect(passphrasesNeeded({ ...JOURNAL, source: { kdf: KDF, verifier: "AAAA" } })).toEqual([
-      "source",
-      "target",
-    ]);
+    expect(
+      passphrasesNeeded({ ...JOURNAL, source: { kdf: KDF, keyId: "a-key", verifier: "AAAA" } }),
+    ).toEqual(["source", "target"]);
   });
 });

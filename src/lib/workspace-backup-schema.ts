@@ -37,6 +37,7 @@ const directoryEntrySchema = z.object({
   updatedAt: z.number(),
   deletedAt: z.number().nullable().default(null),
   encryption: cipherNameSchema.optional(),
+  keyId: z.string().optional(),
 });
 
 const sceneFileRefSchema = z.object({
@@ -54,6 +55,7 @@ const documentSchema = z.object({
   sceneFiles: z.array(sceneFileRefSchema),
   updatedAt: z.number(),
   encryption: cipherNameSchema.optional(),
+  keyId: z.string().optional(),
 });
 
 const mediaSchema = z.object({
@@ -63,6 +65,7 @@ const mediaSchema = z.object({
   created: z.number(),
   updatedAt: z.number(),
   encryption: cipherNameSchema.optional(),
+  keyId: z.string().optional(),
 });
 
 const workspaceSchema = z

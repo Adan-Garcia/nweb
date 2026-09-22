@@ -18,6 +18,8 @@ export const entityBaseSchema = z.object({
    * Only the name is affected: everything else in the row is stored as it always was.
    */
   encryption: cipherNameSchema.optional(),
+  /** Which key sealed the name. Absent on a row written before keys had ids. */
+  keyId: z.string().optional(),
 });
 
 /** Academic terms, in the order they fall inside one calendar year. */

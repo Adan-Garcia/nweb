@@ -26,7 +26,7 @@ async function aesCipher() {
     "decrypt",
   ]);
 
-  return createAesGcmCipher(key);
+  return createAesGcmCipher(key, "test-key");
 }
 
 afterEach(() => {
@@ -43,14 +43,16 @@ describe("sealText", () => {
     const sealed = await sealText("Organic Chemistry", cipher);
 
     expect(sealed).not.toBe("Organic Chemistry");
-    expect(await openText(sealed, "aes-gcm", cipher)).toBe("Organic Chemistry");
+    expect(await openText(sealed, { encryption: "aes-gcm" }, cipher)).toBe("Organic Chemistry");
   });
 
   it("round-trips a name that is not ASCII", async () => {
     const cipher = await aesCipher();
     const name = "Física — 物理 🪶";
 
-    expect(await openText(await sealText(name, cipher), "aes-gcm", cipher)).toBe(name);
+    expect(await openText(await sealText(name, cipher), { encryption: "aes-gcm" }, cipher)).toBe(
+      name,
+    );
   });
 
   it("seals the same name to different bytes each time, so the store is no lookup table", async () => {
@@ -64,8 +66,8 @@ describe("sealText", () => {
 
 describe("openText", () => {
   it("passes an unmarked name through, which is what a row written before this reads as", async () => {
-    expect(await openText("Organic Chemistry", undefined)).toBe("Organic Chemistry");
-    expect(await openText("Organic Chemistry", "none")).toBe("Organic Chemistry");
+    expect(await openText("Organic Chemistry", {})).toBe("Organic Chemistry");
+    expect(await openText("Organic Chemistry", { encryption: "none" })).toBe("Organic Chemistry");
   });
 
   it("refuses a name the active cipher did not write, rather than returning its ciphertext", async () => {
@@ -73,7 +75,7 @@ describe("openText", () => {
     const sealed = await sealText("Organic Chemistry", wrote);
 
     setActiveCipher(plaintextCipher);
-    await expect(openText(sealed, "aes-gcm")).rejects.toThrow(/not unlocked/);
+    await expect(openText(sealed, { encryption: "aes-gcm" })).rejects.toThrow(/not unlocked/);
   });
 });
 

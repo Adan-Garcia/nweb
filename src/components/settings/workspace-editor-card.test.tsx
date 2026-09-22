@@ -179,7 +179,7 @@ describe("WorkspaceEditorCard", () => {
       "encrypt",
       "decrypt",
     ]);
-    setActiveCipher(createAesGcmCipher(key));
+    setActiveCipher(createAesGcmCipher(key, "test-key"));
     await createWing("Sealed wing");
     resetActiveCipher();
 

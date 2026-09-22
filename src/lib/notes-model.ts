@@ -36,6 +36,8 @@ export type NotesDirectoryEntry = {
    * row. The timestamps beside it are never sealed — see `sealed-text.ts`.
    */
   encryption?: CipherName;
+  /** Which key, so a rotation can tell one `aes-gcm` row from another. */
+  keyId?: string;
 };
 
 export type SceneFileRef = {
@@ -65,6 +67,7 @@ export type NotesDocumentRecord = {
    * hold a mix, so turning encryption on never has to rewrite everything at once.
    */
   encryption?: CipherName;
+  keyId?: string;
 };
 
 export type NotesMediaRecord = {
@@ -78,6 +81,7 @@ export type NotesMediaRecord = {
    * `mimeType` is what it will be once opened, not what the blob itself contains.
    */
   encryption?: CipherName;
+  keyId?: string;
 };
 
 export type LoadedSceneFile = {

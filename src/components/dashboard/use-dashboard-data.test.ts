@@ -70,7 +70,7 @@ describe("useDashboardData", () => {
       "encrypt",
       "decrypt",
     ]);
-    setActiveCipher(createAesGcmCipher(key));
+    setActiveCipher(createAesGcmCipher(key, "test-key"));
     await createNotesDirectoryEntry({ branchId: branch.id, feather: "Sealed note" });
     resetActiveCipher();
 

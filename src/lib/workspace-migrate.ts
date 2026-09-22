@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { calendarEventSchema } from "./calendar-event";
+import { currentTimeZone, parseDueTime } from "./due-time";
 import {
   type Branch,
   type BranchColor,
@@ -212,6 +213,9 @@ function buildTwigs({
     kind: "homework",
     dueDate: event.date,
     dueTime: event.time,
+    // A legacy event's time was free text too, so it is parsed the same way a new one is.
+    dueMinutes: parseDueTime(event.time),
+    timeZone: currentTimeZone(),
     status: event.status,
     boardOrder: index * BOARD_ORDER_STEP,
     featherId: null,

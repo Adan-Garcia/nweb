@@ -34,7 +34,9 @@ export const REKEY_STORES = [
 export type RekeyStore = (typeof REKEY_STORES)[number];
 
 /** One side of a rekey: what to derive that key from, or null for plaintext. */
-export const rekeySideSchema = z.object({ kdf: kdfParamsSchema, verifier: z.string() }).nullable();
+export const rekeySideSchema = z
+  .object({ kdf: kdfParamsSchema, keyId: z.string(), verifier: z.string() })
+  .nullable();
 
 export const rekeyJournalSchema = z.object({
   id: z.literal(REKEY_JOURNAL_ID),

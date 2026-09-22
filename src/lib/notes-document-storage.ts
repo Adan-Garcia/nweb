@@ -19,15 +19,14 @@ export async function loadNotesDocument(
   const database = await getNotesDb();
   const storedRecord = await database.get("notes-documents", documentId);
   // Rows written before the cipher seam existed carry no marker, which means plaintext.
-  const wroteWith = storedRecord?.encryption ?? "none";
   const documentRecord = storedRecord
     ? {
         ...storedRecord,
         linearCompressed: storedRecord.linearCompressed
-          ? await decryptWith(storedRecord.linearCompressed, wroteWith)
+          ? await decryptWith(storedRecord.linearCompressed, storedRecord)
           : null,
         sceneCompressed: storedRecord.sceneCompressed
-          ? await decryptWith(storedRecord.sceneCompressed, wroteWith)
+          ? await decryptWith(storedRecord.sceneCompressed, storedRecord)
           : null,
       }
     : undefined;
@@ -56,14 +55,16 @@ export async function loadNotesDocument(
     // Only a sealed blob is read back as bytes. Leaving the plaintext path alone keeps it
     // a straight blob-to-data-URL, which is both less work and what the stored Blob can
     // always do, sealed or not.
-    const sealedWith = mediaRecord.encryption ?? "none";
     const blob =
-      sealedWith === "none"
+      (mediaRecord.encryption ?? "none") === "none"
         ? mediaRecord.blob
         : new Blob(
             [
               Uint8Array.from(
-                await decryptWith(new Uint8Array(await mediaRecord.blob.arrayBuffer()), sealedWith),
+                await decryptWith(
+                  new Uint8Array(await mediaRecord.blob.arrayBuffer()),
+                  mediaRecord,
+                ),
               ),
             ],
             { type: mediaRecord.mimeType },
@@ -117,6 +118,7 @@ export async function saveLinearDocumentPayload({
     linearCompressionAlgorithm: compressionAlgorithm,
     updatedAt: Date.now(),
     encryption: cipher.name,
+    keyId: cipher.keyId || undefined,
   });
 
   await touchNotesDirectoryEntry(documentId, createdMode);
@@ -181,6 +183,7 @@ export async function saveSpatialDocumentPayload({
       created: file.created,
       updatedAt: Date.now(),
       encryption: cipher.name,
+      keyId: cipher.keyId || undefined,
     });
 
     nextSceneFiles.push({
@@ -249,6 +252,7 @@ export async function saveSpatialDocumentPayload({
     sceneFiles: nextSceneFiles,
     updatedAt: Date.now(),
     encryption: cipher.name,
+    keyId: cipher.keyId || undefined,
   });
 
   await transaction.done;

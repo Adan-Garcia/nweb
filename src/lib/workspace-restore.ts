@@ -164,21 +164,16 @@ export async function restoreWorkspaceBackup(
 
   const documents: NotesDocumentRecord[] = await Promise.all(
     backup.notes.documents.map(async (record) => {
-      const wroteWith = record.encryption ?? "none";
-
       return {
         ...record,
         linearCompressed: record.linearCompressed
-          ? await cipher.encrypt(
-              await decryptWith(base64ToBytes(record.linearCompressed), wroteWith),
-            )
+          ? await cipher.encrypt(await decryptWith(base64ToBytes(record.linearCompressed), record))
           : null,
         sceneCompressed: record.sceneCompressed
-          ? await cipher.encrypt(
-              await decryptWith(base64ToBytes(record.sceneCompressed), wroteWith),
-            )
+          ? await cipher.encrypt(await decryptWith(base64ToBytes(record.sceneCompressed), record))
           : null,
         encryption: cipher.name,
+        keyId: cipher.keyId || undefined,
       };
     }),
   );
@@ -188,9 +183,7 @@ export async function restoreWorkspaceBackup(
       blob: new Blob(
         [
           Uint8Array.from(
-            await cipher.encrypt(
-              await decryptWith(base64ToBytes(record.data), record.encryption ?? "none"),
-            ),
+            await cipher.encrypt(await decryptWith(base64ToBytes(record.data), record)),
           ),
         ],
         { type: cipher.name === "none" ? record.mimeType : "" },
@@ -199,6 +192,7 @@ export async function restoreWorkspaceBackup(
       created: record.created,
       updatedAt: record.updatedAt,
       encryption: cipher.name,
+      keyId: cipher.keyId || undefined,
     })),
   );
 

@@ -160,9 +160,16 @@ them drift the first time one gains a field.
 
 ## Phases
 
-0.  **Client prerequisites.** A `keyId` on every row, and a due timestamp that is a
-    timestamp — `dueTime` is free text (`"3:30 PM"`) that nothing parses, and no server can
-    schedule from it. Both change what is in every row, so both are far cheaper now.
+0.  **Client prerequisites.** Done. Every sealed row carries a `keyId` beside its
+    `encryption` marker, and every twig carries `dueMinutes` and an IANA `timeZone`
+    beside the free text it was parsed from.
+
+    The time is stored as a wall clock and a zone rather than as an instant, which is a
+    change from what this document first said. A date, a wall-clock time and a zone name
+    determine an instant, but the conversion needs real timezone data and has no right
+    answer for the hour DST repeats or skips. Keeping the wall clock and converting where
+    there is a library to do it with is what iCalendar does with `DTSTART` and `TZID`, and
+    it is the server that will schedule from it.
 1.  **Accounts.** Register, session, the split passphrase, and recovery of the sealed
     private key on a second device.
 2.  **Sync.** One wing, one device, then many. Last write wins.

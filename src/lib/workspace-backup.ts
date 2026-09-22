@@ -1,5 +1,5 @@
 import { bytesToBase64 } from "./base64";
-import { type CipherName, decryptWith } from "./cipher";
+import { type CipherMarker, decryptWith } from "./cipher";
 import {
   type EncryptedEnvelope,
   isEncryptedEnvelope,
@@ -18,8 +18,8 @@ function encodeOptional(bytes: Uint8Array | null): string | null {
   return bytes ? bytesToBase64(bytes) : null;
 }
 
-async function openOptional(bytes: Uint8Array | null, wroteWith: CipherName | undefined) {
-  return bytes ? await decryptWith(bytes, wroteWith ?? "none") : null;
+async function openOptional(bytes: Uint8Array | null, marker: CipherMarker) {
+  return bytes ? await decryptWith(bytes, marker) : null;
 }
 
 /**
@@ -59,10 +59,7 @@ export async function createWorkspaceBackup(now = new Date()): Promise<Workspace
     media.map(async (record) => ({
       id: record.id,
       data: bytesToBase64(
-        await decryptWith(
-          new Uint8Array(await record.blob.arrayBuffer()),
-          record.encryption ?? "none",
-        ),
+        await decryptWith(new Uint8Array(await record.blob.arrayBuffer()), record),
       ),
       mimeType: record.mimeType,
       created: record.created,
@@ -73,13 +70,10 @@ export async function createWorkspaceBackup(now = new Date()): Promise<Workspace
   const openedDocuments = await Promise.all(
     documents.map(async (record) => ({
       ...record,
-      linearCompressed: encodeOptional(
-        await openOptional(record.linearCompressed, record.encryption),
-      ),
-      sceneCompressed: encodeOptional(
-        await openOptional(record.sceneCompressed, record.encryption),
-      ),
+      linearCompressed: encodeOptional(await openOptional(record.linearCompressed, record)),
+      sceneCompressed: encodeOptional(await openOptional(record.sceneCompressed, record)),
       encryption: undefined,
+      keyId: undefined,
     })),
   );
 

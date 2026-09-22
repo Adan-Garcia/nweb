@@ -77,6 +77,7 @@ export async function createPebble({
       created: now,
       updatedAt: now,
       encryption: cipher.name,
+      keyId: cipher.keyId || undefined,
     });
   }
 
@@ -107,13 +108,11 @@ export async function loadPebbleBlob(pebble: Pebble): Promise<Blob | null> {
     return null;
   }
 
-  const sealedWith = media.encryption ?? "none";
-
-  if (sealedWith === "none") {
+  if ((media.encryption ?? "none") === "none") {
     return media.blob;
   }
 
-  const opened = await decryptWith(new Uint8Array(await media.blob.arrayBuffer()), sealedWith);
+  const opened = await decryptWith(new Uint8Array(await media.blob.arrayBuffer()), media);
 
   return new Blob([Uint8Array.from(opened)], { type: media.mimeType });
 }

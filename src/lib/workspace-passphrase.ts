@@ -5,6 +5,7 @@ import {
   resetActiveCipher,
   setActiveCipher,
 } from "./cipher";
+import { createKeyId } from "./cipher";
 import { createKdfParams } from "./kdf";
 import { getNotesDb } from "./notes-db";
 import {
@@ -58,6 +59,7 @@ async function finishRekey(target: RekeySide, createdAt: number) {
     await database.put("workspace-keys", {
       id: WORKSPACE_LOCK_ID,
       kdf: target.kdf,
+      keyId: target.keyId,
       verifier: target.verifier,
       createdAt,
       updatedAt: Date.now(),
@@ -118,11 +120,12 @@ export async function createWorkspaceLock(
   }
 
   const kdf = createKdfParams();
-  const cipher = await cipherFor(passphrase, kdf);
+  const keyId = createKeyId();
+  const cipher = await cipherFor(passphrase, kdf, keyId);
 
   await runRekey({
     source: null,
-    target: { kdf, verifier: await verifierFor(cipher) },
+    target: { kdf, keyId, verifier: await verifierFor(cipher) },
     from: plaintextCipher,
     to: cipher,
     createdAt: Date.now(),
@@ -151,11 +154,12 @@ export async function changeWorkspacePassphrase(
   }
 
   const kdf = createKdfParams();
-  const next = await cipherFor(nextPassphrase, kdf);
+  const keyId = createKeyId();
+  const next = await cipherFor(nextPassphrase, kdf, keyId);
 
   await runRekey({
-    source: { kdf: record.kdf, verifier: record.verifier },
-    target: { kdf, verifier: await verifierFor(next) },
+    source: { kdf: record.kdf, keyId: record.keyId ?? "", verifier: record.verifier },
+    target: { kdf, keyId, verifier: await verifierFor(next) },
     from: getActiveCipher(),
     to: next,
     createdAt: record.createdAt,
@@ -181,7 +185,7 @@ export async function removeWorkspaceLock(
   }
 
   await runRekey({
-    source: { kdf: record.kdf, verifier: record.verifier },
+    source: { kdf: record.kdf, keyId: record.keyId ?? "", verifier: record.verifier },
     target: null,
     from: getActiveCipher(),
     to: plaintextCipher,
@@ -204,7 +208,7 @@ async function sideCipher(side: RekeySide, passphrase: string | undefined): Prom
   }
 
   try {
-    const cipher = await cipherFor(passphrase, side.kdf);
+    const cipher = await cipherFor(passphrase, side.kdf, side.keyId);
 
     return (await opensVerifier(cipher, side.verifier)) ? cipher : null;
   } catch {

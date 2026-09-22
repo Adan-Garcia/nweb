@@ -92,6 +92,8 @@ const TWIG = {
   kind: "essay" as const,
   dueDate: "2026-09-21",
   dueTime: "09:00",
+  dueMinutes: 540,
+  timeZone: "America/New_York",
   status: "incomplete" as const,
   boardOrder: 0,
   featherId: null,
@@ -441,7 +443,7 @@ describe("a backup and the workspace lock", () => {
       "decrypt",
     ]);
 
-    return createAesGcmCipher(key);
+    return createAesGcmCipher(key, "test-key");
   }
 
   it("writes the file in the clear, because the workspace key never leaves this browser", async () => {

@@ -19,15 +19,34 @@ export type CipherName = z.infer<typeof cipherNameSchema>;
 
 export type Cipher = {
   readonly name: CipherName;
+  /**
+   * Which key this is, so a row can say which one wrote it. Empty for plaintext.
+   *
+   * `name` says how a row was sealed and that is enough while there is one key per
+   * browser. It stops being enough the moment a key can be replaced: after a passphrase
+   * change both the old and the new say `aes-gcm`, and a device that has been handed rows
+   * from elsewhere has no way to tell which of its keys to try. An id costs a few bytes a
+   * row and is the difference between rotation being possible and not.
+   */
+  readonly keyId: string;
   encrypt: (bytes: Uint8Array) => Promise<Uint8Array>;
   decrypt: (bytes: Uint8Array) => Promise<Uint8Array>;
 };
+
+/** What a stored row says about the key that sealed it. Absent on rows older than either. */
+export type CipherMarker = { encryption?: CipherName; keyId?: string };
+
+/** A new key's id. Random rather than derived: the id is public and the key is not. */
+export function createKeyId(): string {
+  return crypto.randomUUID();
+}
 
 const IV_BYTES = 12;
 
 /** Does nothing, and says so. The default until a passphrase exists. */
 export const plaintextCipher: Cipher = {
   name: "none",
+  keyId: "",
   encrypt: (bytes) => Promise.resolve(bytes),
   decrypt: (bytes) => Promise.resolve(bytes),
 };
@@ -36,9 +55,10 @@ export const plaintextCipher: Cipher = {
  * The IV is prefixed to the ciphertext rather than stored beside it, so one `Uint8Array`
  * is still the whole payload and no row shape has to grow a column for it.
  */
-export function createAesGcmCipher(key: CryptoKey): Cipher {
+export function createAesGcmCipher(key: CryptoKey, keyId: string): Cipher {
   return {
     name: "aes-gcm",
+    keyId,
     async encrypt(bytes) {
       const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
       const sealed = await crypto.subtle.encrypt(
@@ -102,6 +122,20 @@ export class CipherUnavailableError extends Error {
 }
 
 /**
+ * Whether this cipher is the one that sealed a row.
+ *
+ * A row written before ids existed carries none, and is taken at its word: the name is all
+ * it ever recorded, and the workspace has only ever had one key at a time.
+ */
+export function cipherWroteRow(marker: CipherMarker, cipher: Cipher): boolean {
+  if ((marker.encryption ?? "none") !== cipher.name) {
+    return false;
+  }
+
+  return !marker.keyId || marker.keyId === cipher.keyId;
+}
+
+/**
  * Reads a payload back with whatever wrote it. A row written by a cipher that is not
  * active now cannot be read, and that has to be an error rather than a shrug: returning
  * the raw bytes would hand the editor ciphertext and autosave would then write it back as
@@ -109,14 +143,16 @@ export class CipherUnavailableError extends Error {
  */
 export async function decryptWith(
   bytes: Uint8Array,
-  wroteWith: CipherName,
+  marker: CipherMarker,
   cipher: Cipher = getActiveCipher(),
 ): Promise<Uint8Array> {
+  const wroteWith = marker.encryption ?? "none";
+
   if (wroteWith === "none") {
     return bytes;
   }
 
-  if (cipher.name !== wroteWith) {
+  if (!cipherWroteRow(marker, cipher)) {
     throw new CipherUnavailableError(wroteWith);
   }
 

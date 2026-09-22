@@ -33,8 +33,18 @@ const NOTES_DB_NAME = "cuervo-notes";
  * 7 added `workspace-rekey`, which holds the journal for a rekey in progress. One row,
  * present only while a passphrase is being set, changed or removed, and what makes an
  * interrupted rewrite something the next load can finish rather than a broken workspace.
+ *
+ * 8 gave a twig a due time a machine can act on: `dueMinutes` beside the free text, and
+ * the IANA zone that wall clock belongs to. Like 3 it rewrites no rows — `listTwigs` fills
+ * the field in from the text already in the row, so a row heals the first time it is read.
+ *
+ * 9 added `keyId` beside `encryption` on every sealed row. `encryption` says how a row was
+ * sealed, which is enough while a browser has one key; it stops being enough once a key
+ * can be replaced, because after a passphrase change both sides say `aes-gcm`. Rewrites no
+ * rows either: a row without an id predates ids, and the workspace has only ever had one
+ * key at a time, so it is taken at its word until the next rekey stamps it.
  */
-export const NOTES_DB_VERSION = 7;
+export const NOTES_DB_VERSION = 9;
 
 export interface NotesDbSchema extends DBSchema {
   "notes-documents": {
