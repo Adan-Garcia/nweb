@@ -28,11 +28,11 @@ export default defineConfig({
     },
     globalSetup: ["./vitest.global-setup.ts"],
     setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "server/**/*.test.ts"],
     restoreMocks: true,
     coverage: {
       provider: "v8",
-      include: ["src/**/*.{ts,tsx}", "shared/**/*.ts"],
+      include: ["src/**/*.{ts,tsx}", "shared/**/*.ts", "server/**/*.ts"],
       exclude: [
         "src/**/*.test.{ts,tsx}",
         "src/test/**",
@@ -51,6 +51,8 @@ export default defineConfig({
         "src/components/**/use-*.ts": { lines: 97, functions: 98, branches: 88, statements: 97 },
         "src/lib/**": { lines: 97, functions: 99, branches: 93, statements: 97 },
         "src/workers/**": { lines: 100, functions: 100, branches: 90, statements: 100 },
+        // The server is small and every route is reachable from a test.
+        "server/**": { lines: 98, functions: 100, branches: 94, statements: 98 },
       },
     },
   },

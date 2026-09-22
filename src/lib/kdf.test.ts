@@ -1,8 +1,8 @@
-import { type KdfParams, kdfParamsSchema } from "@shared/kdf-params";
+import { ARGON2ID_DEFAULTS, type KdfParams, kdfParamsSchema } from "@shared/kdf-params";
 import { describe, expect, it } from "vitest";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
-import { ARGON2ID_DEFAULTS, createKdfParams, deriveKey } from "./kdf";
+import { createKdfParams, deriveKey } from "./kdf";
 
 const SALT = bytesToBase64(new Uint8Array(16).fill(7));
 

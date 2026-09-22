@@ -1,4 +1,4 @@
-import { type KdfParams } from "@shared/kdf-params";
+import { ARGON2ID_DEFAULTS, type KdfParams } from "@shared/kdf-params";
 import { argon2id } from "hash-wasm";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
@@ -8,17 +8,6 @@ import { base64ToBytes, bytesToBase64 } from "./base64";
  * they protect and are defined in `@shared/kdf-params`, because a server hands them back
  * to a device that has never seen this workspace.
  */
-
-/**
- * OWASP's 2023 Argon2id recommendation: 64 MiB, three passes, one lane. The memory is the
- * point — PBKDF2 at any iteration count is cheap to parallelise on a GPU, and 64 MiB per
- * guess is not. It costs about 150ms on a laptop, which is paid once per unlock.
- */
-export const ARGON2ID_DEFAULTS = {
-  memorySize: 65_536,
-  iterations: 3,
-  parallelism: 1,
-} as const;
 
 const SALT_BYTES = 16;
 const KEY_BITS = 256;

@@ -40,6 +40,25 @@ export const registerRequestSchema = z.object({
 
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 
+/**
+ * Before a device can prove a passphrase it has to know what to derive with, and it has
+ * only an email to ask by. Answering "no such account" here would turn this into a list of
+ * who has one, so the server answers every address: a real account's parameters, or decoys
+ * derived from the address and a server secret, which are stable per address and
+ * indistinguishable from the real thing.
+ */
+export const preloginRequestSchema = z.object({
+  email: z.email(),
+});
+
+export type PreloginRequest = z.infer<typeof preloginRequestSchema>;
+
+export const preloginResponseSchema = z.object({
+  kdf: kdfParamsSchema,
+});
+
+export type PreloginResponse = z.infer<typeof preloginResponseSchema>;
+
 export const sessionRequestSchema = z.object({
   email: z.email(),
   authKey: base64,
