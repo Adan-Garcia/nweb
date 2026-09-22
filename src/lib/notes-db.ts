@@ -1,5 +1,6 @@
 import { type DBSchema, type IDBPDatabase, openDB } from "idb";
 
+import type { AccountRecord } from "./account/account-record";
 import type { Branch, Flight, Nest, Wing } from "./entity-model";
 import { migrateStringPathsToEntities } from "./notes-db-upgrade";
 import type { NotesDirectoryEntry, NotesDocumentRecord, NotesMediaRecord } from "./notes-model";
@@ -43,8 +44,15 @@ const NOTES_DB_NAME = "cuervo-notes";
  * can be replaced, because after a passphrase change both sides say `aes-gcm`. Rewrites no
  * rows either: a row without an id predates ids, and the workspace has only ever had one
  * key at a time, so it is taken at its word until the next rekey stamps it.
+ *
+ * 10 added `account`, which holds the one account this device is signed in to: the sealed
+ * key material the server already has, this workspace's own wrapped root key, and the last
+ * key graph it was handed. One row, all of it public or sealed, and kept locally so that
+ * signing in once is enough to open the workspace offline ever after. Rewrites no rows: a
+ * database with no account row is a device that has never signed in, which is every one of
+ * them until it does.
  */
-export const NOTES_DB_VERSION = 9;
+export const NOTES_DB_VERSION = 10;
 
 export interface NotesDbSchema extends DBSchema {
   "notes-documents": {
@@ -91,6 +99,10 @@ export interface NotesDbSchema extends DBSchema {
     key: string;
     value: RekeyJournal;
   };
+  account: {
+    key: string;
+    value: AccountRecord;
+  };
 }
 
 const STORE_NAMES = [
@@ -105,6 +117,7 @@ const STORE_NAMES = [
   "pebbles",
   "workspace-keys",
   "workspace-rekey",
+  "account",
 ] as const;
 
 let dbPromise: Promise<IDBPDatabase<NotesDbSchema>> | null = null;

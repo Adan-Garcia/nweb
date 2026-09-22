@@ -1,4 +1,7 @@
-import { sendNotification, setVapidDetails, WebPushError } from "web-push";
+// `web-push` is CommonJS, so the bundled server cannot pull named exports off it: Node
+// gives a CJS module one default binding and refuses the rest. The namespace works from
+// source and from the bundle, which is the only form that is true in both.
+import webpush from "web-push";
 
 import type { StoredSubscription } from "./reminders";
 
@@ -13,7 +16,7 @@ import type { StoredSubscription } from "./reminders";
 export type VapidDetails = { subject: string; publicKey: string; privateKey: string };
 
 export function configurePush(details: VapidDetails): void {
-  setVapidDetails(details.subject, details.publicKey, details.privateKey);
+  webpush.setVapidDetails(details.subject, details.publicKey, details.privateKey);
 }
 
 /**
@@ -27,11 +30,14 @@ export async function deliverPush(
   payload: string,
 ): Promise<"sent" | "gone"> {
   try {
-    await sendNotification(subscription, payload);
+    await webpush.sendNotification(subscription, payload);
 
     return "sent";
   } catch (error) {
-    if (error instanceof WebPushError && (error.statusCode === 404 || error.statusCode === 410)) {
+    if (
+      error instanceof webpush.WebPushError &&
+      (error.statusCode === 404 || error.statusCode === 410)
+    ) {
       return "gone";
     }
 

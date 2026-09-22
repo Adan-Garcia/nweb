@@ -1,6 +1,7 @@
 import { base64ToBytes, bytesToBase64 } from "./base64";
 import {
   type Cipher,
+  cipherForRow,
   type CipherMarker,
   CipherUnavailableError,
   cipherWroteRow,
@@ -38,14 +39,18 @@ export async function sealText(text: string, cipher: Cipher = getActiveCipher())
 }
 
 /**
- * Reads a name back with whatever wrote it. A row sealed by a cipher that is not active
- * throws, for the reason `decryptWith` does: handing the UI base64 would put it in a list,
- * and the next rename would write it back as the name.
+ * Reads a name back with whatever wrote it. A row no key on this device opens throws, for
+ * the reason `decryptWith` does: handing the UI base64 would put it in a list, and the next
+ * rename would write it back as the name.
+ *
+ * Passing a cipher means that one and no other, as in `decryptWith`; leaving it out asks
+ * the keyring, so a name sealed under a shared branch's key opens beside one sealed under
+ * this workspace's own.
  */
 export async function openText(
   stored: string,
   marker: CipherMarker,
-  cipher: Cipher = getActiveCipher(),
+  cipher?: Cipher,
 ): Promise<string> {
   const wroteWith = marker.encryption ?? "none";
 
@@ -53,13 +58,15 @@ export async function openText(
     return stored;
   }
 
+  const opener = cipher ?? cipherForRow(marker);
+
   // Checked before the base64 is decoded, so "this workspace is locked" is not reported as
   // "that is not valid base64" for a row some other key wrote.
-  if (!cipherWroteRow(marker, cipher)) {
+  if (!opener || !cipherWroteRow(marker, opener)) {
     throw new CipherUnavailableError(wroteWith);
   }
 
-  return new TextDecoder().decode(await decryptWith(base64ToBytes(stored), marker, cipher));
+  return new TextDecoder().decode(await decryptWith(base64ToBytes(stored), marker, opener));
 }
 
 /**

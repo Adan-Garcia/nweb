@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  cipherForRow,
   CipherUnavailableError,
   cipherWroteRow,
   createAesGcmCipher,
@@ -9,6 +10,7 @@ import {
   getActiveCipher,
   isLockedError,
   plaintextCipher,
+  registerCipher,
   resetActiveCipher,
   setActiveCipher,
 } from "./cipher";
@@ -160,5 +162,81 @@ describe("cipherWroteRow", () => {
 describe("createKeyId", () => {
   it("gives a different id every time", () => {
     expect(createKeyId()).not.toBe(createKeyId());
+  });
+});
+
+describe("the keyring", () => {
+  it("opens a row with whichever registered key sealed it", async () => {
+    const mine = createAesGcmCipher(await makeKey(), "my-key");
+    const shared = createAesGcmCipher(await makeKey(), "a-branch-someone-shared");
+
+    setActiveCipher(mine);
+    registerCipher(shared);
+
+    // A note in a shared course was sealed by its own key, not by this workspace's.
+    const sealed = await shared.encrypt(bytes("their note"));
+    const opened = await decryptWith(sealed, { encryption: "aes-gcm", keyId: shared.keyId });
+
+    expect(text(opened)).toBe("their note");
+  });
+
+  it("still refuses a row whose key it does not hold", async () => {
+    setActiveCipher(createAesGcmCipher(await makeKey(), "my-key"));
+
+    await expect(
+      decryptWith(bytes("whatever"), { encryption: "aes-gcm", keyId: "a-key-nobody-gave-me" }),
+    ).rejects.toBeInstanceOf(CipherUnavailableError);
+  });
+
+  it("takes an explicit cipher as this one and no other", async () => {
+    const mine = createAesGcmCipher(await makeKey(), "my-key");
+    const shared = createAesGcmCipher(await makeKey(), "shared-key");
+
+    setActiveCipher(mine);
+    registerCipher(shared);
+
+    const sealed = await shared.encrypt(bytes("their note"));
+
+    // A rekey moves rows between two named keys and must not quietly accept a third,
+    // however many the keyring happens to hold.
+    await expect(
+      decryptWith(sealed, { encryption: "aes-gcm", keyId: shared.keyId }, mine),
+    ).rejects.toBeInstanceOf(CipherUnavailableError);
+  });
+
+  it("forgets every key when the workspace locks, not just the active one", async () => {
+    const shared = createAesGcmCipher(await makeKey(), "shared-key");
+
+    setActiveCipher(createAesGcmCipher(await makeKey(), "my-key"));
+    registerCipher(shared);
+    resetActiveCipher();
+
+    expect(cipherForRow({ encryption: "aes-gcm", keyId: shared.keyId })).toBeNull();
+  });
+
+  it("ignores a key with no id, because nothing could ask for it back", () => {
+    registerCipher(plaintextCipher);
+
+    expect(cipherForRow({ encryption: "aes-gcm", keyId: "" })).toBeNull();
+  });
+});
+
+describe("cipherForRow", () => {
+  it("answers the plaintext cipher for a row that was never sealed", () => {
+    expect(cipherForRow({})).toBe(plaintextCipher);
+    expect(cipherForRow({ encryption: "none" })).toBe(plaintextCipher);
+  });
+
+  it("answers the active cipher for a row written before keys had ids", async () => {
+    const mine = createAesGcmCipher(await makeKey(), "my-key");
+
+    setActiveCipher(mine);
+
+    // There was one key when that row was written, so naming it would have been redundant.
+    expect(cipherForRow({ encryption: "aes-gcm" })).toBe(mine);
+  });
+
+  it("answers nothing for an unmarked row when the workspace is locked", () => {
+    expect(cipherForRow({ encryption: "aes-gcm" })).toBeNull();
   });
 });

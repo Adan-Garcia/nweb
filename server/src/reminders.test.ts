@@ -291,14 +291,21 @@ describe("deliverPush", () => {
   it("reports a dead subscription apart from a bad minute at the push service", async () => {
     vi.resetModules();
     const { WebPushError } = await import("web-push");
-    vi.doMock("web-push", async (importOriginal) => ({
-      ...(await importOriginal<typeof import("web-push")>()),
-      sendNotification: vi
+
+    // The default export, not the named one: `web-push` is CommonJS, and the bundled
+    // server can only reach it through its namespace, so that is what `push.ts` calls.
+    vi.doMock("web-push", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("web-push")>();
+      const sendNotification = vi
         .fn()
         .mockRejectedValueOnce(new WebPushError("gone", 410, {}, "", ""))
         .mockRejectedValueOnce(new WebPushError("busy", 503, {}, "", ""))
-        .mockResolvedValueOnce({}),
-    }));
+        .mockResolvedValueOnce({});
+
+      const mocked = { ...actual, sendNotification };
+
+      return { ...mocked, default: mocked };
+    });
 
     const { deliverPush } = await import("./push");
     const subscription = { endpoint: "https://push.example/a", keys: { p256dh: "p", auth: "a" } };

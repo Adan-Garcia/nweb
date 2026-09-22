@@ -38,6 +38,9 @@ export default defineConfig({
         "src/test/**",
         "src/components/ui/**", // shadcn-generated
         "src/main.tsx",
+        // The composition roots: the environment, a socket and a real Postgres. Everything
+        // they wire together is tested without any of the three.
+        "server/src/main.ts",
       ],
       // CLAUDE.md section 4. Set just below what is measured, so coverage can only go up.
       thresholds: {

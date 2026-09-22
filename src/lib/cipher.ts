@@ -86,18 +86,65 @@ export function createAesGcmCipher(key: CryptoKey, keyId: string): Cipher {
 
 let activeCipher: Cipher = plaintextCipher;
 
+/**
+ * Every key this device can currently use, by id.
+ *
+ * One key per workspace was enough while a workspace was one person's. It stops being
+ * enough the moment a branch can be shared: the rows under it are sealed with that
+ * branch's own key, and a device holding both its own workspace key and a key somebody
+ * handed it has to be able to open a row with whichever one wrote it. The id on the row
+ * says which, so the answer is a lookup rather than a guess.
+ *
+ * The active cipher is the one a *new* row is written with when nothing says otherwise.
+ * It is in here too, so reading never has to special-case it.
+ */
+const keyring = new Map<string, Cipher>();
+
 export function getActiveCipher(): Cipher {
   return activeCipher;
+}
+
+/**
+ * Adds a key this device can read with, without changing what it writes with. This is how
+ * a key derived from a share becomes usable: the graph is walked, each key it yields is
+ * registered, and every row sealed under one of them opens from that moment.
+ */
+export function registerCipher(cipher: Cipher) {
+  if (cipher.keyId) {
+    keyring.set(cipher.keyId, cipher);
+  }
 }
 
 /** Called by the unlock step once a key has been derived. */
 export function setActiveCipher(cipher: Cipher) {
   activeCipher = cipher;
+  registerCipher(cipher);
 }
 
-/** Drops the key from memory. Anything written while locked would be plaintext. */
+/** Drops every key from memory. Anything written while locked would be plaintext. */
 export function resetActiveCipher() {
   activeCipher = plaintextCipher;
+  keyring.clear();
+}
+
+/**
+ * The cipher that sealed this row, or null when this device cannot open it.
+ *
+ * A row from before ids carries only a name, and the active cipher is the only candidate
+ * there ever was for it — there was one key, so saying which would have been redundant.
+ */
+export function cipherForRow(marker: CipherMarker): Cipher | null {
+  const wroteWith = marker.encryption ?? "none";
+
+  if (wroteWith === "none") {
+    return plaintextCipher;
+  }
+
+  if (marker.keyId) {
+    return keyring.get(marker.keyId) ?? null;
+  }
+
+  return activeCipher.name === wroteWith ? activeCipher : null;
 }
 
 /**
@@ -134,15 +181,18 @@ export function cipherWroteRow(marker: CipherMarker, cipher: Cipher): boolean {
 }
 
 /**
- * Reads a payload back with whatever wrote it. A row written by a cipher that is not
- * active now cannot be read, and that has to be an error rather than a shrug: returning
- * the raw bytes would hand the editor ciphertext and autosave would then write it back as
- * if it were the note.
+ * Reads a payload back with whatever wrote it. A row no key on this device opens cannot be
+ * read, and that has to be an error rather than a shrug: returning the raw bytes would hand
+ * the editor ciphertext and autosave would then write it back as if it were the note.
+ *
+ * Passing a cipher says "this one or nothing", which is what a rekey needs — it is moving
+ * rows between two named keys and must not silently accept a third. Leaving it out asks the
+ * keyring, which is what every ordinary read wants.
  */
 export async function decryptWith(
   bytes: Uint8Array,
   marker: CipherMarker,
-  cipher: Cipher = getActiveCipher(),
+  cipher?: Cipher,
 ): Promise<Uint8Array> {
   const wroteWith = marker.encryption ?? "none";
 
@@ -150,9 +200,11 @@ export async function decryptWith(
     return bytes;
   }
 
-  if (!cipherWroteRow(marker, cipher)) {
+  const opener = cipher ?? cipherForRow(marker);
+
+  if (!opener || !cipherWroteRow(marker, opener)) {
     throw new CipherUnavailableError(wroteWith);
   }
 
-  return cipher.decrypt(bytes);
+  return opener.decrypt(bytes);
 }
