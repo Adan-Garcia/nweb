@@ -41,10 +41,10 @@ export default defineConfig({
       ],
       // CLAUDE.md section 4. Set just below what is measured, so coverage can only go up.
       thresholds: {
-        lines: 97,
-        statements: 97,
+        lines: 97.5,
+        statements: 97.5,
         functions: 96,
-        branches: 92,
+        branches: 93,
         // Hooks require 100% logic coverage.
         "src/hooks/**": { lines: 100, functions: 100, branches: 100, statements: 100 },
         // Feature hooks live next to their components; a few defensive branches remain.
@@ -52,7 +52,7 @@ export default defineConfig({
         "src/lib/**": { lines: 97, functions: 99, branches: 93, statements: 97 },
         "src/workers/**": { lines: 100, functions: 100, branches: 90, statements: 100 },
         // The server is small and every route is reachable from a test.
-        "server/**": { lines: 98, functions: 100, branches: 94, statements: 98 },
+        "server/**": { lines: 99, functions: 100, branches: 96, statements: 99 },
       },
     },
   },

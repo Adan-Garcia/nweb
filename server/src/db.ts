@@ -62,6 +62,28 @@ export const SCHEMA_STATEMENTS = [
   /* What the reminder sweep reads, and the only index that is about meaning. */
   `create index if not exists rows_due_idx on rows (due_date)
      where due_date is not null and deleted_at is null`,
+  `create table if not exists keys (
+     id text primary key,
+     owner_id uuid not null references users(id) on delete cascade,
+     kind text not null,
+     rotated_from text,
+     created_at timestamptz not null default now()
+   )`,
+  `create table if not exists key_wraps (
+     parent_key_id text not null,
+     child_key_id text not null,
+     wrapped text not null,
+     primary key (parent_key_id, child_key_id)
+   )`,
+  `create index if not exists key_wraps_parent_idx on key_wraps (parent_key_id)`,
+  `create table if not exists grants (
+     key_id text not null,
+     user_id uuid not null references users(id) on delete cascade,
+     role text not null,
+     wrapped text not null,
+     primary key (key_id, user_id)
+   )`,
+  `create index if not exists grants_user_idx on grants (user_id)`,
   `create table if not exists push_subscriptions (
      user_id uuid not null references users(id) on delete cascade,
      endpoint text not null,

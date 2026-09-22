@@ -33,7 +33,7 @@ const ARGON2_SERVER = {
   parallelism: 1,
 } as const;
 
-type UserRow = {
+export type UserRow = {
   id: string;
   email: string;
   auth_hash: string;

@@ -107,30 +107,51 @@ before there is a second device than after.
 
 ### Schema
 
+As built, in `server/src/db.ts`:
+
 ```sql
-users(id, email, auth_hash, public_key, sealed_private_key, kdf, created_at)
-keys(id, kind, rotated_from)              -- kind: wing|flight|branch|nest|feather|twig|pebble
+users(id, email, auth_hash, kdf, sealed_account_key, public_key, sealed_private_key, …)
+sessions(token_hash, user_id, expires_at, created_at)
+keys(id, owner_id, kind, rotated_from)    -- kind: wing|flight|branch|nest|feather|twig|pebble
 key_wraps(parent_key_id, child_key_id, wrapped)
 grants(key_id, user_id, role, wrapped)
-rows(wing_id, store, id, seq, updated_at, deleted_at, key_id, payload, due_at, status)
-push_subscriptions(user_id, endpoint, p256dh, auth)
+rows(user_id, store, id, seq, updated_at, deleted_at, key_id, encryption, payload,
+     due_date, due_minutes, time_zone, status)
+media(user_id, id, seq, mime_type, created, updated_at, key_id, encryption, bytes)
+push_subscriptions(user_id, endpoint, p256dh, auth, reminded_through)
 ```
 
-`rows.payload` is opaque bytes. `due_at` and `status` are the only columns the server reads
-for its own purposes. `seq` is a server-assigned monotonic number — the thing a client asks
-"what is new to me" with, because client clocks skew and `updated_at` cannot be trusted for
-ordering across devices. `updated_at` stays, and is what the client resolves ties with.
+`rows.payload` is opaque. The date columns and `status` are the only ones the server reads
+for its own purposes, and the reason it can send a reminder at all. `seq` is a
+server-assigned monotonic number — the thing a client asks "what is new to me" with,
+because client clocks skew and `updated_at` cannot be trusted for ordering across devices.
+`updated_at` stays, and is what a write is resolved by: a row lands only if it beats the
+one stored.
+
+The wing is not a column. A row belongs to a user and is reachable through a key; which
+wing it sits in is inside the payload, where the server cannot read it and does not need to.
 
 ### Endpoints
 
 ```
-POST /v1/auth/register        email + auth key + public key + sealed private key
-POST /v1/auth/session         email + auth key -> session
-POST /v1/sync                 { since, rows[] } -> { seq, rows[] }
-GET  /v1/keys                 the grants and wraps this user can walk
-POST /v1/keys/share           wrap a key for another user
-POST /v1/keys/revoke          drop a grant, mark the key for rotation
-POST /v1/push/subscribe       a Web Push subscription for this device
+POST   /v1/auth/prelogin        address -> KDF parameters (decoy if there is no account)
+POST   /v1/auth/register        email + auth key + public key + sealed keys
+POST   /v1/auth/session         email + auth key -> session token
+DELETE /v1/auth/session         end this session
+POST   /v1/auth/passphrase      reseal the account key, drop every other session
+GET    /v1/keys                 this account's own sealed key material
+POST   /v1/sync                 { since, rows[] } -> { seq, rows[] }
+GET    /v1/media                what blobs exist, and their seq
+PUT    /v1/media/:id            store one blob (meta in headers, bytes in the body)
+GET    /v1/media/:id            fetch one blob
+GET    /v1/keys/graph           the keys, wraps and grants this user can walk
+POST   /v1/keys                 record keys, wraps and grants made on the device
+POST   /v1/keys/share           wrap a key for another user
+POST   /v1/keys/revoke          drop a grant
+GET    /v1/keys/:keyId/shares   who a key has been given to, by address
+GET    /v1/users/public-key     the key to seal a share with
+POST   /v1/push/subscribe       a Web Push subscription for this device
+DELETE /v1/push/subscribe       forget one
 ```
 
 `/v1/sync` is the whole of B2. Apply each incoming row if its `updated_at` beats what is
@@ -170,12 +191,36 @@ them drift the first time one gains a field.
     answer for the hour DST repeats or skips. Keeping the wall clock and converting where
     there is a library to do it with is what iCalendar does with `DTSTART` and `TZID`, and
     it is the server that will schedule from it.
-1.  **Accounts.** Register, session, the split passphrase, and recovery of the sealed
-    private key on a second device.
-2.  **Sync.** One wing, one device, then many. Last write wins.
-3.  **Push.** The reason the dates are in the clear.
-4.  **Sharing.** The key graph, grants, and lazy rotation on revoke.
-5.  **Paid tiers.** Only once the four above are real.
+1.  **Accounts.** Done. Register, session, the split passphrase, changing it, and recovery
+    of the sealed private key on a second device. A sign-in failure and an address with no
+    account are the same answer, and `prelogin` returns decoy parameters derived from the
+    address and the server secret so that asking about a stranger looks like asking about
+    a user.
+2.  **Sync.** Done. `POST /v1/sync` for rows, `PUT/GET /v1/media/:id` for the blobs that
+    are too big to travel with them. Last write wins, resolved in SQL by `updated_at`, and
+    read back by the server's `seq`.
+3.  **Push.** Done. `sweepReminders` finds what is due from the clear columns, composes a
+    body it cannot make specific — a count and a time — and delivers it over Web Push.
+    `zonedInstant` turns a date key, a wall clock and an IANA zone into an instant using
+    `Intl` alone, so the server needs no timezone dependency.
+4.  **Sharing.** Done, on the server and in `src/lib/keys/`. The key graph, grants,
+    revocation, and a walk that derives every key reachable from a grant and nothing else.
+    Lazy rotation is recorded (`keys.rotated_from`) and not yet performed.
+5.  **Paid tiers.** Not started, and needs billing infrastructure this repository has none
+    of. Out of scope until the four above are wired into the app.
+
+### What is still missing
+
+*   **The app does not use any of it yet.** `src/lib/sync/`, `src/lib/push/` and
+    `src/lib/keys/` are written and tested against the contract, but no page calls them and
+    no storage module asks for a per-object key: `lib/cipher.ts` still holds one active
+    cipher for the whole workspace (§13.4 of `CLAUDE.md`).
+*   **There is no migration from a local lock to an account.** A workspace locked on this
+    device has a passphrase of its own; adopting an account means resealing under the
+    account key, and nothing does that.
+*   **The server cannot bind a port.** `@hono/node-server` is not installed, because every
+    test drives the `Hono` instance directly and nothing needs a socket until there is
+    somewhere to deploy.
 
 ## What it costs, stated plainly
 

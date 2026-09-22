@@ -22,9 +22,17 @@ write it.
 
 | Path | Holds |
 | --- | --- |
-| `server/src/app.ts` | Hono routes. Parse, authorise, delegate, respond. No logic. |
-| `server/src/*.ts` | One concern each: `accounts`, `tokens`, `db`, `rate-limit`. |
+| `server/src/app.ts` | CORS, the rate limiter, and the route groups mounted over one database. |
+| `server/src/*-routes.ts` | Hono routes for one area: `auth`, `sync`, `sharing`. Parse, authorise, delegate, respond. No logic. |
+| `server/src/http.ts` | The one error shape (`fail`) and the one session check (`callerFor`). |
+| `server/src/*.ts` | One concern each: `accounts`, `tokens`, `db`, `rate-limit`, `sync`, `sharing`, `reminders`, `push`, `zoned-time`. |
 | `shared/` | The wire contract, imported by the client too. Zod only, no runtime. |
+
+*   Paths are absolute in each group (`/v1/auth/…`, `/v1/keys/…`), so the groups mount at
+    the root. Splitting them was about keeping each file readable, not about prefixes.
+*   **A route group never builds its own refusal.** `[REQUIRED]` `fail()` is the only way to
+    say no, so a new area cannot quietly grow a second error shape or leak a distinction
+    the others hide.
 
 *   The database is **passed in**, never reached for. `createApp({ sql })` is what lets the
     tests run against a real Postgres in-process. `[REQUIRED]`
@@ -79,5 +87,6 @@ fall back to a default for a secret. `[REQUIRED]`
 ## 6. Not built yet
 
 `@hono/node-server` is needed to bind a port; the app is a `Hono` instance and every test
-drives it directly, so nothing depends on it until there is somewhere to deploy. Sync,
-push and sharing are phases 2 to 4 of `BACKEND.md`.
+drives it directly, so nothing depends on it until there is somewhere to deploy. Phases 1
+to 4 of `BACKEND.md` — accounts, sync, reminders and sharing — are written and tested;
+what is left is listed at the end of that file.

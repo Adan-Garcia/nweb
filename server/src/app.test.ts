@@ -309,6 +309,22 @@ describe("rate limiting", () => {
     expect((await attempt()).status).toBe(401);
     expect((await attempt()).status).toBe(429);
   });
+
+  it("stops a run of prelogins too, or the decoy is only a speed bump", async () => {
+    app = createApp({
+      sql: database,
+      serverSecret: SERVER_SECRET,
+      allowedOrigins: [],
+      limiter: createRateLimiter({ limit: 1, windowMs: 60_000 }),
+    });
+
+    const ask = () => post("/v1/auth/prelogin", { email: "someone@example.com" });
+
+    // A decoy that answers for every address is worth nothing if a list can be ground
+    // through it: the tell would be how long it took, not what came back.
+    expect((await ask()).status).toBe(200);
+    expect((await ask()).status).toBe(429);
+  });
 });
 
 describe("requests that are not requests", () => {
