@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { type CipherName } from "@shared/cipher-name";
 
 /**
  * The seam between "bytes the app produced" and "bytes that go into IndexedDB".
@@ -13,9 +13,7 @@ import { z } from "zod";
  * and still be readable. That is what makes turning this on a decision the user takes
  * rather than a migration that has to rewrite everything at once.
  */
-export const cipherNameSchema = z.enum(["none", "aes-gcm"]);
-
-export type CipherName = z.infer<typeof cipherNameSchema>;
+export type { CipherName };
 
 export type Cipher = {
   readonly name: CipherName;

@@ -112,6 +112,7 @@ export const apiErrorSchema = z.object({
     "email_taken",
     "invalid_credentials",
     "unauthorized",
+    "too_large",
     "rate_limited",
   ]),
   message: z.string(),

@@ -1,7 +1,7 @@
+import { cipherNameSchema } from "@shared/cipher-name";
 import { z } from "zod";
 
 import { calendarEventSchema } from "./calendar-event";
-import { cipherNameSchema } from "./cipher";
 import { branchSchema, flightSchema, nestSchema, wingSchema } from "./entity-model";
 import { pebbleSchema } from "./pebble-model";
 import { twigSchema } from "./twig-model";

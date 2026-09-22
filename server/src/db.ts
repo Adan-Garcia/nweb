@@ -36,6 +36,44 @@ export const SCHEMA_STATEMENTS = [
    )`,
   `create index if not exists sessions_user_id_idx on sessions (user_id)`,
   `create index if not exists sessions_expires_at_idx on sessions (expires_at)`,
+  /*
+   * One sequence for every row of every user. It is what a device asks "what is new to
+   * me" with, and it has to be the server's: two laptops disagree about the time, and a
+   * cursor built from their clocks would skip edits or repeat them forever.
+   */
+  `create sequence if not exists rows_seq`,
+  `create table if not exists rows (
+     user_id uuid not null references users(id) on delete cascade,
+     store text not null,
+     id text not null,
+     seq bigint not null default nextval('rows_seq'),
+     updated_at bigint not null,
+     deleted_at bigint,
+     key_id text not null default '',
+     encryption text not null default 'none',
+     payload text not null,
+     due_date text,
+     due_minutes int,
+     time_zone text,
+     status text,
+     primary key (user_id, store, id)
+   )`,
+  `create index if not exists rows_user_seq_idx on rows (user_id, seq)`,
+  /* What the reminder sweep reads, and the only index that is about meaning. */
+  `create index if not exists rows_due_idx on rows (due_date)
+     where due_date is not null and deleted_at is null`,
+  `create table if not exists media (
+     user_id uuid not null references users(id) on delete cascade,
+     id text not null,
+     seq bigint not null default nextval('rows_seq'),
+     mime_type text not null,
+     created bigint not null,
+     updated_at bigint not null,
+     key_id text not null default '',
+     encryption text not null default 'none',
+     bytes bytea not null,
+     primary key (user_id, id)
+   )`,
 ] as const;
 
 export async function migrate(sql: Sql): Promise<void> {

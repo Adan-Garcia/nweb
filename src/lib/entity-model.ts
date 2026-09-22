@@ -1,6 +1,5 @@
+import { cipherNameSchema } from "@shared/cipher-name";
 import { z } from "zod";
-
-import { cipherNameSchema } from "./cipher";
 
 /**
  * The shared spine of every workspace record. UUID ids, `updatedAt` and a `deletedAt`
