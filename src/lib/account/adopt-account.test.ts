@@ -2,12 +2,16 @@
 //
 // Node, not jsdom: adoption rewrites stored media, and fake-indexeddb flattens a jsdom Blob
 // into a bare object with no arrayBuffer(). Node's Blob survives.
+import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { server } from "@/test/server";
+
 import { getActiveCipher, resetActiveCipher } from "../cipher";
-import { createBranch, createFlight, listBranches } from "../entity-storage";
+import { createBranch, createFlight, createWing, listBranches } from "../entity-storage";
 import { createObjectKey, wrapForRecipient } from "../keys/key-graph";
 import { cipherForObject } from "../keys/object-keys";
+import { refreshKeyGraph } from "../keys/refresh-graph";
 import { getNotesDb } from "../notes-db";
 import { loadNotesDocument, saveLinearDocumentPayload } from "../notes-document-storage";
 import { createWorkspaceLock } from "../workspace-passphrase";
@@ -26,6 +30,7 @@ vi.mock("../kdf", async (importOriginal) => ({
   }),
 }));
 
+const BASE = "https://cuervo.example.com";
 const PASSPHRASE = "a long account passphrase";
 const LOCAL = "the local workspace passphrase";
 
@@ -34,7 +39,7 @@ const accepts = vi.fn(() => Promise.resolve(true));
 function options(overrides: Partial<Parameters<typeof adoptAccount>[0]> = {}) {
   return {
     email: "owner@example.com",
-    baseUrl: "https://cuervo.example.com",
+    baseUrl: BASE,
     passphrase: PASSPHRASE,
     enrol: accepts,
     ...overrides,
@@ -314,6 +319,46 @@ describe("a course somebody shared with you", () => {
     // Falling back to the workspace's own key here would re-seal somebody else's note
     // under a key they do not have, and lock them out of their own course.
     expect(cipherForObject(sharedKeyId)).not.toBe(getActiveCipher());
+  });
+
+  it("survives the next thing you create, having arrived mid-session", async () => {
+    await seedWorkspace();
+    await adoptAccount(options());
+
+    const record = await readAccountRecord();
+    const shared = await createObjectKey("branch");
+
+    // The way a share really arrives: a sync round fetches it, not the record being
+    // written by hand before the workspace was ever opened.
+    server.use(
+      http.get(`${BASE}/v1/keys/graph`, async () =>
+        HttpResponse.json({
+          keys: [{ id: shared.keyId, kind: "branch", rotatedFrom: null }],
+          wraps: [],
+          grants: [
+            {
+              keyId: shared.keyId,
+              role: "writer",
+              wrapped: await wrapForRecipient(shared.key, record!.material.publicKey),
+            },
+          ],
+        }),
+      ),
+    );
+
+    expect(await refreshKeyGraph({ baseUrl: BASE, token: "a-token" })).toBe(1);
+
+    // Anything minted afterwards writes the module's own graph back over the record. If
+    // that write is not a merge, the grant fetched this session is gone and the course is
+    // dark on the next offline launch.
+    const wing = await createWing("My wing");
+
+    await createFlight({ wingId: wing.id, name: "Spring 2027" });
+
+    resetActiveCipher();
+    await unlockAccount(PASSPHRASE);
+
+    expect(cipherForObject(shared.keyId).keyId).toBe(shared.keyId);
   });
 
   it("leaves your own courses listable when the share has ended", async () => {

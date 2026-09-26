@@ -268,7 +268,11 @@ without a server has shipped, so what is left here is inherent or waiting on the
     shareable object a key of its own and `rotate-key.ts` replaces one when somebody is
     removed, but nothing rotates on a schedule: a key shared and re-shared for years is the
     same key.
-5.  **A note shared on its own is not reachable in the path bar.** A shared *course* is:
+5.  **Shared content is editable when it should not be.** A reader of a shared course can
+    type into its notes and autosave them. The server drops the write, so nothing is lost
+    for anyone else, but the reader's own copy diverges with no sign that it has. Making
+    shared content read-only in the UI is the fix; the server check is a backstop.
+6.  **A note shared on its own is not reachable in the path bar.** A shared *course* is:
     it lands under "Shared with you", where the wing dropdown offers that in place of a
     term it cannot read (`workspace-tree.ts`). A lone note points at a branch the recipient
     does not have, so nothing lists it — its title still shows wherever notes are listed by

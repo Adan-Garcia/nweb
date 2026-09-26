@@ -50,9 +50,13 @@ export async function putKeys(sql: Sql, userId: string, request: PutKeysRequest)
       continue;
     }
 
+    // `do nothing`, not `do update`: no flow re-wraps a pair that already exists — a
+    // re-send is byte-identical and a rotation always names a new child — so an edge that
+    // changes is either a mistake or somebody breaking key derivation for the owner and
+    // every other recipient at once.
     await sql.query(
       `insert into key_wraps (parent_key_id, child_key_id, wrapped) values ($1, $2, $3)
-       on conflict (parent_key_id, child_key_id) do update set wrapped = excluded.wrapped`,
+       on conflict (parent_key_id, child_key_id) do nothing`,
       [wrap.parentKeyId, wrap.childKeyId, wrap.wrapped],
     );
   }

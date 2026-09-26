@@ -2,6 +2,7 @@ import { accountKeyMaterialSchema } from "@shared/account-contract";
 import { keyGraphSchema } from "@shared/sharing-contract";
 import { z } from "zod";
 
+import { mergeKeyGraphs } from "../keys/key-graph";
 import { getNotesDb } from "../notes-db";
 
 /**
@@ -79,9 +80,12 @@ export async function writeAccountRecord(
 }
 
 /**
- * Keeps the cached graph in step as keys are minted. Written straight over the record,
- * because the graph is a cache of something the server also holds and the newest local copy
- * is always the one to keep.
+ * Keeps the cached graph in step, by merging rather than replacing.
+ *
+ * Two things write here and each knows something the other does not: minting a key adds to
+ * the graph this device owns, and a sync adds the grants somebody made to it. Whichever
+ * wrote last would otherwise erase the other — and losing a grant means the shared course
+ * goes dark on the next offline launch, silently, because an unopenable row is now skipped.
  */
 export async function updateAccountGraph(graph: AccountRecord["graph"]): Promise<void> {
   const existing = await readAccountRecord();
@@ -92,7 +96,11 @@ export async function updateAccountGraph(graph: AccountRecord["graph"]): Promise
 
   const database = await getNotesDb();
 
-  await database.put("account", { ...existing, graph, updatedAt: Date.now() });
+  await database.put("account", {
+    ...existing,
+    graph: mergeKeyGraphs(existing.graph, graph),
+    updatedAt: Date.now(),
+  });
 }
 
 /**

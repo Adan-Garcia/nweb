@@ -64,8 +64,10 @@ function toSyncRow(record: RowRecord): SyncRow {
  * exists but loses on `updatedAt` is still that row's edit — turning it into a row of their
  * own would leave two copies of one note, each device sure it had the only one.
  *
- * A caller who may read it but not write it has their edit dropped. The server cannot merge
- * ciphertext and must not fork it, and a reader was never offered the pen.
+ * A caller who may read it but not write it has their edit dropped: the server cannot merge
+ * ciphertext and must not fork it. This is a backstop rather than the whole answer — the app
+ * still lets a reader type into a shared note, and their local copy then diverges from the
+ * one everybody else sees.
  *
  * Returns true when the row was somebody's shared row, however it ended.
  */
@@ -91,13 +93,15 @@ async function applySharedRow(
   // A writer may edit the content; they may not move the row onto a key of their own, which
   // would lock the owner out of their own course. The owner rotating their key is the same
   // operation and is allowed, because the new key is one they can reach.
-  const keyId =
-    row.keyId === existing[0].key_id ||
-    (await reachableKeyIds(sql, existing[0].user_id)).includes(row.keyId)
-      ? row.keyId
-      : existing[0].key_id;
+  //
+  // The whole write goes, not just the key: the payload was sealed under the key that was
+  // claimed, so keeping the old id beside those bytes would leave a row nobody can open —
+  // worse than the move it refuses.
+  const movesKey =
+    row.keyId !== existing[0].key_id &&
+    !(await reachableKeyIds(sql, existing[0].user_id)).includes(row.keyId);
 
-  if (writable.includes(existing[0].key_id)) {
+  if (!movesKey && writable.includes(existing[0].key_id)) {
     await sql.query(
       `update rows set
          seq = nextval('rows_seq'),
@@ -117,7 +121,7 @@ async function applySharedRow(
         readable,
         row.updatedAt,
         row.deletedAt,
-        keyId,
+        row.keyId,
         row.encryption,
         row.payload,
         row.schedule?.dueDate ?? null,

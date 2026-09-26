@@ -7,15 +7,13 @@ import { deriveAuthKey } from "@/lib/account-keys";
 import {
   apiBaseUrl,
   endSession,
-  fetchKeyGraph,
   openSession,
   putKeys,
   registerAccount,
 } from "@/lib/api/account-api";
 import type { ApiSession } from "@/lib/api/client";
 import { getApiSession, setApiSession } from "@/lib/api/session-store";
-import { registerCipher } from "@/lib/cipher";
-import { cipherForKey, openKeyGraph } from "@/lib/keys/key-graph";
+import { refreshKeyGraph } from "@/lib/keys/refresh-graph";
 import { resetSyncState, runSyncRound, type SyncReport } from "@/lib/sync/sync-service";
 
 /**
@@ -162,7 +160,9 @@ export function useAccount() {
           // only thing missing is the part that needs a network.
           if (session.ok) {
             setApiSession({ baseUrl, token: session.value.token });
-            await adoptGraph({ baseUrl, token: session.value.token }, opened.keys.privateKey);
+            // The same refresh a sync round does, so a course shared since the last cached
+            // graph is writable immediately rather than only after the first round.
+            await refreshKeyGraph({ baseUrl, token: session.value.token });
           }
         }
 
@@ -240,26 +240,3 @@ const REASONS: Record<"already-adopted" | "wrong-passphrase" | "enrolment-refuse
   "enrolment-refused":
     "The server would not take that address. Nothing on this device was changed.",
 };
-
-/**
- * Walks the key graph the server hands over and registers everything it yields, so a course
- * somebody shared opens beside this workspace's own notes. A graph that will not fetch is
- * not an error worth reporting: the workspace's own key is already in hand.
- */
-async function adoptGraph(session: ApiSession, privateKey: CryptoKey): Promise<void> {
-  const graph = await fetchKeyGraph(session);
-
-  if (!graph.ok) {
-    return;
-  }
-
-  const keyring = await openKeyGraph(graph.value, privateKey);
-
-  for (const keyId of keyring.keys()) {
-    const cipher = cipherForKey(keyring, keyId);
-
-    if (cipher) {
-      registerCipher(cipher);
-    }
-  }
-}

@@ -223,7 +223,8 @@ describe("changing something shared with you", () => {
     ]);
 
     // The owner's copy is untouched, and there is still only one of it. The server cannot
-    // merge ciphertext and must not fork it; a reader was never offered the pen.
+    // merge ciphertext and must not fork it. Note that the app does not yet stop a reader
+    // typing into a shared note — the edit is dropped here, and their local copy diverges.
     const { rows } = await database.query<{ payload: string }>(
       "select payload from rows where store = 'branches' and id = 'branch-1'",
     );
@@ -431,7 +432,9 @@ describe("recording keys you did make", () => {
       "select wrapped from key_wraps where child_key_id = 'branch-key'",
     );
 
-    expect(rows).toEqual([{ wrapped: "re-sent" }]);
+    // An existing edge is left alone. A re-send is byte-identical anyway, so keeping the
+    // first one costs nothing and stops an edge ever being rewritten.
+    expect(rows).toEqual([{ wrapped: "branch-under-wing" }]);
   });
 
   it("takes a rotation: a new key on the old key's edge, granted to its maker", async () => {
@@ -563,10 +566,13 @@ describe("a writer's edit to somebody else's course", () => {
       row({ id: "branch-1", keyId: "friend-wing", updatedAt: 9_000, payload: "re-keyed" }),
     ]);
 
-    const { rows } = await database.query<{ key_id: string }>(
-      "select key_id from rows where store = 'branches' and id = 'branch-1'",
+    const { rows } = await database.query<{ key_id: string; payload: string }>(
+      "select key_id, payload from rows where store = 'branches' and id = 'branch-1'",
     );
 
-    expect(rows).toEqual([{ key_id: "branch-key" }]);
+    // And the payload has to go with it. Keeping the owner's key id while storing bytes
+    // sealed under the writer's key leaves a row nobody can open, the owner included —
+    // which is worse than the attack it was meant to stop.
+    expect(rows).toEqual([{ key_id: "branch-key", payload: "sealed-bytes" }]);
   });
 });

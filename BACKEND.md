@@ -259,6 +259,10 @@ to make sharing possible need one too.
 
 ### What is still missing
 
+*   **Shared content is not read-only in the app.** A reader can open a shared note, type,
+    and watch it autosave. The server drops the edit — it cannot merge ciphertext and must
+    not fork it — so nothing is corrupted, but their local copy quietly diverges from what
+    everybody else sees. The UI has to refuse the pen; the backstop is not the answer.
 *   **A grant re-stamps every row under the key it hands over.** `seq` is the server's
     answer to "what is new to me", and a recipient who has used their own workspace has a
     cursor past the owner's writes — so without the re-stamp the share is invisible to them.

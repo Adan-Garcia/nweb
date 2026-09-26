@@ -7,6 +7,7 @@ import { setApiSession } from "@/lib/api/session-store";
 import { cipherForRow, getActiveCipher, resetActiveCipher } from "@/lib/cipher";
 import { createBranch, listBranches } from "@/lib/entity-storage";
 import { createObjectKey, wrapForRecipient } from "@/lib/keys/key-graph";
+import { cipherForObject } from "@/lib/keys/object-keys";
 import { getNotesDb } from "@/lib/notes-db";
 import { resetSyncState } from "@/lib/sync/sync-service";
 import { server } from "@/test/server";
@@ -426,6 +427,10 @@ describe("useAccount", () => {
 
     // A row sealed under their key now has a key on this device to open it with.
     expect(cipherForRow({ encryption: "aes-gcm", keyId: shared.keyId })).not.toBeNull();
+
+    // And to write it back with. Registering it for reading only leaves every write into
+    // the shared course falling back to this workspace's own key.
+    expect(cipherForObject(shared.keyId).keyId).toBe(shared.keyId);
   });
 
   it("changes nothing when the session cannot be opened", async () => {
