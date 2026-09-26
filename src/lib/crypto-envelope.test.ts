@@ -1,3 +1,4 @@
+import type { KdfParams } from "@shared/kdf-params";
 import { describe, expect, it } from "vitest";
 
 import { bytesToBase64 } from "./base64";
@@ -7,7 +8,6 @@ import {
   openWithPassphrase,
   sealWithPassphrase,
 } from "./crypto-envelope";
-import type { KdfParams } from "./kdf";
 
 /**
  * Deliberately cheap parameters, and a fresh salt per call: these tests are about the

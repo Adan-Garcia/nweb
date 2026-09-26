@@ -47,3 +47,38 @@ export function writeNotesNavigationMode(mode: NotesNavigationMode) {
     // The choice still applies to this session; it just will not outlive it.
   }
 }
+
+/**
+ * Which groups of the tree are open, kept beside the choice of tree for the same reason:
+ * the shape a user arranged should still be there next time, and it is a preference
+ * rather than data. Keys are entity ids, so a group that no longer exists is just a key
+ * nothing matches.
+ */
+const EXPANDED_KEY = "cuervo-notes-expanded";
+
+export function readExpandedGroups(): string[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const stored: unknown = JSON.parse(window.localStorage.getItem(EXPANDED_KEY) ?? "[]");
+
+    return Array.isArray(stored) ? stored.filter((key) => typeof key === "string") : [];
+  } catch {
+    // Blocked storage, or a value some other version wrote. Start with nothing open.
+    return [];
+  }
+}
+
+export function writeExpandedGroups(keys: string[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(EXPANDED_KEY, JSON.stringify(keys));
+  } catch {
+    // The tree still opens and closes; it just will not remember.
+  }
+}

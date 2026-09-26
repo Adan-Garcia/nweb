@@ -1,3 +1,5 @@
+import { currentTimeZone, parseDueTime } from "./due-time";
+import { cipherForObject, provisionObjectKey, wrapUnderAlso } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { openRow, openRows, sealRow } from "./sealed-text";
 import {
@@ -14,10 +16,27 @@ export type TwigDraft = {
   kind?: TwigKind;
   dueDate?: string | null;
   dueTime?: string;
+  /** Overrides the zone read off this device, which is what a restore or an import needs. */
+  timeZone?: string;
   status?: TwigStatus;
   nestIds?: string[];
   featherId?: string | null;
 };
+
+/**
+ * Fills in the machine-readable half of a time for a row written before there was one.
+ *
+ * Done on read rather than in a migration: the source is `dueTime`, which is already in
+ * the row, so a row can heal itself the first time it is listed and no upgrade has to walk
+ * the store. A row whose text was never a time keeps a null, which is the honest answer.
+ */
+function withParsedTime(twig: Twig): Twig {
+  if (twig.dueMinutes !== undefined && twig.dueMinutes !== null) {
+    return twig;
+  }
+
+  return { ...twig, dueMinutes: parseDueTime(twig.dueTime ?? "") };
+}
 
 /**
  * Titles come back in plaintext; everything the board and the calendar sort and filter by
@@ -32,7 +51,7 @@ export async function listTwigs(): Promise<Twig[]> {
     "title",
   );
 
-  return live.sort(compareTwigsByBoardOrder);
+  return live.map(withParsedTime).sort(compareTwigsByBoardOrder);
 }
 
 /** New tasks land at the end of their column, clear of everything already ordered. */
@@ -45,6 +64,20 @@ async function nextBoardOrder(status: TwigStatus) {
   }
 
   return Math.max(...column.map((twig) => twig.boardOrder)) + BOARD_ORDER_STEP;
+}
+
+/**
+ * Every container this row belongs to: its course, and each tag it carries. Its key is
+ * wrapped under all of them, so sharing either one reaches it.
+ */
+async function containerKeyIds(branchId: string, nestIds: string[]): Promise<string[]> {
+  const database = await getNotesDb();
+  const branchKey = (await database.get("branches", branchId))?.keyId;
+  const nestKeys = await Promise.all(
+    nestIds.map(async (nestId) => (await database.get("nests", nestId))?.keyId),
+  );
+
+  return [branchKey, ...nestKeys].filter((id): id is string => Boolean(id));
 }
 
 export async function createTwig(draft: TwigDraft): Promise<Twig> {
@@ -60,6 +93,8 @@ export async function createTwig(draft: TwigDraft): Promise<Twig> {
     kind: draft.kind ?? "homework",
     dueDate: draft.dueDate ?? null,
     dueTime: draft.dueTime ?? "",
+    dueMinutes: parseDueTime(draft.dueTime ?? ""),
+    timeZone: draft.timeZone ?? currentTimeZone(),
     status,
     boardOrder: await nextBoardOrder(status),
     featherId: draft.featherId ?? null,
@@ -68,7 +103,12 @@ export async function createTwig(draft: TwigDraft): Promise<Twig> {
     deletedAt: null,
   };
 
-  await database.put("twigs", await sealRow(twig, "title"));
+  const cipher = await provisionObjectKey(
+    "twig",
+    await containerKeyIds(twig.branchId, twig.nestIds),
+  );
+
+  await database.put("twigs", await sealRow(twig, "title", cipher));
   return twig;
 }
 
@@ -85,10 +125,24 @@ export async function updateTwig(
 
   // Opened before the change is applied, so a caller that changes the due date and not the
   // title does not have to know that one of the two is sealed and the other is not.
-  const existing = await openRow(stored, "title");
+  const existing = withParsedTime(await openRow(stored, "title"));
   const next: Twig = { ...existing, ...changes, updatedAt: Date.now() };
 
-  await database.put("twigs", await sealRow(next, "title"));
+  // The parsed half is derived, so it is re-derived whenever the text it comes from moves
+  // rather than being something a caller can set out of step with it.
+  if (changes.dueTime !== undefined) {
+    next.dueMinutes = parseDueTime(changes.dueTime);
+    next.timeZone = changes.timeZone ?? next.timeZone ?? currentTimeZone();
+  }
+
+  await database.put("twigs", await sealRow(next, "title", cipherForObject(stored.keyId)));
+
+  // Re-tagging hangs the task's key under whatever it now carries, or the tag would be
+  // shareable and lead nowhere.
+  for (const parentKeyId of await containerKeyIds(next.branchId, next.nestIds)) {
+    await wrapUnderAlso(stored.keyId, parentKeyId);
+  }
+
   return next;
 }
 

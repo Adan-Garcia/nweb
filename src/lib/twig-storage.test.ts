@@ -157,3 +157,52 @@ describe("moveTwig", () => {
     ).toHaveLength(1);
   });
 });
+
+describe("the machine-readable half of a due time", () => {
+  it("is parsed from what the user typed", async () => {
+    const twig = await createTwig({ branchId: "branch-1", title: "Essay", dueTime: "3:30 PM" });
+
+    expect(twig.dueMinutes).toBe(15 * 60 + 30);
+    expect(twig.timeZone).toBe("America/New_York");
+  });
+
+  it("is null when there was nothing to parse, rather than a guess", async () => {
+    const twig = await createTwig({
+      branchId: "branch-1",
+      title: "Essay",
+      dueTime: "after lunch",
+    });
+
+    expect(twig.dueMinutes).toBeNull();
+    // The text is kept: it is what the person wrote and what the calendar shows.
+    expect(twig.dueTime).toBe("after lunch");
+  });
+
+  it("is re-derived whenever the text it comes from moves", async () => {
+    const twig = await createTwig({ branchId: "branch-1", title: "Essay", dueTime: "9:00 AM" });
+
+    const moved = await updateTwig(twig.id, { dueTime: "11:45 PM" });
+
+    expect(moved?.dueMinutes).toBe(23 * 60 + 45);
+  });
+
+  it("is left alone by a change that is not about the time", async () => {
+    const twig = await createTwig({ branchId: "branch-1", title: "Essay", dueTime: "9:00 AM" });
+
+    const moved = await updateTwig(twig.id, { status: "complete" });
+
+    expect(moved?.dueMinutes).toBe(9 * 60);
+  });
+
+  it("fills itself in for a row written before it existed", async () => {
+    const database = await getNotesDb();
+    const twig = await createTwig({ branchId: "branch-1", title: "Essay", dueTime: "3:30 PM" });
+
+    // The shape a row written by an earlier version has: text, and nothing parsed.
+    const stored = await database.get("twigs", twig.id);
+    await database.put("twigs", { ...stored!, dueMinutes: null, timeZone: "" });
+
+    const [listed] = await listTwigs();
+    expect(listed.dueMinutes).toBe(15 * 60 + 30);
+  });
+});

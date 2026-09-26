@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@shared/*": ["./shared/*"]
     }
   },
   "files": [],
@@ -14,6 +15,9 @@
     },
     {
       "path": "./tsconfig.e2e.json"
+    },
+    {
+      "path": "./tsconfig.server.json"
     }
   ]
 }

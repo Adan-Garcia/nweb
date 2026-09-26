@@ -37,6 +37,8 @@ async function seedTwig(id: string, deletedAt: number | null) {
     kind: "homework",
     dueDate: null,
     dueTime: "",
+    dueMinutes: null,
+    timeZone: "America/New_York",
     status: "incomplete",
     boardOrder: 0,
     featherId: null,

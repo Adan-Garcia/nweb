@@ -1,14 +1,19 @@
 import { useRef, useState } from "react";
-import { Download, Lock, Upload } from "lucide-react";
 
+import { BackupActions } from "@/components/settings/backup-actions";
 import { BackupPassphraseField } from "@/components/settings/backup-passphrase-field";
+import { RestoreModeField } from "@/components/settings/restore-mode-field";
 import type { BackupStatus } from "@/components/settings/use-workspace-backup";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { RestoreMode } from "@/lib/workspace-restore";
 
 type BackupCardProps = {
   status: BackupStatus;
   needsPassphrase: boolean;
+  /** Whether this workspace has a passphrase, which a plain download does not carry. */
+  isLockSet: boolean;
+  restoreMode: RestoreMode;
+  onChooseRestoreMode: (mode: RestoreMode) => void;
   onExport: (passphrase?: string) => void;
   onImport: (file: File) => void;
   onUnlock: (passphrase: string) => void;
@@ -19,6 +24,9 @@ type BackupCardProps = {
 export function BackupCard({
   status,
   needsPassphrase,
+  isLockSet,
+  restoreMode,
+  onChooseRestoreMode,
   onExport,
   onImport,
   onUnlock,
@@ -38,33 +46,16 @@ export function BackupCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <div className="flex flex-wrap gap-3">
-          <Button type="button" onClick={() => onExport()} disabled={isWorking}>
-            <Download className="size-4" />
-            Download backup
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isWorking}
-            aria-pressed={isEncrypting}
-            onClick={() => {
-              setIsEncrypting((current) => !current);
-            }}
-          >
-            <Lock className="size-4" />
-            Encrypt a backup
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isWorking}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="size-4" />
-            Restore from file
-          </Button>
-        </div>
+        <BackupActions
+          isWorking={isWorking}
+          isEncrypting={isEncrypting}
+          isLockSet={isLockSet}
+          onExport={() => onExport()}
+          onToggleEncrypting={() => {
+            setIsEncrypting((current) => !current);
+          }}
+          onPickFile={() => fileInputRef.current?.click()}
+        />
 
         {isEncrypting && !needsPassphrase ? (
           <BackupPassphraseField
@@ -95,10 +86,11 @@ export function BackupCard({
           />
         ) : null}
 
-        <p className="m-0 text-sm text-muted-foreground">
-          Restoring replaces everything in this browser with the contents of the file. Export first
-          if you want to keep what is here.
-        </p>
+        <RestoreModeField
+          restoreMode={restoreMode}
+          isDisabled={isWorking}
+          onChoose={onChooseRestoreMode}
+        />
 
         <input
           ref={fileInputRef}

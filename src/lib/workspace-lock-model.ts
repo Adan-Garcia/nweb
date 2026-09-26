@@ -1,6 +1,5 @@
+import { kdfParamsSchema } from "@shared/kdf-params";
 import { z } from "zod";
-
-import { kdfParamsSchema } from "./kdf";
 
 /**
  * The one row that says a workspace is locked, and how to derive its key.
@@ -22,6 +21,11 @@ export const workspaceLockRecordSchema = z.object({
    * apart by `name`, and nothing has to be rewritten for a lock to move between them.
    */
   kdf: kdfParamsSchema,
+  /**
+   * The id of the key this passphrase derives, stamped on every row it seals. Absent on a
+   * lock set before keys had ids, whose rows carry none either.
+   */
+  keyId: z.string().optional(),
   verifier: z.string(),
   createdAt: z.number(),
   updatedAt: z.number(),
@@ -33,5 +37,7 @@ export type WorkspaceLockRecord = z.infer<typeof workspaceLockRecordSchema>;
  * `unset` — no passphrase has ever been chosen, so nothing is encrypted.
  * `locked` — there is a passphrase and the key is not in memory. Content cannot be read.
  * `unlocked` — the key is in memory and every write from now on is encrypted.
+ * `interrupted` — a rekey started and did not finish, so rows sit under two keys. Nothing
+ * may be read or written until it is finished; the journal says what it needs.
  */
-export type WorkspaceLockState = "unset" | "locked" | "unlocked";
+export type WorkspaceLockState = "unset" | "locked" | "unlocked" | "interrupted";

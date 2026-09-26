@@ -2,6 +2,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { formatDateKey } from "@/components/calendar/calendar-shared";
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/cipher";
 import { createBranch, createFlight, createWing } from "@/lib/entity-storage";
 import { getNotesDb } from "@/lib/notes-db";
 import { createNotesDirectoryEntry } from "@/lib/notes-directory-storage";
@@ -56,5 +57,28 @@ describe("useDashboardData", () => {
     await waitFor(() => expect(result.current.isNotesLoading).toBe(false));
 
     expect(result.current.snapshot.branches.map((row) => row.name)).toEqual(["Biology"]);
+  });
+
+  it("loads nothing while the workspace is locked, instead of failing the page", async () => {
+    const wing = await createWing("My Wing");
+    const flight = await createFlight({ wingId: wing.id, name: "Fall 2026" });
+    const branch = await createBranch({ flightId: flight.id, name: "Biology" });
+    await createNotesDirectoryEntry({ branchId: branch.id, feather: "Note" });
+
+    // Sealed by a key that is then dropped, which is what a locked workspace looks like.
+    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
+      "encrypt",
+      "decrypt",
+    ]);
+    setActiveCipher(createAesGcmCipher(key, "test-key"));
+    await createNotesDirectoryEntry({ branchId: branch.id, feather: "Sealed note" });
+    resetActiveCipher();
+
+    const { result } = renderHook(() => useDashboardData());
+
+    // The shell is showing the lock screen over this page; an unreadable row here is that,
+    // not a fault worth reporting.
+    await waitFor(() => expect(result.current.isNotesLoading).toBe(false));
+    expect(result.current.recentNotes).toEqual([]);
   });
 });

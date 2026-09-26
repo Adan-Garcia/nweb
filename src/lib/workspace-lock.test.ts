@@ -10,14 +10,16 @@ import { getNotesDb } from "./notes-db";
 import { loadNotesDocument, saveLinearDocumentPayload } from "./notes-document-storage";
 import { createTwig, listTwigs } from "./twig-storage";
 import {
-  changeWorkspacePassphrase,
-  createWorkspaceLock,
   getWorkspaceLockState,
   isWorkspaceLockSet,
   lockWorkspace,
-  removeWorkspaceLock,
   unlockWorkspace,
 } from "./workspace-lock";
+import {
+  changeWorkspacePassphrase,
+  createWorkspaceLock,
+  removeWorkspaceLock,
+} from "./workspace-passphrase";
 
 const PASSPHRASE = "correct horse battery";
 const NOTE_TEXT = "SECRET-MARKER lecture notes";

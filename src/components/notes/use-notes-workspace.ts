@@ -22,6 +22,7 @@ import {
   createNotesDirectoryEntry,
   findNotesDirectoryEntry,
   listNotesDirectoryEntries,
+  renameNotesDirectoryEntry,
 } from "@/lib/notes-directory-storage";
 import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
 import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
@@ -232,6 +233,15 @@ export function useNotesWorkspace() {
     [applyActiveDocumentId, setSnapshot],
   );
 
+  /** Renames the open note, or any other. The id does not change, so nothing else moves. */
+  const renameDocument = useCallback(
+    async (documentId: string, feather: string) => {
+      await renameNotesDirectoryEntry(documentId, feather);
+      await refreshDirectoryEntries();
+    },
+    [refreshDirectoryEntries],
+  );
+
   const { deleteDocument } = useNotesDelete({
     refs,
     clearPendingLinearEdit,
@@ -263,6 +273,7 @@ export function useNotesWorkspace() {
     spatialHostRef: refs.spatialHostRef,
     createNoteAt,
     openDocumentById,
+    renameDocument,
     deleteDocument,
     refreshDirectoryEntries,
     saveActiveDocumentNow,

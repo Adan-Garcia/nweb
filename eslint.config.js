@@ -20,7 +20,12 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
       parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json", "./tsconfig.e2e.json"],
+        project: [
+          "./tsconfig.node.json",
+          "./tsconfig.app.json",
+          "./tsconfig.e2e.json",
+          "./tsconfig.server.json",
+        ],
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -52,6 +57,17 @@ export default defineConfig([
     files: ["src/**/*.ts"],
     ignores: ["src/**/*.test.ts"],
     rules: {
+      "max-lines": ["error", { max: 300, skipBlankLines: false, skipComments: false }],
+    },
+  },
+  {
+    // The server is Node, not a browser, and a service that cannot log is not operable —
+    // so `no-console` is off here. It has the same 300-line limit as any other module.
+    files: ["server/**/*.ts"],
+    ignores: ["server/**/*.test.ts"],
+    languageOptions: { globals: globals.node },
+    rules: {
+      "no-console": "off",
       "max-lines": ["error", { max: 300, skipBlankLines: false, skipComments: false }],
     },
   },

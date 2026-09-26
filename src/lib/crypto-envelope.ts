@@ -1,7 +1,8 @@
+import { type KdfParams, kdfParamsSchema } from "@shared/kdf-params";
 import { z } from "zod";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
-import { createKdfParams, deriveKey, type KdfParams, kdfParamsSchema } from "./kdf";
+import { createKdfParams, deriveKey } from "./kdf";
 
 /**
  * AES-GCM under a key derived from a passphrase, with everything needed to open it again

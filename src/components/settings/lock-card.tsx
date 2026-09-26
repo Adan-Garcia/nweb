@@ -1,15 +1,18 @@
 import { useState } from "react";
 
+import { RekeyProgressBar } from "@/components/rekey-progress";
 import { BackupPassphraseField } from "@/components/settings/backup-passphrase-field";
 import { ChangePassphraseField } from "@/components/settings/change-passphrase-field";
 import { type LockAction, LockActions } from "@/components/settings/lock-actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { WorkspaceLockState } from "@/lib/workspace-lock-model";
+import type { RekeyProgress } from "@/lib/workspace-rekey";
 
 type LockCardProps = {
   state: WorkspaceLockState;
   error: string | null;
   isWorking: boolean;
+  progress: RekeyProgress | null;
   onCreate: (passphrase: string) => void;
   onChange: (currentPassphrase: string, nextPassphrase: string) => void;
   onRemove: (passphrase: string) => void;
@@ -24,6 +27,7 @@ export function LockCard({
   state,
   error,
   isWorking,
+  progress,
   onCreate,
   onChange,
   onRemove,
@@ -98,6 +102,8 @@ export function LockCard({
             }}
           />
         ) : null}
+
+        <RekeyProgressBar progress={progress} label="Re-encrypting" />
 
         {error ? (
           <p role="alert" className="m-0 text-sm text-destructive">

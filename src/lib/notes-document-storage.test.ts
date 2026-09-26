@@ -218,7 +218,7 @@ describe("the cipher seam", () => {
       "encrypt",
       "decrypt",
     ]);
-    setActiveCipher(createAesGcmCipher(key));
+    setActiveCipher(createAesGcmCipher(key, "test-key"));
 
     await saveLinearDocumentPayload({
       documentId: "doc-sealed",
@@ -246,7 +246,7 @@ describe("the cipher seam", () => {
       "encrypt",
       "decrypt",
     ]);
-    setActiveCipher(createAesGcmCipher(key));
+    setActiveCipher(createAesGcmCipher(key, "test-key"));
     await saveLinearDocumentPayload({
       documentId: "doc-locked",
       compressionAlgorithm: "none",

@@ -6,14 +6,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { resetActiveCipher } from "@/lib/cipher";
 import { getNotesDb } from "@/lib/notes-db";
-import { createWorkspaceLock, lockWorkspace } from "@/lib/workspace-lock";
+import { lockWorkspace } from "@/lib/workspace-lock";
+import { createWorkspaceLock } from "@/lib/workspace-passphrase";
 
 import { LockScreen } from "./lock-screen";
 
-// The shipped iteration count would make the shell test take seconds.
-vi.mock("@/lib/crypto-envelope", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/crypto-envelope")>()),
-  PBKDF2_ITERATIONS: 100,
+// The shipped Argon2id cost — 64 MiB, three passes — would make the shell test take a
+// second. The parameters travel in the lock record, so unlocking uses the cheap ones too.
+vi.mock("@/lib/kdf", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/kdf")>()),
+  createKdfParams: () => ({
+    name: "Argon2id",
+    memorySize: 1024,
+    iterations: 1,
+    parallelism: 1,
+    salt: btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))),
+  }),
 }));
 
 describe("LockScreen", () => {

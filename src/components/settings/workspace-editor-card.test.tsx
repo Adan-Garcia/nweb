@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/cipher";
 import { createBranch, createFlight, createNest, createWing } from "@/lib/entity-storage";
 import { getNotesDb } from "@/lib/notes-db";
 import { createTwig, listTwigs } from "@/lib/twig-storage";
@@ -21,6 +22,10 @@ async function seedWorkspace() {
 
   return { wing, flight, branch, nest };
 }
+
+afterEach(() => {
+  resetActiveCipher();
+});
 
 beforeEach(async () => {
   const database = await getNotesDb();
@@ -147,5 +152,40 @@ describe("WorkspaceEditorCard", () => {
     const [twig] = await listTwigs();
     expect(twig.title).toBe("Problem set 4");
     expect(twig.nestIds).toEqual([]);
+  });
+
+  it("says so when a change cannot be saved, rather than looking like it worked", async () => {
+    const user = userEvent.setup();
+    await seedWorkspace();
+    const database = await getNotesDb();
+    render(<Harness />);
+
+    await screen.findByText("My Wing");
+    vi.spyOn(database, "put").mockRejectedValueOnce(new Error("storage gone"));
+
+    await user.click(screen.getByRole("button", { name: "Rename My Wing" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("could not be saved");
+    vi.restoreAllMocks();
+  });
+
+  it("says so when the workspace cannot be read at all", async () => {
+    const branch = await seedWorkspace();
+
+    // Sealed by a key that is then dropped: the names cannot be opened, so there is no
+    // list to show and the card has to say that rather than render an empty one.
+    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
+      "encrypt",
+      "decrypt",
+    ]);
+    setActiveCipher(createAesGcmCipher(key, "test-key"));
+    await createWing("Sealed wing");
+    resetActiveCipher();
+
+    render(<Harness />);
+
+    expect(await screen.findByRole("status")).toHaveTextContent("could not be read");
+    expect(branch.wing.id).not.toHaveLength(0);
   });
 });

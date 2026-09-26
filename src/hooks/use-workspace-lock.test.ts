@@ -3,11 +3,31 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resetActiveCipher } from "@/lib/cipher";
 import { getNotesDb } from "@/lib/notes-db";
-import { createWorkspaceLock, lockWorkspace } from "@/lib/workspace-lock";
+import { REKEY_JOURNAL_ID, writeRekeyJournal } from "@/lib/rekey-journal";
+import { lockWorkspace } from "@/lib/workspace-lock";
+import { createWorkspaceLock } from "@/lib/workspace-passphrase";
 
 import { useWorkspaceLock } from "./use-workspace-lock";
 
 const PASSPHRASE = "correct horse battery";
+
+/** Flipped by the one test that needs the resume to fail the way a bad row would. */
+const failures = vi.hoisted(() => ({ resume: false }));
+
+vi.mock("@/lib/workspace-passphrase", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/workspace-passphrase")>();
+
+  return {
+    ...actual,
+    resumeRekey: (...args: Parameters<typeof actual.resumeRekey>) => {
+      if (failures.resume) {
+        throw new Error("the sweep could not finish");
+      }
+
+      return actual.resumeRekey(...args);
+    },
+  };
+});
 
 // The shipped Argon2id cost — 64 MiB, three passes — would make each of these take a
 // second. The parameters travel in the lock record, so unlocking uses the cheap ones too.
@@ -24,9 +44,14 @@ vi.mock("@/lib/kdf", async (importOriginal) => ({
 
 beforeEach(async () => {
   const database = await getNotesDb();
-  await Promise.all([database.clear("workspace-keys"), database.clear("notes-documents")]);
+  await Promise.all([
+    database.clear("workspace-keys"),
+    database.clear("workspace-rekey"),
+    database.clear("notes-documents"),
+  ]);
   window.localStorage.clear();
   resetActiveCipher();
+  failures.resume = false;
 });
 
 async function mount() {
@@ -156,6 +181,118 @@ describe("useWorkspaceLock", () => {
     });
 
     expect(result.current.error).toMatch(/old one still opens this workspace/);
+  });
+
+  it("reports how far a rekey has got, and nothing when none is running", async () => {
+    const { result } = await mount();
+    expect(result.current.progress).toBeNull();
+
+    await act(async () => {
+      await result.current.create(PASSPHRASE);
+    });
+
+    // Cleared once it is done, so no stale bar is left on screen.
+    expect(result.current.progress).toBeNull();
+    expect(result.current.state).toBe("unlocked");
+  });
+
+  it("comes back interrupted, saying which passphrases would finish the job", async () => {
+    await writeRekeyJournal({
+      id: REKEY_JOURNAL_ID,
+      source: null,
+      target: {
+        kdf: { name: "Argon2id", memorySize: 1024, iterations: 1, parallelism: 1, salt: "AAAA" },
+        keyId: "target-key",
+        verifier: "AAAA",
+      },
+      store: "notes-documents",
+      lastKey: null,
+      done: 0,
+      total: 1,
+      startedAt: 1,
+    });
+
+    const { result } = await mount();
+
+    await waitFor(() => expect(result.current.state).toBe("interrupted"));
+    expect(result.current.needed).toEqual(["target"]);
+  });
+
+  it("refuses a resume with the wrong passphrase and stays interrupted", async () => {
+    const { result } = await mount();
+    await act(async () => {
+      await result.current.create(PASSPHRASE);
+    });
+
+    // A journal written over a finished lock: the same state a closed tab leaves behind.
+    await writeRekeyJournal({
+      id: REKEY_JOURNAL_ID,
+      source: null,
+      target: {
+        kdf: { name: "Argon2id", memorySize: 1024, iterations: 1, parallelism: 1, salt: "AAAA" },
+        keyId: "target-key",
+        verifier: "AAAA",
+      },
+      store: "notes-documents",
+      lastKey: null,
+      done: 0,
+      total: 1,
+      startedAt: 1,
+    });
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    await act(async () => {
+      expect(await result.current.resume({ target: "wrong" })).toBe(false);
+    });
+
+    expect(result.current.error).toMatch(/not the passphrase this workspace was being moved/);
+    expect(result.current.state).toBe("interrupted");
+  });
+
+  it("says nothing was lost when a resume fails partway rather than being refused", async () => {
+    const { result } = await mount();
+    // A row neither key opens, or a database that went away mid-sweep: the resume throws
+    // rather than reporting a wrong passphrase, and the workspace is still resumable.
+    failures.resume = true;
+
+    await act(async () => {
+      expect(await result.current.resume({ target: PASSPHRASE })).toBe(false);
+    });
+
+    expect(result.current.error).toMatch(/Nothing was lost/);
+  });
+
+  it("finishes a rekey it can open, and the workspace comes back", async () => {
+    const { result } = await mount();
+    await act(async () => {
+      await result.current.create(PASSPHRASE);
+    });
+
+    // Turning the lock off is a rekey too; interrupting it leaves the same journal.
+    const database = await getNotesDb();
+    const record = await database.get("workspace-keys", "workspace");
+    await writeRekeyJournal({
+      id: REKEY_JOURNAL_ID,
+      source: { kdf: record!.kdf, keyId: record!.keyId ?? "", verifier: record!.verifier },
+      target: null,
+      store: "notes-documents",
+      lastKey: null,
+      done: 0,
+      total: 1,
+      startedAt: 1,
+    });
+    await act(async () => {
+      await result.current.refresh();
+    });
+    expect(result.current.needed).toEqual(["source"]);
+
+    await act(async () => {
+      expect(await result.current.resume({ source: PASSPHRASE })).toBe(true);
+    });
+
+    expect(result.current.state).toBe("unset");
   });
 
   it("paints locked on the first render when the hint says so, without waiting", async () => {

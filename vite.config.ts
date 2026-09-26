@@ -9,6 +9,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // The wire contract, shared with the server that will read it. A plain folder and an
+      // alias rather than a workspace package: nothing is published, both sides compile
+      // from source, and there is no dependency tree to keep separate yet.
+      "@shared": fileURLToPath(new URL("./shared", import.meta.url)),
     },
   },
   test: {
@@ -24,29 +28,34 @@ export default defineConfig({
     },
     globalSetup: ["./vitest.global-setup.ts"],
     setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "server/**/*.test.ts"],
     restoreMocks: true,
     coverage: {
       provider: "v8",
-      include: ["src/**/*.{ts,tsx}"],
+      include: ["src/**/*.{ts,tsx}", "shared/**/*.ts", "server/**/*.ts"],
       exclude: [
         "src/**/*.test.{ts,tsx}",
         "src/test/**",
         "src/components/ui/**", // shadcn-generated
         "src/main.tsx",
+        // The composition roots: the environment, a socket and a real Postgres. Everything
+        // they wire together is tested without any of the three.
+        "server/src/main.ts",
       ],
       // CLAUDE.md section 4. Set just below what is measured, so coverage can only go up.
       thresholds: {
-        lines: 97,
-        statements: 97,
-        functions: 95,
-        branches: 92,
+        lines: 97.5,
+        statements: 97.5,
+        functions: 96,
+        branches: 93,
         // Hooks require 100% logic coverage.
         "src/hooks/**": { lines: 100, functions: 100, branches: 100, statements: 100 },
         // Feature hooks live next to their components; a few defensive branches remain.
-        "src/components/**/use-*.ts": { lines: 97, functions: 97, branches: 88, statements: 97 },
+        "src/components/**/use-*.ts": { lines: 97, functions: 98, branches: 88, statements: 97 },
         "src/lib/**": { lines: 97, functions: 99, branches: 93, statements: 97 },
         "src/workers/**": { lines: 100, functions: 100, branches: 90, statements: 100 },
+        // The server is small and every route is reachable from a test.
+        "server/**": { lines: 99, functions: 100, branches: 96, statements: 99 },
       },
     },
   },

@@ -5,6 +5,7 @@ import { NotesNoteButton } from "@/components/notes/notes-note-button";
 import { buildTree, getActivePathKeys } from "@/components/notes/notes-tree";
 import { NotesTreeGroup } from "@/components/notes/notes-tree-group";
 import type { NotesDirectoryEntry } from "@/components/notes/types";
+import { readExpandedGroups, writeExpandedGroups } from "@/lib/notes-navigation";
 import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type NotesTreeViewProps = {
@@ -14,6 +15,8 @@ type NotesTreeViewProps = {
   activeSelection: WorkspaceSelection;
   isBusy: boolean;
   onOpenDocument: (documentId: string) => void;
+  onRenameDocument: (documentId: string, feather: string) => void;
+  onDeleteDocument: (documentId: string) => void;
 };
 
 /** Saved notes grouped as Wing > Flight > Branch > Nest > Feather. */
@@ -24,13 +27,18 @@ export function NotesTreeView({
   activeSelection,
   isBusy,
   onOpenDocument,
+  onRenameDocument,
+  onDeleteDocument,
 }: NotesTreeViewProps) {
   const tree = useMemo(() => {
     return buildTree(snapshot, entries);
   }, [snapshot, entries]);
 
   const activePathKeys = useMemo(() => getActivePathKeys(activeSelection), [activeSelection]);
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set(activePathKeys));
+  // The shape the user last arranged, plus whatever the open note needs open to be seen.
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(
+    () => new Set([...readExpandedGroups(), ...activePathKeys]),
+  );
   const [syncedPathKeys, setSyncedPathKeys] = useState(activePathKeys);
 
   // Whenever the active note changes, make sure the groups on its path are open.
@@ -39,18 +47,19 @@ export function NotesTreeView({
     setExpandedKeys((current) => new Set([...current, ...activePathKeys]));
   }
 
+  // The next set is built here rather than inside the updater: remembering it is a side
+  // effect, and an updater can be called more than once for one event.
   const setGroupExpanded = (groupKey: string, isExpanded: boolean) => {
-    setExpandedKeys((current) => {
-      const next = new Set(current);
+    const next = new Set(expandedKeys);
 
-      if (isExpanded) {
-        next.add(groupKey);
-      } else {
-        next.delete(groupKey);
-      }
+    if (isExpanded) {
+      next.add(groupKey);
+    } else {
+      next.delete(groupKey);
+    }
 
-      return next;
-    });
+    setExpandedKeys(next);
+    writeExpandedGroups([...next]);
   };
 
   return (
@@ -109,6 +118,8 @@ export function NotesTreeView({
                             isActive={activeDocumentId === entry.id}
                             isBusy={isBusy}
                             onOpen={onOpenDocument}
+                            onRename={onRenameDocument}
+                            onDelete={onDeleteDocument}
                           />
                         ))}
                       </NotesTreeGroup>

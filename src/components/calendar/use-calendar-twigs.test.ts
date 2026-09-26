@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/cipher";
 import { createBranch, createFlight, createWing } from "@/lib/entity-storage";
 import { getNotesDb } from "@/lib/notes-db";
 import { createTwig, listTwigs } from "@/lib/twig-storage";
@@ -134,5 +135,23 @@ describe("useCalendarTwigs", () => {
     const database = await getNotesDb();
     expect((await database.get("twigs", twig.id))?.deletedAt).toEqual(expect.any(Number));
     expect(await listTwigs()).toEqual([]);
+  });
+
+  it("loads nothing while the workspace is locked, instead of failing the page", async () => {
+    const branch = await seedBranch();
+    await createTwig({ branchId: branch.id, title: "Problem set" });
+
+    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
+      "encrypt",
+      "decrypt",
+    ]);
+    setActiveCipher(createAesGcmCipher(key, "test-key"));
+    await createTwig({ branchId: branch.id, title: "Sealed task" });
+    resetActiveCipher();
+
+    const { result } = renderHook(() => useCalendarTwigs());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.twigs).toEqual([]);
   });
 });

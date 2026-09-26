@@ -1,0 +1,112 @@
+import {
+  changePassphraseRequestSchema,
+  preloginRequestSchema,
+  registerRequestSchema,
+  sessionRequestSchema,
+} from "@shared/account-contract";
+import { Hono } from "hono";
+
+import {
+  changePassphrase,
+  createSession,
+  endSession,
+  keyMaterialFor,
+  prelogin,
+  register,
+} from "./accounts";
+import { callerFor, fail, noContent, type RouteDeps } from "./http";
+
+/**
+ * An account is a proof of a passphrase and four strings this server cannot open. Every
+ * route here either checks the proof or hands those strings back.
+ */
+export function authRoutes({ sql, serverSecret, attempts }: RouteDeps) {
+  const routes = new Hono();
+
+  routes.post("/v1/auth/prelogin", async (context) => {
+    const parsed = preloginRequestSchema.safeParse(await context.req.json().catch(() => null));
+
+    if (!parsed.success) {
+      return fail("invalid_request");
+    }
+
+    if (attempts.isLimited(`prelogin:${parsed.data.email}`)) {
+      return fail("rate_limited");
+    }
+
+    return Response.json(await prelogin(sql, parsed.data.email, serverSecret));
+  });
+
+  routes.post("/v1/auth/register", async (context) => {
+    const parsed = registerRequestSchema.safeParse(await context.req.json().catch(() => null));
+
+    if (!parsed.success) {
+      return fail("invalid_request");
+    }
+
+    const outcome = await register(sql, parsed.data);
+
+    return "error" in outcome ? fail(outcome.error) : Response.json(outcome, { status: 201 });
+  });
+
+  routes.post("/v1/auth/session", async (context) => {
+    const parsed = sessionRequestSchema.safeParse(await context.req.json().catch(() => null));
+
+    if (!parsed.success) {
+      return fail("invalid_request");
+    }
+
+    if (attempts.isLimited(`session:${parsed.data.email}`)) {
+      return fail("rate_limited");
+    }
+
+    const session = await createSession(sql, parsed.data);
+
+    return session ? Response.json(session) : fail("invalid_credentials");
+  });
+
+  routes.delete("/v1/auth/session", async (context) => {
+    const caller = await callerFor(sql, context.req.header("authorization"));
+
+    if (!caller) {
+      return fail("unauthorized");
+    }
+
+    await endSession(sql, caller.token);
+
+    return noContent();
+  });
+
+  /** The sealed key material for this account: bytes only the passphrase opens. */
+  routes.get("/v1/keys", async (context) => {
+    const caller = await callerFor(sql, context.req.header("authorization"));
+
+    if (!caller) {
+      return fail("unauthorized");
+    }
+
+    return Response.json(keyMaterialFor(caller.user));
+  });
+
+  routes.post("/v1/auth/passphrase", async (context) => {
+    const caller = await callerFor(sql, context.req.header("authorization"));
+
+    if (!caller) {
+      return fail("unauthorized");
+    }
+
+    const parsed = changePassphraseRequestSchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+
+    if (!parsed.success) {
+      return fail("invalid_request");
+    }
+
+    const changed = await changePassphrase(sql, caller.user, parsed.data, caller.token);
+
+    return changed ? noContent() : fail("invalid_credentials");
+  });
+
+  return routes;
+}

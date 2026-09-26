@@ -5,15 +5,22 @@ import { RouteFallback } from "@/components/route-fallback";
 import { type RouteLoader, warmRoutes } from "@/lib/route-warmup";
 import { IndexPage } from "@/pages/index";
 
-/** Every route's importer, so the ones nobody opened can be fetched for offline use. */
-const routeLoaders: RouteLoader[] = [];
+/**
+ * Every route's importer, so the ones nobody opened can be fetched for offline use.
+ *
+ * Two lists, because a first visit may not last long: the workspace pages are the ones
+ * someone will want offline, so they are warmed before the marketing pages behind them.
+ */
+const workspaceLoaders: RouteLoader[] = [];
+const marketingLoaders: RouteLoader[] = [];
 
 /** Loads a page's named export on demand, so its dependencies stay out of the entry bundle. */
 function lazyPage<Name extends string>(
   load: () => Promise<Record<Name, ComponentType>>,
   name: Name,
+  { isWorkspace = false }: { isWorkspace?: boolean } = {},
 ) {
-  routeLoaders.push(load);
+  (isWorkspace ? workspaceLoaders : marketingLoaders).push(load);
 
   return lazy(async () => ({ default: (await load())[name] }));
 }
@@ -23,19 +30,25 @@ function lazyPage<Name extends string>(
 const SignupPage = lazyPage(() => import("@/pages/signup"), "SignupPage");
 const UnloggedPage = lazyPage(() => import("@/pages/unlogged"), "UnloggedPage");
 const OnboardingPage = lazyPage(() => import("@/pages/onboarding"), "OnboardingPage");
-const DashboardPage = lazyPage(() => import("@/pages/dashboard"), "DashboardPage");
+const DashboardPage = lazyPage(() => import("@/pages/dashboard"), "DashboardPage", {
+  isWorkspace: true,
+});
 const SignInPage = lazyPage(() => import("@/pages/signin"), "SignInPage");
 const DocumentationPage = lazyPage(() => import("@/pages/documentation"), "DocumentationPage");
 const PricingPage = lazyPage(() => import("@/pages/pricing"), "PricingPage");
 const PrivacyPage = lazyPage(() => import("@/pages/privacy"), "PrivacyPage");
-const CalendarPage = lazyPage(() => import("@/pages/calendar"), "CalendarPage");
-const BoardPage = lazyPage(() => import("@/pages/board"), "BoardPage");
-const NotesPage = lazyPage(() => import("@/pages/notes"), "NotesPage");
-const SettingsPage = lazyPage(() => import("@/pages/settings"), "SettingsPage");
+const CalendarPage = lazyPage(() => import("@/pages/calendar"), "CalendarPage", {
+  isWorkspace: true,
+});
+const BoardPage = lazyPage(() => import("@/pages/board"), "BoardPage", { isWorkspace: true });
+const NotesPage = lazyPage(() => import("@/pages/notes"), "NotesPage", { isWorkspace: true });
+const SettingsPage = lazyPage(() => import("@/pages/settings"), "SettingsPage", {
+  isWorkspace: true,
+});
 
 export default function App() {
   useEffect(() => {
-    warmRoutes(routeLoaders);
+    warmRoutes([...workspaceLoaders, ...marketingLoaders]);
   }, []);
 
   return (

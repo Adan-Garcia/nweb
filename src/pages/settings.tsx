@@ -1,19 +1,26 @@
+import { AccountCard } from "@/components/settings/account-card";
 import { BackupCard } from "@/components/settings/backup-card";
 import { LockCard } from "@/components/settings/lock-card";
+import { RemindersCard } from "@/components/settings/reminders-card";
+import { SharingCard } from "@/components/settings/sharing-card";
+import { useAccount } from "@/components/settings/use-account";
+import { useReminders } from "@/components/settings/use-reminders";
+import { useSharing } from "@/components/settings/use-sharing";
 import { useWorkspaceBackup } from "@/components/settings/use-workspace-backup";
 import { useWorkspaceEditor } from "@/components/settings/use-workspace-editor";
 import { WorkspaceEditorCard } from "@/components/settings/workspace-editor-card";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { useThemeMode } from "@/hooks/use-theme-mode";
 import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
 
 export function SettingsPage() {
   const { isDark, toggleTheme } = useThemeMode();
-  const { status, needsPassphrase, exportWorkspace, importWorkspace, unlockImport, cancelImport } =
-    useWorkspaceBackup();
+  const backup = useWorkspaceBackup();
   const lock = useWorkspaceLock();
   const editor = useWorkspaceEditor();
+  const account = useAccount();
+  const reminders = useReminders(account.sessionFor);
+  const sharing = useSharing(account.sessionFor, account.record?.material.publicKey ?? null);
 
   return (
     <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
@@ -30,6 +37,7 @@ export function SettingsPage() {
             state={lock.state}
             error={lock.error}
             isWorking={lock.isWorking}
+            progress={lock.progress}
             onCreate={(passphrase) => void lock.create(passphrase)}
             onChange={(current, next) => void lock.change(current, next)}
             onRemove={(passphrase) => void lock.remove(passphrase)}
@@ -39,33 +47,51 @@ export function SettingsPage() {
           <WorkspaceEditorCard {...editor} />
 
           <BackupCard
-            status={status}
-            needsPassphrase={needsPassphrase}
-            onExport={(passphrase) => void exportWorkspace(passphrase)}
-            onImport={(file) => void importWorkspace(file)}
-            onUnlock={(passphrase) => void unlockImport(passphrase)}
-            onCancelUnlock={cancelImport}
+            status={backup.status}
+            needsPassphrase={backup.needsPassphrase}
+            isLockSet={lock.state !== "unset"}
+            restoreMode={backup.restoreMode}
+            onChooseRestoreMode={backup.chooseRestoreMode}
+            onExport={(passphrase) => void backup.exportWorkspace(passphrase)}
+            onImport={(file) => void backup.importWorkspace(file)}
+            onUnlock={(passphrase) => void backup.unlockImport(passphrase)}
+            onCancelUnlock={backup.cancelImport}
           />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Account</CardTitle>
-              <CardDescription>
-                There is no account yet. Cuervo Planner has no server, so nothing you write is
-                uploaded and there is nothing to sign in to. The workspace lock above is a lock on
-                this browser, not an account. Accounts and sync are planned.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="m-0 text-sm text-muted-foreground">
-                See the{" "}
-                <a href="/documentation" className="text-primary hover:underline">
-                  documentation page
-                </a>{" "}
-                for what is built and what is planned.
-              </p>
-            </CardContent>
-          </Card>
+          <AccountCard
+            status={account.status}
+            email={account.record?.email ?? null}
+            hasServer={account.hasServer}
+            isWorking={account.isWorking}
+            isLockSet={lock.state !== "unset"}
+            error={account.error}
+            lastSync={account.lastSync}
+            onCreate={(email, passphrase, current) =>
+              void account.createAccount(email, passphrase, current)
+            }
+            onSignIn={(passphrase) => void account.signIn(passphrase)}
+            onSignOut={() => void account.signOut()}
+            onSync={() => void account.sync()}
+          />
+
+          <SharingCard
+            isConnected={account.isConnected}
+            shareable={sharing.shareable}
+            shares={sharing.shares}
+            selected={sharing.selected}
+            error={sharing.error}
+            isWorking={sharing.isWorking}
+            onSelect={sharing.select}
+            onShare={(keyId, email, role) => void sharing.share(keyId, email, role)}
+            onRevoke={(keyId, email) => void sharing.revoke(keyId, email)}
+          />
+
+          <RemindersCard
+            state={reminders.state}
+            isWorking={reminders.isWorking}
+            onEnable={() => void reminders.enable()}
+            onDisable={() => void reminders.disable()}
+          />
         </div>
       </div>
     </WorkspaceShell>

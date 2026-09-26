@@ -9,6 +9,7 @@ import {
   parseFlightName,
   type Wing,
 } from "./entity-model";
+import { cipherForObject, provisionObjectKey } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { openRow, openRows, type SealedRow, sealRow } from "./sealed-text";
 
@@ -49,10 +50,30 @@ export async function listNests(): Promise<Nest[]> {
   return openRows(live(await database.getAll("nests")), "name");
 }
 
+/**
+ * The key an object's rows are sealed under is recorded on the row itself, as the cipher
+ * marker every sealed row already carries. There is no second table saying which key
+ * belongs to which thing: the row says it, which is also what a recipient reads.
+ */
+async function keyIdOf<Store extends "wings" | "flights" | "branches" | "nests">(
+  store: Store,
+  id: string | undefined,
+): Promise<string | undefined> {
+  if (!id) {
+    return undefined;
+  }
+
+  const database = await getNotesDb();
+
+  return (await database.get(store, id))?.keyId;
+}
+
 export async function createWing(name: string): Promise<Wing> {
   const database = await getNotesDb();
   const wing: Wing = { id: crypto.randomUUID(), name, ...stamps() };
 
+  // A wing is the root: it has no container to hang under, so it keeps the workspace key
+  // it was already being written with.
   await database.put("wings", await sealRow(wing, "name"));
   return wing;
 }
@@ -81,7 +102,9 @@ export async function createFlight(input: {
     ...stamps(),
   };
 
-  await database.put("flights", await sealRow(flight, "name"));
+  const cipher = await provisionObjectKey("flight", [await keyIdOf("wings", input.wingId)]);
+
+  await database.put("flights", await sealRow(flight, "name", cipher));
   return flight;
 }
 
@@ -103,7 +126,9 @@ export async function createBranch(input: {
     ...stamps(),
   };
 
-  await database.put("branches", await sealRow(branch, "name"));
+  const cipher = await provisionObjectKey("branch", [await keyIdOf("flights", input.flightId)]);
+
+  await database.put("branches", await sealRow(branch, "name", cipher));
   return branch;
 }
 
@@ -116,7 +141,9 @@ export async function createNest(input: { branchId: string; name: string }): Pro
     ...stamps(),
   };
 
-  await database.put("nests", await sealRow(nest, "name"));
+  const cipher = await provisionObjectKey("nest", [await keyIdOf("branches", input.branchId)]);
+
+  await database.put("nests", await sealRow(nest, "name", cipher));
   return nest;
 }
 
@@ -131,6 +158,10 @@ function renamed<T extends SealedRow & { name: string; updatedAt: number }>(
   return { ...existing, name, updatedAt: Date.now(), encryption: undefined };
 }
 
+/** Re-seals with the key that row already carried, so a rename never moves it off its key. */
+const resealAs = <T extends SealedRow & { name: string }>(existing: T, next: T) =>
+  sealRow(next, "name", cipherForObject(existing.keyId));
+
 /**
  * The point of the entity layer: the name lives in one row, so nothing that references it
  * has to be rewritten and no note changes identity.
@@ -144,7 +175,7 @@ export async function renameWing(id: string, name: string): Promise<Wing | null>
   }
 
   const next = renamed(existing, name);
-  await database.put("wings", await sealRow(next, "name"));
+  await database.put("wings", await resealAs(existing, next));
   return next;
 }
 
@@ -160,7 +191,7 @@ export async function renameFlight(id: string, name: string): Promise<Flight | n
   // Term and year are parsed from the plaintext name and stored beside the sealed one:
   // they are what a flight sorts by, and a sort cannot open anything.
   const next: Flight = { ...renamed(existing, name), ...parseFlightName(name) };
-  await database.put("flights", await sealRow(next, "name"));
+  await database.put("flights", await resealAs(existing, next));
   return next;
 }
 
@@ -173,7 +204,7 @@ export async function renameBranch(id: string, name: string): Promise<Branch | n
   }
 
   const next = renamed(existing, name);
-  await database.put("branches", await sealRow(next, "name"));
+  await database.put("branches", await resealAs(existing, next));
   return next;
 }
 
@@ -200,6 +231,6 @@ export async function renameNest(id: string, name: string): Promise<Nest | null>
   }
 
   const next = renamed(existing, name);
-  await database.put("nests", await sealRow(next, "name"));
+  await database.put("nests", await resealAs(existing, next));
   return next;
 }

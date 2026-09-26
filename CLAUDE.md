@@ -39,7 +39,9 @@ This document defines the architectural, stylistic, and operational rules for th
 
 ## 2. Architecture & System Boundaries
 
-The app is **local-first**: there is no backend API today. Persistence is IndexedDB (`idb`); `localStorage` holds only what the first paint needs before an async read could answer — the theme, the workspace-lock hint, and which way the notes page is navigated — and never user content. Heavy work runs in a Web Worker. The workspace hierarchy is a set of entity stores (`wings`, `flights`, `branches`, `nests`, `twigs`, `pebbles`) alongside the note stores, all keyed by UUID and carrying `createdAt` / `updatedAt` / `deletedAt`.
+The app is **local-first**: it works with no server, and it reads its own notes with no server even when it has one. Persistence is IndexedDB (`idb`); `localStorage` holds only what the first paint needs before an async read could answer — the theme, the workspace-lock hint, and which way the notes page is navigated — and never user content. Heavy work runs in a Web Worker.
+
+There *is* a backend now, in `server/`, and it is optional in the strongest sense: a build with no `VITE_API_URL` never calls it, and a build with one still opens the workspace from the passphrase alone. It is a row store that holds ciphertext it cannot read. `BACKEND.md` is the design and `server/CLAUDE.md` the rules for writing it; requests go through `src/lib/api/`, responses are Zod-validated, and no component calls `fetch`. The workspace hierarchy is a set of entity stores (`wings`, `flights`, `branches`, `nests`, `twigs`, `pebbles`) alongside the note stores, all keyed by UUID and carrying `createdAt` / `updatedAt` / `deletedAt`.
 
 ### 2.1 Layers and dependency direction
 Imports flow **downward only**. A layer never imports from a layer above it. `[REQUIRED]`
@@ -67,7 +69,11 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   **IndexedDB schema changes** must bump `NOTES_DB_VERSION` (or the relevant version constant) and add a migration in the `upgrade` callback. Never edit a shipped store shape in place. `[REQUIRED]`
 *   **Data read from storage is untrusted.** Validate with a Zod schema before use; do not trust a cast. `[REQUIRED]` Define the schema once in `lib/` and infer the type from it (`lib/entity-model.ts` → `Wing`, `Flight`, `Branch`, `Nest`; `lib/twig-model.ts` → `Twig`).
 *   **Workers** are constructed via `new Worker(new URL("../workers/x.ts", import.meta.url), { type: "module" })` inside a `lib/*-client.ts` file, so Vite bundles them. Move CPU-heavy work (image optimization, compression, PDF processing) off the main thread. The request/response contract lives once in `lib/media-worker-protocol.ts` (types only) and is imported by both the client and the worker; never redeclare it.
-*   **If a network backend is introduced:** all requests go through a dedicated service module (e.g. `src/lib/api/`), responses are Zod-validated, and components consume them through hooks or a data-fetching library. TanStack Query is **not** installed; adding it needs approval.
+*   **Network access goes through `src/lib/api/`.** `[REQUIRED]` `client.ts` is the only place that calls `fetch`; every response is parsed with the schema `shared/` declares, because a server is trusted no more than a file is. Components consume it through a hook. TanStack Query is **not** installed; adding it needs approval.
+*   **An account never gates reading.** `[REQUIRED]` The keys are on disk, sealed: `unlockAccount` opens the workspace from the passphrase with no network at all, and a failed session is not a failed sign-in. Anything that makes the notes unreadable when the server is unreachable is a bug.
+*   **A session token lives in memory and nowhere else.** `[REQUIRED]` `lib/api/session-store.ts` holds it; writing one to IndexedDB would leave a working credential on disk beside the ciphertext it is meant to be separate from.
+*   **Every shareable object gets its own key, and only with an account.** `[REQUIRED]` `lib/keys/object-keys.ts` is the one place a key is minted; a storage module asks it for the cipher to write with and never reaches for `getActiveCipher()` itself. Reads pass no cipher at all, so the keyring resolves each row by the `keyId` it carries — a list can hold rows on several keys. With no account it all falls back to the active cipher, which is what keeps a purely local workspace unchanged.
+*   **An optional callback never wraps the work.** `[REQUIRED]` Write `const x = await work(); on?.(x)`, never `on?.(await work())`: an optional call does not evaluate its arguments, so the work silently never happens when nobody is listening. This has bitten twice — the reminder sweep and the background sync.
 
 ### 2.4 State management
 *   Default to local `useState` / `useReducer`. Prefer **derived state** over duplicated state.
@@ -159,6 +165,8 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | E2E | `npm run test:e2e` | Playwright against a production build; first run on a machine needs `npx playwright install chromium`. |
 | Visual | `npm run test:visual` | Local pixel comparison; see §4. |
 | Build | `npm run build` | `tsc -b && vite build` |
+| Build the server | `npm run build:server` | Bundles `server/src/main.ts`; Node cannot resolve `./app` or `@shared/…` on its own. |
+| Run the server | `npm run start:server` | Needs `DATABASE_URL` and `SERVER_SECRET`; see `server/CLAUDE.md` §5. |
 | Test | `npm run test` | Vitest; see §4. |
 
 *   **Before reporting completion run:** `npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build`. All pass on a clean tree today; keep them clean.
@@ -236,23 +244,26 @@ A change is done only when:
 ## 13. Known Gaps & Backlog (audited 2026-09-21)
 
 Pre-existing; not blockers for unrelated work (§0). `FEATURES-GAP.md` is the full list and
-the reasoning; this is the short form for someone editing the code.
+the reasoning; this is the short form for someone editing the code. Everything buildable
+without a server has shipped, so what is left here is inherent or waiting on the backend.
 
-1.  **The rekey has no progress and no resume.** Setting, changing or removing a
-    passphrase rewrites every document, media blob and name one row at a time
-    (`workspace-rekey.ts`). A workspace with a gigabyte of PDFs sits on a spinner, and a
-    failure partway leaves some rows converted — recoverable, because both callers order
-    their work so the old key still opens what has not moved, but not resumable.
-2.  **Backups are all-or-nothing.** `restoreWorkspaceBackup` clears every store and writes
-    the file's contents. There is no merge, so restoring on a device that has since been
-    used loses whatever it did in the meantime.
-3.  **Tombstone collection only runs when the workspace is opened.**
-    `collectTombstonesOnce` runs from `WorkspaceShell`, so a workspace nobody opens never
-    sweeps, and the ninety-day window is a guess made before any sync exists to need it.
-4.  **Route warm-up is best-effort.** `lib/route-warmup.ts` imports the unvisited page
-    chunks on idle so the service worker caches them. A first visit that is closed before
-    it goes idle still leaves routes that will not open offline.
-5.  **`NotesFileViewer` shows notes but cannot act on them.** The tree opens a note and
-    nothing else: renaming, moving and deleting from it all go through the path bar or the
-    settings editor. Its groups are also expanded from component state, so the shape is
-    forgotten on reload.
+1.  **Tombstone collection only runs when the workspace is opened.**
+    `collectTombstonesOnce` runs from `WorkspaceShell` when the workspace is usable, so
+    one nobody opens never sweeps. The ninety-day window is what a merge-style restore can
+    see back: merging a file older than that can bring a deleted note back, because the
+    marker that said "deleted here" is gone.
+2.  **Route warm-up is best-effort.** `lib/route-warmup.ts` imports the unvisited page
+    chunks on idle so the service worker caches them, workspace routes first. A first
+    visit closed before it goes idle still leaves routes that will not open offline.
+3.  **A merge restore is last-write-wins and nothing more.** Two devices that changed the
+    same note both keep the later `updatedAt`; there is no field-level merge and no way to
+    see what was dropped. That is the rule sync will need too, so it is the place to start
+    when B2 lands rather than a second implementation.
+4.  **A key is only ever rotated on a revoke.** `lib/keys/object-keys.ts` gives every
+    shareable object a key of its own and `rotate-key.ts` replaces one when somebody is
+    removed, but nothing rotates on a schedule: a key shared and re-shared for years is the
+    same key.
+5.  **A shared course arrives without its path.** The recipient gets the course and
+    everything in it; the term and wing above are names under keys they do not hold, so the
+    app shows a course with no home. That is the honest consequence of sharing narrowly and
+    it is not yet pretty.

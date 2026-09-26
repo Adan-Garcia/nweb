@@ -1,8 +1,10 @@
 import { base64ToBytes, bytesToBase64 } from "./base64";
 import {
   type Cipher,
-  type CipherName,
+  cipherForRow,
+  type CipherMarker,
   CipherUnavailableError,
+  cipherWroteRow,
   decryptWith,
   getActiveCipher,
 } from "./cipher";
@@ -26,7 +28,7 @@ import {
  * no schema stops being a string. The row's `encryption` marker says which cipher wrote
  * it, exactly as `NotesDocumentRecord.encryption` does for content.
  */
-export type SealedRow = { encryption?: CipherName };
+export type SealedRow = CipherMarker;
 
 export async function sealText(text: string, cipher: Cipher = getActiveCipher()): Promise<string> {
   if (cipher.name === "none") {
@@ -37,26 +39,34 @@ export async function sealText(text: string, cipher: Cipher = getActiveCipher())
 }
 
 /**
- * Reads a name back with whatever wrote it. A row sealed by a cipher that is not active
- * throws, for the reason `decryptWith` does: handing the UI base64 would put it in a list,
- * and the next rename would write it back as the name.
+ * Reads a name back with whatever wrote it. A row no key on this device opens throws, for
+ * the reason `decryptWith` does: handing the UI base64 would put it in a list, and the next
+ * rename would write it back as the name.
+ *
+ * Passing a cipher means that one and no other, as in `decryptWith`; leaving it out asks
+ * the keyring, so a name sealed under a shared branch's key opens beside one sealed under
+ * this workspace's own.
  */
 export async function openText(
   stored: string,
-  wroteWith: CipherName | undefined,
-  cipher: Cipher = getActiveCipher(),
+  marker: CipherMarker,
+  cipher?: Cipher,
 ): Promise<string> {
-  if (!wroteWith || wroteWith === "none") {
+  const wroteWith = marker.encryption ?? "none";
+
+  if (wroteWith === "none") {
     return stored;
   }
 
+  const opener = cipher ?? cipherForRow(marker);
+
   // Checked before the base64 is decoded, so "this workspace is locked" is not reported as
   // "that is not valid base64" for a row some other key wrote.
-  if (cipher.name !== wroteWith) {
+  if (!opener || !cipherWroteRow(marker, opener)) {
     throw new CipherUnavailableError(wroteWith);
   }
 
-  return new TextDecoder().decode(await decryptWith(base64ToBytes(stored), wroteWith, cipher));
+  return new TextDecoder().decode(await decryptWith(base64ToBytes(stored), marker, opener));
 }
 
 /**
@@ -75,6 +85,7 @@ export async function sealRow<Key extends string, Row extends Record<Key, string
     // No marker on a plaintext row: "absent" is what every row written before this reads
     // as, and one spelling of "readable" is easier to reason about than two.
     encryption: cipher.name === "none" ? undefined : cipher.name,
+    keyId: cipher.keyId || undefined,
   };
 }
 
@@ -82,16 +93,21 @@ export async function sealRow<Key extends string, Row extends Record<Key, string
  * The inverse. Rows leave a storage module in plaintext and with no marker on them, so
  * that a caller which writes one back — a tombstone, a restore — stores a readable name
  * that says it is readable, rather than plaintext labelled as ciphertext.
+ *
+ * No cipher means "whichever key sealed this row", which is what an ordinary list wants:
+ * once objects have keys of their own, the rows in one list are not all on one key. Naming
+ * a cipher still means that one and no other, which is what a rekey needs.
  */
 export async function openRow<Key extends string, Row extends Record<Key, string> & SealedRow>(
   row: Row,
   key: Key,
-  cipher: Cipher = getActiveCipher(),
+  cipher?: Cipher,
 ): Promise<Row> {
   return {
     ...row,
-    [key]: await openText(row[key], row.encryption, cipher),
+    [key]: await openText(row[key], row, cipher),
     encryption: undefined,
+    keyId: undefined,
   };
 }
 
@@ -106,7 +122,7 @@ export function sealRows<Key extends string, Row extends Record<Key, string> & S
 export function openRows<Key extends string, Row extends Record<Key, string> & SealedRow>(
   rows: Row[],
   key: Key,
-  cipher: Cipher = getActiveCipher(),
+  cipher?: Cipher,
 ): Promise<Row[]> {
   return Promise.all(rows.map((row) => openRow(row, key, cipher)));
 }
