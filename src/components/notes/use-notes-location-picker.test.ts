@@ -315,4 +315,21 @@ describe("useNotesLocationPicker: adding a level", () => {
     const snapshot = await loadWorkspaceSnapshot();
     expect(snapshot.flights.some((flight) => flight.name === "Orphan")).toBe(false);
   });
+
+  it("refuses a course under Shared with you, which is not a term to put one in", async () => {
+    const { result } = await setup();
+
+    // "Shared with you" is a real entry in the wing dropdown now, so this is a path a user
+    // can actually take rather than an edge case. There is no flight under it to own a new
+    // course, and inventing one would put it in a term that is not theirs.
+    act(() => result.current.selectSegmentValue("wing", null));
+    act(() => result.current.segmentModal.open("branch", "Branch"));
+    act(() => result.current.segmentModal.setDraftValue("Nowhere"));
+    await act(async () => {
+      await result.current.segmentModal.submit();
+    });
+
+    const snapshot = await loadWorkspaceSnapshot();
+    expect(snapshot.branches.some((branch) => branch.name === "Nowhere")).toBe(false);
+  });
 });

@@ -43,7 +43,9 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
           return {
             id: branch.id,
             name: branch.name,
-            label: path ? `${path.flight.name} / ${branch.name}` : branch.name,
+            // A shared course has no term to qualify it, and its own name is the whole of
+            // what can be said about it.
+            label: path?.flight ? `${path.flight.name} / ${branch.name}` : branch.name,
           };
         })
         .sort((left, right) => left.label.localeCompare(right.label)),

@@ -6,6 +6,8 @@ import {
   findNest,
   flightsForWing,
   nestsForBranch,
+  SHARED_SEGMENT_LABEL,
+  sharedBranches,
   UNFILED_NEST_LABEL,
   type WorkspaceSnapshot,
 } from "@/lib/workspace-tree";
@@ -61,8 +63,10 @@ export function selectionForEntry(
           ?.id ?? null);
 
   return {
-    wingId: path?.wing.id ?? null,
-    flightId: path?.flight.id ?? null,
+    // Null for a shared course, which is the selection that lists it: see
+    // `branchesForFlight`, where "no term" is where a shared course lives.
+    wingId: path?.wing?.id ?? null,
+    flightId: path?.flight?.id ?? null,
     branchId: entry.branchId,
     nestId,
     featherId: entry.id,
@@ -80,8 +84,15 @@ export function segmentOptions(
     name: entity.name,
   });
 
+  // The only way into a shared course: it sits under no wing of yours, so the wing
+  // dropdown offers the fact instead, and choosing it cascades to the shared courses.
+  const shared = sharedBranches(snapshot);
+
   return {
-    wing: snapshot.wings.map(toOption),
+    wing: [
+      ...snapshot.wings.map(toOption),
+      ...(shared.length ? [{ id: null, name: SHARED_SEGMENT_LABEL }] : []),
+    ],
     flight: flightsForWing(snapshot, selection.wingId).map(toOption),
     branch: branchesForFlight(snapshot, selection.flightId).map(toOption),
     nest: [
@@ -103,11 +114,16 @@ export function segmentLabels(
 ): Record<LocationSegment, string> {
   const path = branchPath(snapshot, selection.branchId);
   const activeEntry = entries.find((entry) => entry.id === selection.featherId) ?? null;
+  // Each dropdown is its own control and has to say what it is showing, so unlike the
+  // joined path in `displayLocation` both of these carry the label rather than one.
+  const above = path?.isShared ? SHARED_SEGMENT_LABEL : null;
 
   return {
-    wing: snapshot.wings.find((wing) => wing.id === selection.wingId)?.name ?? "No wing",
+    wing: snapshot.wings.find((wing) => wing.id === selection.wingId)?.name ?? above ?? "No wing",
     flight:
-      snapshot.flights.find((flight) => flight.id === selection.flightId)?.name ?? "No flight",
+      snapshot.flights.find((flight) => flight.id === selection.flightId)?.name ??
+      above ??
+      "No flight",
     branch: path?.branch.name ?? "No branch",
     nest: findNest(snapshot, selection.nestId)?.name ?? UNFILED_NEST_LABEL,
     feather: activeEntry?.feather ?? "No note",

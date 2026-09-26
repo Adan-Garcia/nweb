@@ -189,3 +189,66 @@ describe("resolveCascade", () => {
     expect(next).toEqual({ ...selection, featherId: "note-1" });
   });
 });
+
+describe("navigating to a course somebody shared", () => {
+  /** A recipient's workspace: the course arrived, its term and wing did not. */
+  const sharedSnapshot = () => makeSnapshot({ wings: [], flights: [] });
+
+  it("offers the fact in place of a wing, since it sits under none of yours", () => {
+    const options = segmentOptions(sharedSnapshot(), [makeEntry()], EMPTY_SELECTION);
+
+    expect(options.wing).toEqual([{ id: null, name: "Shared with you" }]);
+  });
+
+  it("offers no such entry when nothing has been shared", () => {
+    const options = segmentOptions(makeSnapshot(), [makeEntry()], EMPTY_SELECTION);
+
+    expect(options.wing.map((option) => option.name)).not.toContain("Shared with you");
+  });
+
+  it("lists the shared course once that is chosen", () => {
+    const options = segmentOptions(sharedSnapshot(), [makeEntry()], EMPTY_SELECTION);
+
+    // Without this the course is in the database, holds a key that opens it, and cannot be
+    // reached from anywhere in the app.
+    expect(options.branch.map((option) => option.name)).toEqual(["Biology 101"]);
+  });
+
+  it("cascades from it all the way down to the note", () => {
+    const next = resolveCascade(sharedSnapshot(), [makeEntry()], EMPTY_SELECTION, "wing", null);
+
+    expect(next).toMatchObject({
+      wingId: null,
+      flightId: null,
+      branchId: BRANCH_ID,
+      nestId: NEST_ID,
+      featherId: "note-1",
+    });
+  });
+
+  it("says so in both dropdowns above the course", () => {
+    const selection = { ...EMPTY_SELECTION, branchId: BRANCH_ID };
+    const labels = segmentLabels(sharedSnapshot(), [makeEntry()], selection);
+
+    // Each dropdown is its own control and has to say what it is showing, so here the
+    // label appears twice where the joined path shows it once.
+    expect(labels).toMatchObject({
+      wing: "Shared with you",
+      flight: "Shared with you",
+      branch: "Biology 101",
+    });
+  });
+
+  it("still says 'no wing' in an empty workspace, which is not the same thing", () => {
+    const labels = segmentLabels(makeSnapshot({ branches: [] }), [], EMPTY_SELECTION);
+
+    expect(labels).toMatchObject({ wing: "No wing", flight: "No flight", branch: "No branch" });
+  });
+
+  it("finds the note under it, which is the point of reaching it at all", () => {
+    const selection = { ...EMPTY_SELECTION, branchId: BRANCH_ID, nestId: NEST_ID };
+    const options = segmentOptions(sharedSnapshot(), [makeEntry()], selection);
+
+    expect(options.feather.map((option) => option.name)).toEqual(["Exam review"]);
+  });
+});

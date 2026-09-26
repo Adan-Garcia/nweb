@@ -22,6 +22,8 @@ import {
   flightsForWing,
   formatLocationPath,
   nestsForBranch,
+  SHARED_SEGMENT_LABEL,
+  sharedBranches,
   UNFILED_NEST_LABEL,
 } from "./workspace-tree";
 
@@ -69,11 +71,99 @@ describe("walking the tree", () => {
     });
   });
 
-  it("returns null when a level above the branch is gone", () => {
-    expect(branchPath(makeSnapshot({ wings: [] }), BRANCH_ID)).toBeNull();
-    expect(branchPath(makeSnapshot({ flights: [] }), BRANCH_ID)).toBeNull();
+  it("keeps the course's own name when the levels above it cannot be read", () => {
+    // A course shared with you arrives without its term and wing, because those are names
+    // under keys you were not given. Dropping the course's name with them would lose the
+    // one thing that is readable.
+    expect(branchPath(makeSnapshot({ flights: [] }), BRANCH_ID)).toMatchObject({
+      branch: { id: BRANCH_ID },
+      flight: null,
+      wing: null,
+      isShared: true,
+    });
+    expect(branchPath(makeSnapshot({ wings: [] }), BRANCH_ID)).toMatchObject({
+      branch: { id: BRANCH_ID },
+      wing: null,
+      isShared: true,
+    });
+  });
+
+  it("returns null only when the branch itself is not there", () => {
     expect(branchPath(makeSnapshot(), "no-such-branch")).toBeNull();
     expect(branchPath(emptyWorkspaceSnapshot(), null)).toBeNull();
+  });
+
+  it("is not shared when the whole path resolves", () => {
+    expect(branchPath(makeSnapshot(), BRANCH_ID)?.isShared).toBe(false);
+  });
+});
+
+describe("sharedBranches", () => {
+  it("is empty in a workspace where every course has a term", () => {
+    expect(sharedBranches(makeSnapshot())).toEqual([]);
+  });
+
+  it("lists the courses whose term cannot be read, by name", () => {
+    const snapshot = makeSnapshot({
+      branches: [
+        makeBranch({ id: "b1", name: "Zoology", flightId: "a-term-not-here" }),
+        makeBranch({ id: "b2", name: "Art", flightId: "a-term-not-here" }),
+        makeBranch({ id: "b3", name: "Mine", flightId: FLIGHT_ID }),
+      ],
+    });
+
+    expect(sharedBranches(snapshot).map((branch) => branch.name)).toEqual(["Art", "Zoology"]);
+  });
+
+  it("is where the course dropdown looks when no term is chosen", () => {
+    const snapshot = makeSnapshot({
+      branches: [makeBranch({ id: "b1", name: "Shared", flightId: "a-term-not-here" })],
+    });
+
+    // Not a gap a shared course falls through: precisely the place it belongs.
+    expect(branchesForFlight(snapshot, null).map((branch) => branch.name)).toEqual(["Shared"]);
+  });
+});
+
+describe("a course shared with you", () => {
+  /** What a recipient's workspace holds: the course and its note, and nothing above them. */
+  const sharedSnapshot = () => makeSnapshot({ wings: [], flights: [] });
+
+  it("still shows its own name, and says where the rest went", () => {
+    expect(displayLocation(sharedSnapshot(), makeEntry())).toEqual({
+      wing: SHARED_SEGMENT_LABEL,
+      flight: "",
+      branch: "Biology 101",
+      nest: "Unit 1",
+      feather: "Exam review",
+    });
+  });
+
+  it("reads as one path rather than saying it twice", () => {
+    const location = displayLocation(sharedSnapshot(), makeEntry());
+
+    // The term is left blank on purpose: both segments are joined into one string, and
+    // repeating the label would read as though it meant two different things.
+    expect(formatLocationPath(location)).toBe(
+      "Shared with you / Biology 101 / Unit 1 / Exam review",
+    );
+  });
+
+  it("leaves a course with a term alone", () => {
+    expect(displayLocation(makeSnapshot(), makeEntry())).toMatchObject({
+      wing: "My Wing",
+      flight: "Fall 2026",
+    });
+  });
+
+  it("does not claim a note with no course at all is shared", () => {
+    // Nothing is known about it, and "shared with you" would be a guess.
+    expect(displayLocation(emptyWorkspaceSnapshot(), makeEntry())).toMatchObject({
+      wing: "",
+      flight: "",
+      branch: "",
+      feather: "Exam review",
+    });
   });
 });
 

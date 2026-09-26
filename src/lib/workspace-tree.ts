@@ -19,6 +19,15 @@ export type WorkspacePath = {
 /** Shown where a note carries no nest, so the path bar always has something to say. */
 export const UNFILED_NEST_LABEL = "Unfiled";
 
+/**
+ * Shown in place of the term and wing above a course somebody shared.
+ *
+ * Those are real names on real rows, sealed under keys the recipient was never given, so
+ * there is nothing to display and nothing worth inventing. Naming the situation is the
+ * honest answer: the course is here, and where it came from is not.
+ */
+export const SHARED_SEGMENT_LABEL = "Shared with you";
+
 export function emptyWorkspaceSnapshot(): WorkspaceSnapshot {
   return { wings: [], flights: [], branches: [], nests: [] };
 }
@@ -44,7 +53,18 @@ export function flightsForWing(snapshot: WorkspaceSnapshot, wingId: string | nul
   return snapshot.flights.filter((flight) => flight.wingId === wingId).sort(compareFlights);
 }
 
+/**
+ * The courses in a term — or, with no term chosen, the ones shared with you.
+ *
+ * Both the dropdown and the cascade read courses through here, so handling the null case
+ * once is what makes a shared course selectable, and everything under it reachable, without
+ * either of them knowing that sharing exists.
+ */
 export function branchesForFlight(snapshot: WorkspaceSnapshot, flightId: string | null) {
+  if (flightId === null) {
+    return sharedBranches(snapshot);
+  }
+
   return snapshot.branches
     .filter((branch) => branch.flightId === flightId)
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -56,17 +76,54 @@ export function nestsForBranch(snapshot: WorkspaceSnapshot, branchId: string | n
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Walks up from a branch. Returns null if any level above it has been deleted. */
-export function branchPath(snapshot: WorkspaceSnapshot, branchId: string | null) {
-  const branch = findBranch(snapshot, branchId);
-  const flight = branch ? findFlight(snapshot, branch.flightId) : null;
-  const wing = flight ? findWing(snapshot, flight.wingId) : null;
+/** A branch, with as much of what is above it as this device can actually read. */
+export type ResolvedBranch = {
+  branch: Branch;
+  flight: Flight | null;
+  wing: Wing | null;
+  /** True when the levels above it are not here at all: a course somebody shared. */
+  isShared: boolean;
+};
 
-  if (!branch || !flight || !wing) {
+/**
+ * Walks up from a branch, and keeps whatever it finds.
+ *
+ * Deliberately not all-or-nothing. A course shared with you arrives with its own key and
+ * without the term and wing above it, because those are names under keys you were not
+ * given — and dropping the course's own name along with them would lose the one thing that
+ * *is* readable. Null means the branch itself is missing, which is the only case with
+ * nothing to show.
+ *
+ * A live branch whose flight is absent is a shared one rather than an orphan: deleting a
+ * term tombstones everything under it (`entity-delete.ts`), so a local delete takes the
+ * branch too and it never reaches here.
+ */
+export function branchPath(
+  snapshot: WorkspaceSnapshot,
+  branchId: string | null,
+): ResolvedBranch | null {
+  const branch = findBranch(snapshot, branchId);
+
+  if (!branch) {
     return null;
   }
 
-  return { wing, flight, branch } satisfies WorkspacePath;
+  const flight = findFlight(snapshot, branch.flightId);
+  const wing = flight ? findWing(snapshot, flight.wingId) : null;
+
+  return { branch, flight, wing, isShared: !flight || !wing };
+}
+
+/**
+ * Courses whose term this device cannot read, by name.
+ *
+ * This is where a shared course lives in the path bar. It has no reachable flight, so "no
+ * term chosen" is not a gap it falls through but precisely the place it belongs.
+ */
+export function sharedBranches(snapshot: WorkspaceSnapshot) {
+  return snapshot.branches
+    .filter((branch) => !findFlight(snapshot, branch.flightId))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -86,8 +143,11 @@ export function displayLocation(
   const chosen = nests.find((nest) => nest.id === nestId) ?? nests[0] ?? null;
 
   return {
-    wing: path?.wing.name ?? "",
-    flight: path?.flight.name ?? "",
+    // A shared course says so once, on the wing, and leaves the term blank. Both segments
+    // are joined into one string by `formatLocationPath`, and saying it twice would read
+    // as though it meant two different things.
+    wing: path?.wing?.name ?? (path?.isShared ? SHARED_SEGMENT_LABEL : ""),
+    flight: path?.flight?.name ?? "",
     branch: path?.branch.name ?? "",
     nest: chosen?.name ?? UNFILED_NEST_LABEL,
     feather: entry.feather,

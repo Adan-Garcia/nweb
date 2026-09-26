@@ -149,6 +149,11 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
     *   **Seal before opening an IndexedDB transaction, never inside one.** Awaiting anything that is not an IDB request lets the transaction auto-commit, and the puts after it fail with `TransactionInactiveError` in a real browser (fake-indexeddb is lenient and will not catch this).
     *   **An encrypted row that cannot be read is an error, not a fallback.** Returning the raw bytes would hand the editor ciphertext and autosave would write it back as the note.
 *   **Crypto is AES-GCM from WebCrypto, under a key derived by Argon2id** (`hash-wasm`, the one crypto dependency — WebCrypto has no Argon2). The KDF's name and parameters travel inside every envelope and inside the lock record (`lib/kdf.ts`), so a workspace locked under PBKDF2 still opens with it and raising a cost is a new value rather than a migration. New key material is always Argon2id. Say "encrypted on this device"; the key is in JS memory while the data is readable and the code using it is served from the same origin, so it protects a file that leaves the device and a copied profile directory, not a compromised bundle or an XSS bug.
+*   **A path resolves as far as it can, and never further.** `[REQUIRED]` `branchPath` is
+    deliberately not all-or-nothing: a course shared with you has no readable term or wing,
+    and dropping its own name along with them would lose the one thing that *is* readable.
+    Say `SHARED_SEGMENT_LABEL` where a name cannot be read; never invent one, and never
+    show a blank where the reason is knowable.
 *   **The lock covers content and names, and deliberately not dates.** `lib/sealed-text.ts` is the seam for the one display field a row is listed by (`feather`, `name`, `title`); `lib/cipher.ts` is the seam for payloads. A twig's `dueDate`, `dueTime`, `status` and every timestamp stay in the clear on purpose, so a future server holding nothing but ciphertext can still drive a reminder. `[REQUIRED]` Storage modules seal on write and open on read: a row leaves `lib/*-storage.ts` in plaintext and with no `encryption` marker, and a row that cannot be opened is an error, never its ciphertext.
 *   **Vite assets:** import static assets (images, SVGs) through Vite's module system; do not reference `public/` paths directly from components. The exception is what the browser fetches by URL rather than the bundler: `manifest.webmanifest`, `sw.js` and the PWA icons live in `public/` and are referenced from `index.html`.
 *   **The service worker (`public/sw.js`) is hand-written and takes no build step.** `[REQUIRED]` It needs no precache manifest because everything under `/assets/` is content-hashed (cached forever, served cache-first) while the HTML document is not (network-first, so a deploy is picked up). Do not add `vite-plugin-pwa` to replace it without a reason; it would be a new dependency for something that already works. Registration goes through `lib/service-worker.ts`, production only — in dev a cache would serve yesterday's modules back after an edit.
@@ -263,7 +268,8 @@ without a server has shipped, so what is left here is inherent or waiting on the
     shareable object a key of its own and `rotate-key.ts` replaces one when somebody is
     removed, but nothing rotates on a schedule: a key shared and re-shared for years is the
     same key.
-5.  **A shared course arrives without its path.** The recipient gets the course and
-    everything in it; the term and wing above are names under keys they do not hold, so the
-    app shows a course with no home. That is the honest consequence of sharing narrowly and
-    it is not yet pretty.
+5.  **A note shared on its own is not reachable in the path bar.** A shared *course* is:
+    it lands under "Shared with you", where the wing dropdown offers that in place of a
+    term it cannot read (`workspace-tree.ts`). A lone note points at a branch the recipient
+    does not have, so nothing lists it — its title still shows wherever notes are listed by
+    recency, but there is no path to it.

@@ -52,6 +52,20 @@ down the wraps → the row's data key. The walk is done once per session and cac
 resolved lazily: a workspace with two thousand notes has two thousand data keys, and
 opening one note needs one of them.
 
+### Delivering a share
+
+The key graph decides who *can* read a course. The row store has to agree, or a share is a
+promise with nothing behind it: the recipient holds a key that opens bytes they are never
+sent. So `sync` is scoped by the key that sealed a row rather than by who owns it — a row
+goes out when the caller can derive its key, and nowhere else.
+
+Writes follow the same rule, with one extra step. An edit to a shared row lands *on that
+row*, found by its key, not as a second row under the editor's own id; two copies of one
+note, each device sure it had the only one, is the failure worth designing against.
+Existence and freshness are separate questions — a row that exists but loses on `updatedAt`
+is still that row's edit — and a caller who may read but not write has the edit dropped,
+because the server cannot merge ciphertext and must not fork it.
+
 ### What each share actually gives away
 
 | Shared | The other person gets | They do not get |
@@ -247,9 +261,10 @@ to make sharing possible need one too.
 
 *   **Nothing rotates on a schedule.** Revoking rotates the key it was asked about, and
     only that one. A key shared and re-shared for years is the same key.
-*   **A shared course arrives without its path.** A recipient gets the course and everything
-    in it; the term and wing above it are names under keys they do not hold. The app shows
-    it as a course with no home, which is honest and is not yet pretty.
+*   **A note shared on its own has no path to it.** A shared course is reachable: the row
+    store serves it, and the path bar lists it under "Shared with you". A lone note points
+    at a branch the recipient has no row for, so nothing lists it — the title shows wherever
+    notes are listed by recency, and there is no way to navigate to it.
 *   **Sync is last-write-wins and says nothing about it.** Two devices that changed the same
     note both keep the later `updatedAt`, and there is no way to see what was dropped.
 *   **Paid tiers.** Not started, and needs billing infrastructure this repository has none
