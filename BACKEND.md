@@ -259,6 +259,11 @@ to make sharing possible need one too.
 
 ### What is still missing
 
+*   **A grant re-stamps every row under the key it hands over.** `seq` is the server's
+    answer to "what is new to me", and a recipient who has used their own workspace has a
+    cursor past the owner's writes — so without the re-stamp the share is invisible to them.
+    The cost is that everyone else re-downloads those rows once, which is idempotent and
+    wasteful in proportion to how big the shared thing is.
 *   **`walkFrom` reads the whole `key_wraps` table.** Every sync round calls it twice, and
     each media read once more. Correct and linear in the number of wraps in the database,
     which is fine for one deployment and is the first thing to make recursive in SQL.

@@ -6,7 +6,8 @@ import {
 import { Hono } from "hono";
 
 import { callerFor, fail, noContent, type RouteDeps } from "./http";
-import { keyGraphFor, publicKeyFor, putKeys, revoke, share, sharesOf } from "./sharing";
+import { keyGraphFor } from "./key-graph";
+import { publicKeyFor, putKeys, revoke, share, sharesOf } from "./sharing";
 
 /**
  * Who can derive which key. Every refusal here is `invalid_request`: "that key is not

@@ -8,7 +8,14 @@ import {
   registerCipher,
   setActiveCipher,
 } from "../cipher";
-import { createObjectKey, extendKeyring, type Keyring, wrapForRecipient } from "../keys/key-graph";
+import { holdIdentity } from "../keys/identity";
+import {
+  createObjectKey,
+  extendKeyring,
+  type Keyring,
+  openKeyGraph,
+  wrapForRecipient,
+} from "../keys/key-graph";
 import { forgetKeyring, holdKeyring } from "../keys/object-keys";
 import { rotateRowsToKey } from "../keys/rotate-rows";
 import { readLockRecord, unlockWorkspace, writeLockHint } from "../workspace-lock";
@@ -117,7 +124,7 @@ export async function adoptAccount(options: AdoptAccountOptions): Promise<Adopti
   });
 
   // From here on, anything created gets a key of its own hung under the wing.
-  await adoptKeyring(wing.keyId, wing.key, record.graph);
+  await adoptKeyring(wing.keyId, wing.key, record.graph, keys.privateKey);
 
   return { ok: true, record, moved };
 }
@@ -186,7 +193,7 @@ export async function unlockAccount(passphrase: string): Promise<SignInOutcome> 
   const cipher = createAesGcmCipher(wingKey, record.wingKeyId);
 
   setActiveCipher(cipher);
-  await adoptKeyring(record.wingKeyId, wingKey, record.graph);
+  await adoptKeyring(record.wingKeyId, wingKey, record.graph, keys.privateKey);
 
   return { ok: true, keys, cipher };
 }
@@ -198,6 +205,7 @@ export async function unlockAccount(passphrase: string): Promise<SignInOutcome> 
  * nothing is destroyed and nothing is left readable. Signing back in opens it again.
  */
 export async function forgetAccount(): Promise<void> {
+  holdIdentity(null);
   forgetKeyring();
   await forgetAccountRecord();
 }
@@ -210,10 +218,27 @@ export async function forgetAccount(): Promise<void> {
  * once opens every note it holds with no network, including the ones under courses it made
  * on a plane.
  */
-async function adoptKeyring(wingKeyId: string, wingKey: CryptoKey, cached: KeyGraph) {
+async function adoptKeyring(
+  wingKeyId: string,
+  wingKey: CryptoKey,
+  cached: KeyGraph,
+  privateKey: CryptoKey,
+) {
+  holdIdentity(privateKey);
+
+  // Two roots, because there are two ways a key reaches this device. The wing key comes off
+  // disk and everything below it is reached by walking wraps. A key somebody *shared* hangs
+  // under nothing of ours — the only route to it is a grant, sealed under this account's
+  // public key — so the grants are walked too, and the results merged.
   const keyring: Keyring = new Map([[wingKeyId, wingKey]]);
 
   await extendKeyring(cached, keyring);
+
+  for (const [keyId, key] of await openKeyGraph(cached, privateKey)) {
+    if (!keyring.has(keyId)) {
+      keyring.set(keyId, key);
+    }
+  }
 
   holdKeyring(keyring, cached, (next) => {
     void updateAccountGraph(next);

@@ -7,6 +7,8 @@ import {
   cipherWroteRow,
   decryptWith,
   getActiveCipher,
+  hasKeys,
+  isLockedError,
 } from "./cipher";
 
 /**
@@ -119,10 +121,34 @@ export function sealRows<Key extends string, Row extends Record<Key, string> & S
   return Promise.all(rows.map((row) => sealRow(row, key, cipher)));
 }
 
-export function openRows<Key extends string, Row extends Record<Key, string> & SealedRow>(
+/**
+ * A list, with the rows this device has no key for left out rather than failing all of them.
+ *
+ * A share that ended leaves its rows behind, sealed under a key that is gone. `Promise.all`
+ * would reject on the first of them and take the whole list with it — your own courses
+ * along with somebody else's. Skipping is not the same as returning ciphertext, which is
+ * still forbidden: the row simply is not in the list.
+ *
+ * A workspace holding no keys at all is locked, which is a different thing, and still an
+ * error, because that is what puts the lock screen up instead of an empty page. So is a
+ * failure under a cipher the caller named, which is a rekey asserting one key and no other.
+ */
+export async function openRows<Key extends string, Row extends Record<Key, string> & SealedRow>(
   rows: Row[],
   key: Key,
   cipher?: Cipher,
 ): Promise<Row[]> {
-  return Promise.all(rows.map((row) => openRow(row, key, cipher)));
+  const opened: Row[] = [];
+
+  for (const row of rows) {
+    try {
+      opened.push(await openRow(row, key, cipher));
+    } catch (error) {
+      if (cipher || !hasKeys() || !isLockedError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  return opened;
 }

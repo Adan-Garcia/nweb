@@ -1,12 +1,7 @@
-import type {
-  Grant,
-  KeyGraph,
-  PutKeysRequest,
-  RevokeRequest,
-  ShareRequest,
-} from "@shared/sharing-contract";
+import type { Grant, PutKeysRequest, RevokeRequest, ShareRequest } from "@shared/sharing-contract";
 
 import { normalizeEmail, type Sql } from "./db";
+import { keyGraphFor, keysUnder, reachableKeyIds } from "./key-graph";
 
 /**
  * The key graph, stored by a server that can open none of it.
@@ -81,115 +76,6 @@ export async function putKeys(sql: Sql, userId: string, request: PutKeysRequest)
   }
 }
 
-/**
- * What this user can walk: the keys granted to them, everything reachable beneath those,
- * and the wraps that get from one to the other.
- *
- * The reachable set is computed here rather than handing over every wrap in the table. A
- * wrap whose parent the caller cannot derive is useless to them, but it is also a fact
- * about somebody else's workspace, and there is no reason to publish it.
- */
-export async function keyGraphFor(sql: Sql, userId: string): Promise<KeyGraph> {
-  const { grants, reachable, wraps } = await walkFrom(sql, userId);
-
-  const { rows: keyRows } = await sql.query<{
-    id: string;
-    kind: KeyGraph["keys"][number]["kind"];
-    rotated_from: string | null;
-  }>("select id, kind, rotated_from from keys");
-
-  return {
-    keys: keyRows
-      .filter((key) => reachable.has(key.id))
-      .map((key) => ({ id: key.id, kind: key.kind, rotatedFrom: key.rotated_from })),
-    wraps,
-    grants,
-  };
-}
-
-/**
- * Every key this user can derive, and the wraps that get there.
- *
- * `role` narrows the starting grants: walking from the writer grants alone gives the keys
- * whose content this user may change, which is a different and smaller set than what they
- * may read. Everything below a writer grant is writable, because a key that opens a
- * container opens what the container wraps.
- */
-async function walkFrom(
-  sql: Sql,
-  userId: string,
-  role?: Grant["role"],
-): Promise<{ grants: Grant[]; reachable: Set<string>; wraps: KeyGraph["wraps"] }> {
-  const { rows: grantRows } = await sql.query<{
-    key_id: string;
-    role: Grant["role"];
-    wrapped: string;
-  }>(
-    role
-      ? "select key_id, role, wrapped from grants where user_id = $1 and role = $2"
-      : "select key_id, role, wrapped from grants where user_id = $1",
-    role ? [userId, role] : [userId],
-  );
-
-  const grants: Grant[] = grantRows.map((row) => ({
-    keyId: row.key_id,
-    role: row.role,
-    wrapped: row.wrapped,
-  }));
-
-  const { rows: wrapRows } = await sql.query<{
-    parent_key_id: string;
-    child_key_id: string;
-    wrapped: string;
-  }>("select parent_key_id, child_key_id, wrapped from key_wraps");
-
-  const byParent = new Map<string, typeof wrapRows>();
-
-  for (const wrap of wrapRows) {
-    byParent.set(wrap.parent_key_id, [...(byParent.get(wrap.parent_key_id) ?? []), wrap]);
-  }
-
-  const reachable = new Set(grants.map((grant) => grant.keyId));
-  const wraps: KeyGraph["wraps"] = [];
-  const queue = [...reachable];
-
-  for (let cursor = 0; cursor < queue.length; cursor += 1) {
-    const parent = queue[cursor];
-
-    for (const wrap of byParent.get(parent) ?? []) {
-      wraps.push({
-        parentKeyId: wrap.parent_key_id,
-        childKeyId: wrap.child_key_id,
-        wrapped: wrap.wrapped,
-      });
-
-      // A graph, not a tree: a note in two nests is reached twice and enqueued once.
-      if (!reachable.has(wrap.child_key_id)) {
-        reachable.add(wrap.child_key_id);
-        queue.push(wrap.child_key_id);
-      }
-    }
-  }
-
-  return { grants, reachable, wraps };
-}
-
-/**
- * The keys whose rows this user may be served, or may write.
- *
- * This is the rule the row store is scoped by: a row is handed over when the caller can
- * derive the key that sealed it, and refused otherwise. Owning it is not the test —
- * somebody else's course, shared with them, is exactly the case that matters — and neither
- * is asking nicely, because the bytes are useless without the key either way.
- */
-export async function reachableKeyIds(
-  sql: Sql,
-  userId: string,
-  role?: Grant["role"],
-): Promise<string[]> {
-  return [...(await walkFrom(sql, userId, role)).reachable];
-}
-
 export type ShareOutcome = "shared" | "no_such_user" | "not_yours";
 
 /**
@@ -219,11 +105,29 @@ export async function share(
     return "no_such_user";
   }
 
+  const mayWrite = (await reachableKeyIds(sql, userId, "writer")).includes(request.keyId);
+  const { rows: existing } = await sql.query<{ user_id: string }>(
+    "select user_id from grants where key_id = $1 and user_id = $2",
+    [request.keyId, rows[0].id],
+  );
+
+  // Replacing somebody else's grant is a writer's business. Otherwise a reader could hand
+  // another recipient junk bytes and quietly cut them off.
+  if (existing.length && !mayWrite && rows[0].id !== userId) {
+    return "not_yours";
+  }
+
   await sql.query(
     `insert into grants (key_id, user_id, role, wrapped) values ($1, $2, $3, $4)
      on conflict (key_id, user_id) do update set role = excluded.role, wrapped = excluded.wrapped`,
-    [request.keyId, rows[0].id, request.role, request.wrapped],
+    // You cannot hand out a pen you were not given: a reader passing the key on makes
+    // another reader, however the request is spelled.
+    [request.keyId, rows[0].id, mayWrite ? request.role : "reader", request.wrapped],
   );
+
+  await sql.query("update rows set seq = nextval('rows_seq') where key_id = any($1)", [
+    await keysUnder(sql, request.keyId),
+  ]);
 
   return "shared";
 }
@@ -252,6 +156,14 @@ export async function revoke(
 
   if (!rows[0]) {
     return "no_such_user";
+  }
+
+  // Dropping somebody else's access is a writer's business; dropping your own is always
+  // yours, because leaving a share is not an escalation.
+  const mayWrite = (await reachableKeyIds(sql, userId, "writer")).includes(request.keyId);
+
+  if (rows[0].id !== userId && !mayWrite) {
+    return "not_yours";
   }
 
   await sql.query("delete from grants where key_id = $1 and user_id = $2", [

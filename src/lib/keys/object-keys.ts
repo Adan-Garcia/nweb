@@ -50,6 +50,35 @@ export function holdKeyring(
   }
 }
 
+/**
+ * Adds keys somebody shared to the ring this device already holds.
+ *
+ * Not `holdKeyring`, which replaces it: these arrive after unlock, from a graph the server
+ * hands over, and they are additions to what is already in hand. They stay out of the
+ * uploaded graph because they are not this device's to record.
+ *
+ * Without this a shared key would reach `cipher.ts` for reading and never the object
+ * keyring, so every *write* into a shared course would miss and fall back to this
+ * workspace's own key — re-sealing somebody else's note under a key they do not have.
+ */
+export function adoptSharedKeys(shared: Keyring): number {
+  if (!keyring) {
+    return 0;
+  }
+
+  let added = 0;
+
+  for (const [keyId, key] of shared) {
+    if (!keyring.has(keyId)) {
+      keyring.set(keyId, key);
+      registerCipher(createAesGcmCipher(key, keyId));
+      added += 1;
+    }
+  }
+
+  return added;
+}
+
 /** Drops every object key. Called when the workspace locks or the account is forgotten. */
 export function forgetKeyring(): void {
   keyring = null;

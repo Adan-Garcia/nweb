@@ -1,7 +1,7 @@
 import type { MediaMeta } from "@shared/sync-contract";
 
 import { type Sql, toNumber } from "./db";
-import { reachableKeyIds } from "./sharing";
+import { reachableKeyIds } from "./key-graph";
 
 /**
  * Media is stored beside the rows rather than in them: a note is a few kilobytes and a

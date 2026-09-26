@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  CipherUnavailableError,
   createAesGcmCipher,
   getActiveCipher,
   plaintextCipher,
@@ -20,13 +21,13 @@ import {
 type NamedRow = SealedRow & { id: string; name: string };
 type TitledRow = SealedRow & { id: string; title: string; dueDate?: string; status?: string };
 
-async function aesCipher() {
+async function aesCipher(keyId = "test-key") {
   const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
     "encrypt",
     "decrypt",
   ]);
 
-  return createAesGcmCipher(key, "test-key");
+  return createAesGcmCipher(key, keyId);
 }
 
 afterEach(() => {
@@ -139,5 +140,41 @@ describe("sealRows and openRows", () => {
       { id: "1", name: "Organic Chemistry", encryption: undefined },
       { id: "2", name: "Linear Algebra", encryption: undefined },
     ]);
+  });
+});
+
+describe("a list holding a row this device has no key for", () => {
+  const rowsFor = (keyId: string, sealed: string) => [
+    { id: "mine", name: "Readable", encryption: undefined, keyId: undefined },
+    { id: "theirs", name: sealed, encryption: "aes-gcm" as const, keyId },
+  ];
+
+  it("leaves it out rather than failing the whole list", async () => {
+    setActiveCipher(await aesCipher("my-key"));
+
+    // A row left behind by a share that is over. Rejecting here would take your own
+    // courses down with somebody else's.
+    const opened = await openRows(rowsFor("a-key-nobody-gave-me", "Zm9v"), "name");
+
+    expect(opened.map((row) => row.name)).toEqual(["Readable"]);
+  });
+
+  it("still fails when this device holds no keys at all, which is locked", async () => {
+    // Different thing entirely, and the one that has to put the lock screen up rather than
+    // quietly show an empty workspace.
+    await expect(openRows(rowsFor("any-key", "Zm9v"), "name")).rejects.toBeInstanceOf(
+      CipherUnavailableError,
+    );
+  });
+
+  it("still fails when the caller named the key, which a rekey does", async () => {
+    const other = await aesCipher("other-key");
+
+    setActiveCipher(await aesCipher("my-key"));
+
+    // A rekey is moving rows between two named keys and must not skip one it cannot read.
+    await expect(openRows(rowsFor("other-key", "Zm9v"), "name", other)).rejects.toBeInstanceOf(
+      Error,
+    );
   });
 });

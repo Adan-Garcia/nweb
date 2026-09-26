@@ -128,6 +128,17 @@ export function resetActiveCipher() {
 }
 
 /**
+ * Whether this device holds any key at all.
+ *
+ * The difference between "locked" and "not yours". No keys means the workspace has not been
+ * opened, which is an error every list should report; keys but not *this* row's means the
+ * row belongs to somebody whose share ended, which is not.
+ */
+export function hasKeys(): boolean {
+  return keyring.size > 0;
+}
+
+/**
  * The cipher that sealed this row, or null when this device cannot open it.
  *
  * A row from before ids carries only a name, and the active cipher is the only candidate

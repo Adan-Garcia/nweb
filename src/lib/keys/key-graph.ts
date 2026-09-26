@@ -164,3 +164,34 @@ export function cipherForKey(keyring: Keyring, keyId: string): Cipher | null {
 
   return key ? createAesGcmCipher(key, keyId) : null;
 }
+
+/**
+ * One graph holding everything in both, by identity.
+ *
+ * The cached copy and the server's answer each know something the other does not: a key
+ * minted here has not been uploaded yet, and a key somebody shared was never ours to record.
+ * Taking either alone loses one of them.
+ */
+export function mergeKeyGraphs(mine: KeyGraph | null, theirs: KeyGraph): KeyGraph {
+  if (!mine) {
+    return theirs;
+  }
+
+  const keys = new Map(mine.keys.map((key) => [key.id, key]));
+  const wraps = new Map(mine.wraps.map((wrap) => [`${wrap.parentKeyId}>${wrap.childKeyId}`, wrap]));
+  const grants = new Map(mine.grants.map((grant) => [grant.keyId, grant]));
+
+  for (const key of theirs.keys) {
+    keys.set(key.id, key);
+  }
+
+  for (const wrap of theirs.wraps) {
+    wraps.set(`${wrap.parentKeyId}>${wrap.childKeyId}`, wrap);
+  }
+
+  for (const grant of theirs.grants) {
+    grants.set(grant.keyId, grant);
+  }
+
+  return { keys: [...keys.values()], wraps: [...wraps.values()], grants: [...grants.values()] };
+}

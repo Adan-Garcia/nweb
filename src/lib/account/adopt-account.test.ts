@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getActiveCipher, resetActiveCipher } from "../cipher";
 import { createBranch, createFlight, listBranches } from "../entity-storage";
+import { createObjectKey, wrapForRecipient } from "../keys/key-graph";
+import { cipherForObject } from "../keys/object-keys";
 import { getNotesDb } from "../notes-db";
 import { loadNotesDocument, saveLinearDocumentPayload } from "../notes-document-storage";
 import { createWorkspaceLock } from "../workspace-passphrase";
@@ -260,5 +262,70 @@ describe("signing out", () => {
     // The bytes are still there and still unreadable: a door locked, not a note destroyed.
     expect((await database.get("notes-documents", "doc-1"))?.encryption).toBe("aes-gcm");
     expect(await unlockAccount(PASSPHRASE)).toEqual({ ok: false, reason: "no-account" });
+  });
+});
+
+describe("a course somebody shared with you", () => {
+  /** Puts a grant for a key of somebody else's into the cached graph, as a sync would. */
+  async function cacheSharedKey() {
+    const record = await readAccountRecord();
+    const shared = await createObjectKey("branch");
+    const database = await getNotesDb();
+
+    await database.put("account", {
+      ...record!,
+      graph: {
+        keys: [...record!.graph.keys, { id: shared.keyId, kind: "branch", rotatedFrom: null }],
+        wraps: record!.graph.wraps,
+        grants: [
+          ...record!.graph.grants,
+          {
+            keyId: shared.keyId,
+            role: "writer",
+            wrapped: await wrapForRecipient(shared.key, record!.material.publicKey),
+          },
+        ],
+      },
+    });
+
+    return shared.keyId;
+  }
+
+  it("opens with no network at all, from the grant on disk", async () => {
+    await seedWorkspace();
+    await adoptAccount(options());
+    const sharedKeyId = await cacheSharedKey();
+
+    // A cold load on a plane. The key hangs under nothing of ours, so only the grant
+    // reaches it — and a wrap-only walk from the wing would never find it.
+    resetActiveCipher();
+    expect((await unlockAccount(PASSPHRASE)).ok).toBe(true);
+    expect(cipherForObject(sharedKeyId).keyId).toBe(sharedKeyId);
+  });
+
+  it("is written back under its own key, not under yours", async () => {
+    await seedWorkspace();
+    await adoptAccount(options());
+    const sharedKeyId = await cacheSharedKey();
+
+    resetActiveCipher();
+    await unlockAccount(PASSPHRASE);
+
+    // Falling back to the workspace's own key here would re-seal somebody else's note
+    // under a key they do not have, and lock them out of their own course.
+    expect(cipherForObject(sharedKeyId)).not.toBe(getActiveCipher());
+  });
+
+  it("leaves your own courses listable when the share has ended", async () => {
+    await seedWorkspace();
+    await adoptAccount(options());
+
+    const database = await getNotesDb();
+    const mine = (await database.getAll("branches"))[0];
+
+    // A row left behind by a share that is over: sealed under a key that is gone.
+    await database.put("branches", { ...mine, id: "theirs", keyId: "a-key-nobody-gave-me" });
+
+    expect((await listBranches()).map((branch) => branch.name)).toEqual(["Thermodynamics"]);
   });
 });

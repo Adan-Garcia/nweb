@@ -1,6 +1,7 @@
 import { putKeys } from "../api/account-api";
 import { getApiSession } from "../api/session-store";
 import { currentKeyGraph, keysNeedUpload, markKeysUploaded } from "../keys/object-keys";
+import { refreshKeyGraph } from "../keys/refresh-graph";
 import { EMPTY_SYNC_STATE, type SyncState, syncUntilSettled } from "./run-sync";
 import { syncMedia } from "./sync-media";
 
@@ -56,9 +57,15 @@ async function round(): Promise<SyncReport | null> {
     return null;
   }
 
-  // Keys first. A row whose key the server has never heard of is a row no second device
-  // can open, so the envelope has to arrive before what it wraps.
+  // Keys both ways before any row moves. Ours first, because a row whose key the server has
+  // never heard of is one no second device can open; then theirs, because a course shared
+  // with us since the last round arrives as rows we would otherwise pull, fail to open, and
+  // step past for good.
   await pushKeys();
+
+  // A grant re-stamps the rows it exposes, so they come back above the cursor on their own.
+  // Nothing has to be re-read from the beginning.
+  await refreshKeyGraph(session);
 
   const result = await syncUntilSettled(session, state);
 

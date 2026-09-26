@@ -30,7 +30,15 @@ export const accountRecordSchema = z.object({
    */
   wingKeyId: z.string().min(1),
   wrappedWingKey: z.string().min(1),
-  /** The last graph the server handed over. Rebuilt on the next sync; never trusted blindly. */
+  /**
+   * The last graph the server handed over, grants and all.
+   *
+   * The grants are what make a *shared* key reachable offline: it hangs under nothing of
+   * this workspace's, so a wrap under the wing will never find it and only the grant —
+   * sealed under this account's public key — opens it. Caching them is no more exposure
+   * than the server already has, and without them a course somebody shared goes dark the
+   * moment the network does.
+   */
   graph: keyGraphSchema,
   updatedAt: z.number(),
 });

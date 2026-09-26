@@ -6,7 +6,7 @@ import {
 } from "@shared/sync-contract";
 
 import { type Sql, toNumber } from "./db";
-import { reachableKeyIds } from "./sharing";
+import { reachableKeyIds } from "./key-graph";
 
 /**
  * Sync: take what a device has, give it what it has not seen.
@@ -79,14 +79,23 @@ async function applySharedRow(
     return false;
   }
 
-  const { rows: existing } = await sql.query<{ key_id: string }>(
-    "select key_id from rows where store = $1 and id = $2 and key_id = any($3)",
+  const { rows: existing } = await sql.query<{ key_id: string; user_id: string }>(
+    "select key_id, user_id from rows where store = $1 and id = $2 and key_id = any($3)",
     [row.store, row.id, readable],
   );
 
   if (!existing.length) {
     return false;
   }
+
+  // A writer may edit the content; they may not move the row onto a key of their own, which
+  // would lock the owner out of their own course. The owner rotating their key is the same
+  // operation and is allowed, because the new key is one they can reach.
+  const keyId =
+    row.keyId === existing[0].key_id ||
+    (await reachableKeyIds(sql, existing[0].user_id)).includes(row.keyId)
+      ? row.keyId
+      : existing[0].key_id;
 
   if (writable.includes(existing[0].key_id)) {
     await sql.query(
@@ -108,7 +117,7 @@ async function applySharedRow(
         readable,
         row.updatedAt,
         row.deletedAt,
-        row.keyId,
+        keyId,
         row.encryption,
         row.payload,
         row.schedule?.dueDate ?? null,

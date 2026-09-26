@@ -6,6 +6,7 @@ import {
   cipherForKey,
   createObjectKey,
   type Keyring,
+  mergeKeyGraphs,
   openKeyGraph,
   wrapForRecipient,
   wrapUnderParent,
@@ -306,5 +307,42 @@ describe("cipherForKey", () => {
 
     expect(cipher.keyId).toBe(branch.keyId);
     expect(cipher.name).toBe("aes-gcm");
+  });
+});
+
+describe("mergeKeyGraphs", () => {
+  const graph = (keys: string[], grants: string[] = []): KeyGraph => ({
+    keys: keys.map((id) => ({ id, kind: "branch" as const, rotatedFrom: null })),
+    wraps: keys.map((id) => ({ parentKeyId: "root", childKeyId: id, wrapped: `w-${id}` })),
+    grants: grants.map((id) => ({ keyId: id, role: "reader" as const, wrapped: `g-${id}` })),
+  });
+
+  it("is the server's answer when this device has cached nothing", () => {
+    expect(mergeKeyGraphs(null, graph(["a"]))).toEqual(graph(["a"]));
+  });
+
+  it("keeps a key minted here that the server has not been told about yet", () => {
+    const merged = mergeKeyGraphs(graph(["mine"]), graph(["theirs"]));
+
+    // A refresh that lands before the upload must not forget the local key, or it becomes
+    // underivable on the next cold load.
+    expect(merged.keys.map((key) => key.id).sort()).toEqual(["mine", "theirs"]);
+    expect(merged.wraps).toHaveLength(2);
+  });
+
+  it("keeps a grant somebody made to you, which was never yours to record", () => {
+    const merged = mergeKeyGraphs(graph(["mine"]), graph(["shared"], ["shared"]));
+
+    expect(merged.grants.map((grant) => grant.keyId)).toEqual(["shared"]);
+  });
+
+  it("lets the server's copy win where both describe the same thing", () => {
+    const merged = mergeKeyGraphs(graph(["a"], ["a"]), {
+      ...graph(["a"], ["a"]),
+      grants: [{ keyId: "a", role: "writer", wrapped: "fresher" }],
+    });
+
+    expect(merged.grants).toEqual([{ keyId: "a", role: "writer", wrapped: "fresher" }]);
+    expect(merged.keys).toHaveLength(1);
   });
 });

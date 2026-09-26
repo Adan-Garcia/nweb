@@ -449,3 +449,124 @@ describe("recording keys you did make", () => {
     expect((await syncAs(owner)).rows.some((each) => each.keyId === "branch-key-2")).toBe(true);
   });
 });
+
+describe("a share that arrives after the recipient has already synced", () => {
+  it("still reaches them, though their cursor is past those rows", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const friend = await signUp("friend@example.com");
+
+    // A real recipient has a workspace of their own and has synced it, so their cursor is
+    // already past everything the owner wrote. Syncing from zero hides this entirely.
+    const caughtUp = await syncAs(friend, [row({ id: "theirs", keyId: "friend-key" })]);
+
+    await post(owner, "/v1/keys/share", {
+      keyId: "branch-key",
+      email: "friend@example.com",
+      role: "reader",
+      wrapped: "branch-for-friend",
+    });
+
+    const after = await syncAs(friend, [], caughtUp.seq);
+
+    expect(after.rows.map((each) => each.id).sort()).toEqual(["branch-1", "note-1"]);
+  });
+});
+
+describe("sharing on further than you were given", () => {
+  it("cannot hand out the pen you were not given", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const friend = await signUp("friend@example.com");
+    await signUp("second@example.com");
+
+    await post(owner, "/v1/keys/share", {
+      keyId: "branch-key",
+      email: "friend@example.com",
+      role: "reader",
+      wrapped: "branch-for-friend",
+    });
+
+    // A reader passing the key to a second account of their own, as a writer.
+    await post(friend, "/v1/keys/share", {
+      keyId: "branch-key",
+      email: "second@example.com",
+      role: "writer",
+      wrapped: "branch-for-second",
+    });
+
+    const second = await signUp("second@example.com");
+    await syncAs(second, [
+      row({ id: "branch-1", keyId: "branch-key", updatedAt: 9_000, payload: "laundered" }),
+    ]);
+
+    const { rows } = await database.query<{ payload: string }>(
+      "select payload from rows where store = 'branches' and id = 'branch-1'",
+    );
+
+    expect(rows).toEqual([{ payload: "sealed-bytes" }]);
+  });
+
+  it("cannot overwrite or revoke another recipient's grant", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const friend = await signUp("friend@example.com");
+    await signUp("other@example.com");
+
+    for (const email of ["friend@example.com", "other@example.com"]) {
+      await post(owner, "/v1/keys/share", {
+        keyId: "branch-key",
+        email,
+        role: "reader",
+        wrapped: `branch-for-${email}`,
+      });
+    }
+
+    await post(friend, "/v1/keys/share", {
+      keyId: "branch-key",
+      email: "other@example.com",
+      role: "reader",
+      wrapped: "junk",
+    });
+    await post(friend, "/v1/keys/revoke", { keyId: "branch-key", email: "other@example.com" });
+
+    const { rows } = await database.query<{ wrapped: string }>(
+      `select grants.wrapped from grants join users on users.id = grants.user_id
+       where users.email = 'other@example.com'`,
+    );
+
+    // A reader is not a moderator of everyone else's access.
+    expect(rows).toEqual([{ wrapped: "branch-for-other@example.com" }]);
+  });
+});
+
+describe("a writer's edit to somebody else's course", () => {
+  it("cannot move the row onto a key of their own", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const friend = await signUp("friend@example.com");
+
+    await post(owner, "/v1/keys/share", {
+      keyId: "branch-key",
+      email: "friend@example.com",
+      role: "writer",
+      wrapped: "branch-for-friend",
+    });
+    await post(friend, "/v1/keys", {
+      keys: [{ id: "friend-wing", kind: "wing", rotatedFrom: null }],
+      wraps: [],
+      grants: [{ keyId: "friend-wing", role: "writer", wrapped: "mine" }],
+    });
+
+    // Writing it back under their own key would lock the owner out of their own course.
+    await syncAs(friend, [
+      row({ id: "branch-1", keyId: "friend-wing", updatedAt: 9_000, payload: "re-keyed" }),
+    ]);
+
+    const { rows } = await database.query<{ key_id: string }>(
+      "select key_id from rows where store = 'branches' and id = 'branch-1'",
+    );
+
+    expect(rows).toEqual([{ key_id: "branch-key" }]);
+  });
+});
