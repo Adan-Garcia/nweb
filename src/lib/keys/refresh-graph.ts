@@ -3,7 +3,7 @@ import { fetchKeyGraph } from "../api/account-api";
 import type { ApiSession } from "../api/client";
 import { heldIdentity } from "./identity";
 import { mergeKeyGraphs, openKeyGraph } from "./key-graph";
-import { adoptSharedKeys, currentKeyGraph } from "./object-keys";
+import { adoptSharedKeys, currentKeyGraph, holdServedGraph } from "./object-keys";
 
 /**
  * Takes whatever the server can now reach on this account's behalf.
@@ -29,6 +29,8 @@ export async function refreshKeyGraph(session: ApiSession): Promise<number> {
   }
 
   const added = adoptSharedKeys(await openKeyGraph(graph.value, privateKey));
+
+  holdServedGraph(graph.value);
 
   await updateAccountGraph(mergeKeyGraphs(currentKeyGraph(), graph.value));
 

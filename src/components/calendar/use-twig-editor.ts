@@ -8,7 +8,7 @@ import {
   type TwigFormValues,
 } from "@/components/calendar/calendar-shared";
 import type { Twig } from "@/lib/twig-model";
-import { branchPath, type WorkspaceSnapshot } from "@/lib/workspace-tree";
+import { branchPath, isPathOnly, type WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 const DEFAULT_EVENT_TIME = "9:00 AM";
 
@@ -37,6 +37,7 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
   const branchOptions = useMemo<BranchOption[]>(
     () =>
       snapshot.branches
+        .filter((branch) => !isPathOnly(snapshot, branch.id))
         .map((branch) => {
           const path = branchPath(snapshot, branch.id);
 

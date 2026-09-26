@@ -2,6 +2,7 @@ import { putKeys } from "../api/account-api";
 import { getApiSession } from "../api/session-store";
 import { currentKeyGraph, keysNeedUpload, markKeysUploaded } from "../keys/object-keys";
 import { refreshKeyGraph } from "../keys/refresh-graph";
+import { refreshSharePaths } from "../share-path-storage";
 import { EMPTY_SYNC_STATE, type SyncState, syncUntilSettled } from "./run-sync";
 import { syncMedia } from "./sync-media";
 
@@ -62,6 +63,10 @@ async function round(): Promise<SyncReport | null> {
   // with us since the last round arrives as rows we would otherwise pull, fail to open, and
   // step past for good.
   await pushKeys();
+
+  // A course renamed since it was shared is re-described before the rows go, so the new
+  // name travels in the same round as everything else.
+  await refreshSharePaths();
 
   // A grant re-stamps the rows it exposes, so they come back above the cursor on their own.
   // Nothing has to be re-read from the beginning.

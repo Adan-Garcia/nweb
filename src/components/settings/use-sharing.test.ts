@@ -75,6 +75,7 @@ async function clearStores() {
     "nests",
     "notes-directory",
     "notes-documents",
+    "share-paths",
   ] as const) {
     await database.clear(store);
   }
@@ -130,6 +131,11 @@ describe("useSharing", () => {
     await waitFor(() => {
       expect(result.current.shares).toEqual([{ email: "friend@example.com", role: "reader" }]);
     });
+
+    // Shared before paths existed: looking at it is enough to give it one.
+    await waitFor(async () => {
+      expect(await (await getNotesDb()).count("share-paths")).toBe(1);
+    });
   });
 
   it("wraps the key against what the recipient published", async () => {
@@ -169,6 +175,11 @@ describe("useSharing", () => {
     );
 
     expect(theirs.has(branchKeyId)).toBe(true);
+
+    // The names above the course go with it, sealed under the course's own key.
+    const [path] = await (await getNotesDb()).getAll("share-paths");
+
+    expect(path).toMatchObject({ kind: "branch", keyId: branchKeyId });
     expect(await crypto.subtle.exportKey("raw", theirs.get(branchKeyId)!)).toEqual(
       await crypto.subtle.exportKey("raw", keyring.get(branchKeyId)!),
     );

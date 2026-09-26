@@ -23,6 +23,8 @@ export const SYNC_STORES = [
   "nests",
   "twigs",
   "pebbles",
+  /** The names above something shared: see `src/lib/share-path-model.ts`. */
+  "share-paths",
 ] as const;
 
 export type SyncStore = (typeof SYNC_STORES)[number];

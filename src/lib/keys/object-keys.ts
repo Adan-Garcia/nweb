@@ -23,6 +23,12 @@ import { createObjectKey, type Keyring, wrapUnderParent } from "./key-graph";
  */
 let keyring: Keyring | null = null;
 let graph: KeyGraph | null = null;
+/**
+ * The last graph the server handed over. Kept apart from `graph`, which is what this device
+ * uploads: the grants somebody else made are not this device's to record, but they are what
+ * says whether a shared key came with a pen or only with reading glasses.
+ */
+let served: KeyGraph | null = null;
 let onChange: ((graph: KeyGraph) => void) | null = null;
 /** Set the moment a key is minted, cleared once the server has been told about it. */
 let pendingUpload = false;
@@ -83,6 +89,7 @@ export function adoptSharedKeys(shared: Keyring): number {
 export function forgetKeyring(): void {
   keyring = null;
   graph = null;
+  served = null;
   onChange = null;
   pendingUpload = false;
 }
@@ -99,6 +106,15 @@ export function markKeysUploaded(): void {
 /** What this device would upload: everything it has minted or been given. */
 export function currentKeyGraph(): KeyGraph | null {
   return graph;
+}
+
+/** Records what the server says this account can reach, and in which role. */
+export function holdServedGraph(next: KeyGraph): void {
+  served = next;
+}
+
+export function servedKeyGraph(): KeyGraph | null {
+  return served;
 }
 
 /** The keys themselves, for the one caller that wraps them for somebody else. */

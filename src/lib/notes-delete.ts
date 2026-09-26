@@ -1,3 +1,4 @@
+import { isReadOnlyKey } from "./keys/access";
 import { getNotesDb } from "./notes-db";
 
 /**
@@ -26,7 +27,8 @@ export async function softDeleteNote(documentId: string): Promise<boolean> {
 
   // `deletedAt` is absent, not null, on entries written before it existed, so this asks
   // whether it is set rather than comparing it to null.
-  if (!entry || entry.deletedAt) {
+  // A reader cannot delete what was shared with them; the server would refuse the tombstone.
+  if (!entry || entry.deletedAt || isReadOnlyKey(entry.keyId)) {
     await transaction.done;
     return false;
   }

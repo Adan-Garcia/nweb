@@ -2,22 +2,22 @@ import {
   SYNC_PAGE_SIZE,
   SYNC_STORES,
   syncResponseSchema,
-  type SyncRow,
   type SyncStore,
 } from "@shared/sync-contract";
 
 import { apiRequest, type ApiSession } from "../api/client";
+import { isReadOnlyKey } from "../keys/access";
 import { getNotesDb } from "../notes-db";
-import { fromSyncRow, type StoredRow, toSyncRow } from "./wire";
+import { reconcileRow } from "./reconcile";
+import { type StoredRow, toSyncRow } from "./wire";
 
 /**
  * One round of sync: send what this device has changed, take what it has not seen.
  *
- * The merge rule is the one `workspace-restore.ts` already implements for a backup file —
- * last write wins by `updatedAt`, with a tombstone counting as a write. It is applied here
- * rather than called from there because the shapes differ, but the rule must not: two
- * answers to "which of these two versions is the one" would be a bug nobody could see
- * until two devices disagreed.
+ * Where only one side changed a row, the rule is the one `workspace-restore.ts` implements
+ * for a backup file — last write wins by `updatedAt`, with a tombstone counting as a write.
+ * Where both did, `reconcile.ts` merges them against the version both started from, so two
+ * people editing one shared note both keep their edits.
  */
 export type SyncOutcome = {
   pushed: number;
@@ -44,38 +44,14 @@ async function pendingRows(state: SyncState): Promise<{ store: SyncStore; row: S
     const since = state.pushedThrough[store] ?? 0;
 
     for (const row of await database.getAll(store)) {
-      if (row.updatedAt > since) {
+      // A reader's copy of a shared row is never sent: the server would refuse it anyway.
+      if (row.updatedAt > since && !isReadOnlyKey(row.keyId)) {
         pending.push({ store, row });
       }
     }
   }
 
   return pending.sort((left, right) => left.row.updatedAt - right.row.updatedAt);
-}
-
-/**
- * Writes a row from the server, if it is newer than what is here.
- *
- * The comparison is against what is stored rather than against anything remembered,
- * because a row may have been edited on this device between the push and the pull.
- */
-async function applyRow(row: SyncRow): Promise<boolean> {
-  const opened = await fromSyncRow(row);
-
-  if (!opened) {
-    return false;
-  }
-
-  const database = await getNotesDb();
-  const existing = await database.get(row.store, row.id);
-
-  if (existing && existing.updatedAt >= row.updatedAt) {
-    return false;
-  }
-
-  await database.put(row.store, opened as never);
-
-  return true;
 }
 
 export async function runSync(
@@ -102,7 +78,7 @@ export async function runSync(
   let applied = 0;
 
   for (const row of response.value.rows) {
-    if (await applyRow(row)) {
+    if (await reconcileRow(row)) {
       applied += 1;
     }
   }

@@ -2,6 +2,7 @@ import { getAutoSaveLabel } from "@/components/notes/notes-autosave-label";
 import { NotesEditorArea } from "@/components/notes/notes-editor-area";
 import { NotesFileViewer } from "@/components/notes/notes-file-viewer";
 import { NotesLocationBar } from "@/components/notes/notes-location-bar";
+import { useNoteAccess } from "@/components/notes/use-note-access";
 import { useNotesLocationPicker } from "@/components/notes/use-notes-location-picker";
 import { useNotesNavigation } from "@/components/notes/use-notes-navigation";
 import { useNotesWorkspace } from "@/components/notes/use-notes-workspace";
@@ -17,6 +18,7 @@ export function NotesPage() {
   const workspace = useNotesWorkspace();
   const picker = useNotesLocationPicker(workspace);
   const { navigationMode, chooseNavigation } = useNotesNavigation();
+  const { isReadOnly } = useNoteAccess(workspace.activeDocumentId);
 
   const activeEntry =
     workspace.directoryEntries.find((entry) => entry.id === workspace.activeDocumentId) ?? null;
@@ -75,7 +77,7 @@ export function NotesPage() {
           ) : null}
 
           <div className="min-w-0">
-            <NotesEditorArea workspace={workspace} isDark={isDark} />
+            <NotesEditorArea workspace={workspace} isDark={isDark} isReadOnly={isReadOnly} />
           </div>
         </div>
       </div>

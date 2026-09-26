@@ -22,10 +22,13 @@ import {
   entriesForNest,
   flightsForWing,
   formatLocationPath,
+  isPathOnly,
   nestsForBranch,
+  ownRows,
   SHARED_SEGMENT_LABEL,
   sharedBranches,
   UNFILED_NEST_LABEL,
+  withSharePaths,
 } from "./workspace-tree";
 
 describe("walking the tree", () => {
@@ -254,5 +257,53 @@ describe("formatLocationPath", () => {
     expect(formatLocationPath(displayLocation(emptyWorkspaceSnapshot(), makeEntry()))).toBe(
       "Unfiled / Exam review",
     );
+  });
+});
+
+describe("the path to something shared", () => {
+  // A note shared on its own: this account holds its course, and only the names above it.
+  const own = makeSnapshot({
+    wings: [makeWing({ id: "mine", name: "Mine" })],
+    flights: [],
+    branches: [makeBranch({ id: "course", flightId: "their-term", name: "Thermodynamics" })],
+    nests: [],
+  });
+  const paths = {
+    wings: [makeWing({ id: "their-wing", name: "Adan's wing" })],
+    flights: [makeFlight({ id: "their-term", wingId: "their-wing", name: "Fall 2026" })],
+    branches: [makeBranch({ id: "course", flightId: "their-term", name: "Stale name" })],
+    nests: [makeNest({ id: "tag", branchId: "course", name: "Unit 1" })],
+  };
+
+  it("places a shared course under its real term and wing instead of 'Shared with you'", () => {
+    const snapshot = withSharePaths(own, paths);
+    const path = branchPath(snapshot, "course");
+
+    expect(path).toMatchObject({ isShared: false });
+    expect(path?.flight?.name).toBe("Fall 2026");
+    expect(path?.wing?.name).toBe("Adan's wing");
+    expect(sharedBranches(snapshot)).toEqual([]);
+  });
+
+  it("never replaces a row this device holds with a path's copy of it", () => {
+    const snapshot = withSharePaths(own, paths);
+
+    expect(snapshot.branches.map((branch) => branch.name)).toEqual(["Thermodynamics"]);
+    expect(isPathOnly(snapshot, "course")).toBe(false);
+    expect(isPathOnly(snapshot, "their-wing")).toBe(true);
+    expect(isPathOnly(snapshot, "tag")).toBe(true);
+    expect(snapshot.wings.map((wing) => wing.name)).toEqual(["Adan's wing", "Mine"]);
+  });
+
+  it("returns the workspace untouched when no path adds anything", () => {
+    expect(withSharePaths(own, emptyWorkspaceSnapshot())).toBe(own);
+    expect(isPathOnly(own, "their-wing")).toBe(false);
+  });
+
+  it("strips the path-only rows back out for anything that edits the workspace", () => {
+    const snapshot = withSharePaths(own, paths);
+
+    expect(ownRows(snapshot)).toEqual({ ...own });
+    expect(ownRows(own)).toBe(own);
   });
 });

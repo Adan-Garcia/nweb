@@ -28,8 +28,12 @@ import {
 } from "../notes-document-storage";
 import { buildEmptyDocument } from "../notes-model";
 import { createPebble, listPebbles } from "../pebble-storage";
+import { openText, sealRow } from "../sealed-text";
+import { sharePathRecordSchema } from "../share-path-model";
 import { createTwig, listTwigs } from "../twig-storage";
 import { rotateRowsToKey } from "./rotate-rows";
+
+const PATH_RECORD = { id: "note-1", kind: "feather", path: "{}", updatedAt: 1, deletedAt: null };
 
 async function cipherWithId(keyId: string): Promise<Cipher> {
   const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
@@ -55,6 +59,7 @@ afterEach(async () => {
     "nests",
     "twigs",
     "pebbles",
+    "share-paths",
   ] as const) {
     await database.clear(store);
   }
@@ -206,6 +211,24 @@ describe("rotateRowsToKey", () => {
     expect((await listPebbles())[0]?.name).toBe("lecture.pdf");
     expect((await listNotesDirectoryEntries())[0]?.feather).toBe("Entropy");
     expect(nest.name).toBe("Unit 1");
+  });
+
+  it("moves the path above a shared thing with the key it is sealed under", async () => {
+    const old = await cipherWithId("old-key");
+    const next = await cipherWithId("new-key");
+    const database = await getNotesDb();
+
+    await database.put(
+      "share-paths",
+      await sealRow(sharePathRecordSchema.parse(PATH_RECORD), "path", old),
+    );
+
+    expect((await rotateRowsToKey(old, next)).names).toBe(1);
+
+    const moved = await database.get("share-paths", "note-1");
+
+    expect(moved?.keyId).toBe("new-key");
+    expect(await openText(moved!.path, moved!, next)).toBe("{}");
   });
 
   it("can put a workspace back in the clear", async () => {

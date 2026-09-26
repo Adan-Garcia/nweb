@@ -4,13 +4,19 @@ import { describe, expect, it, vi } from "vitest";
 
 // The real editors are heavy (TipTap, Excalidraw); these stand-ins record what they were given.
 vi.mock("@/components/notes/linear-notes-editor", () => ({
-  LinearNotesEditor: ({ value }: { value: string }) => (
-    <div data-testid="linear-editor">{value}</div>
+  LinearNotesEditor: ({ value, isReadOnly }: { value: string; isReadOnly?: boolean }) => (
+    <div data-testid="linear-editor" data-read-only={String(Boolean(isReadOnly))}>
+      {value}
+    </div>
   ),
 }));
 vi.mock("@/components/notes/spatial-notes-editor", () => ({
-  SpatialNotesEditor: ({ isDark }: { isDark: boolean }) => (
-    <div data-testid="spatial-editor" data-dark={String(isDark)} />
+  SpatialNotesEditor: ({ isDark, isReadOnly }: { isDark: boolean; isReadOnly?: boolean }) => (
+    <div
+      data-testid="spatial-editor"
+      data-dark={String(isDark)}
+      data-read-only={String(Boolean(isReadOnly))}
+    />
   ),
 }));
 
@@ -77,5 +83,28 @@ describe("NotesEditorArea", () => {
       />,
     );
     expect(screen.getByTestId("spatial-editor")).not.toBe(first);
+  });
+
+  it("says a note is shared to read, and hands either editor the read-only flag", () => {
+    const { rerender } = render(
+      <NotesEditorArea workspace={workspace()} isDark={false} isReadOnly />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(/Shared with you to read/);
+    expect(screen.getByTestId("linear-editor")).toHaveAttribute("data-read-only", "true");
+
+    rerender(
+      <NotesEditorArea workspace={workspace({ mode: "spatial" })} isDark={false} isReadOnly />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(/Shared with you to read/);
+    expect(screen.getByTestId("spatial-editor")).toHaveAttribute("data-read-only", "true");
+  });
+
+  it("says nothing about access for a note this account may change", () => {
+    render(<NotesEditorArea workspace={workspace()} isDark={false} />);
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByTestId("linear-editor")).toHaveAttribute("data-read-only", "false");
   });
 });

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { BRANCH_ID } from "@/test/workspace-fixtures";
 
+import { forgetKeyring, holdKeyring } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { softDeleteNote } from "./notes-delete";
 import {
@@ -141,5 +142,25 @@ describe("softDeleteNote", () => {
 
     expect(await softDeleteNote("legacy-note")).toBe(true);
     expect(await listNotesDirectoryEntries()).toHaveLength(0);
+  });
+
+  it("will not delete a note shared with this account to read", async () => {
+    const entry = await createNotesDirectoryEntry({ branchId: BRANCH_ID, feather: "Theirs" });
+    const database = await getNotesDb();
+    const stored = await database.get("notes-directory", entry.id);
+
+    await database.put("notes-directory", { ...stored!, keyId: "their-key" });
+    holdKeyring(new Map(), {
+      keys: [],
+      wraps: [],
+      grants: [{ keyId: "their-key", role: "reader", wrapped: "g" }],
+    });
+
+    try {
+      expect(await softDeleteNote(entry.id)).toBe(false);
+      expect((await database.get("notes-directory", entry.id))?.deletedAt).toBeNull();
+    } finally {
+      forgetKeyring();
+    }
   });
 });

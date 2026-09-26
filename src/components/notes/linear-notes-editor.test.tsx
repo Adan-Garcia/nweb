@@ -57,4 +57,22 @@ describe("LinearNotesEditor", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Plan" })).toBeInTheDocument();
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
   });
+
+  it("cannot be typed into when the note was shared to read, and can again when it is not", async () => {
+    const { rerender } = render(
+      <LinearNotesEditor value="<p>theirs</p>" onChange={vi.fn()} isReadOnly />,
+    );
+
+    const text = await screen.findByText("theirs");
+
+    await waitFor(() =>
+      expect(text.closest("[contenteditable]")).toHaveAttribute("contenteditable", "false"),
+    );
+
+    rerender(<LinearNotesEditor value="<p>theirs</p>" onChange={vi.fn()} />);
+
+    await waitFor(() =>
+      expect(text.closest("[contenteditable]")).toHaveAttribute("contenteditable", "true"),
+    );
+  });
 });

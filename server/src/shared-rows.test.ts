@@ -109,6 +109,31 @@ afterEach(async () => {
   await database.close();
 });
 
+describe("a note shared on its own", () => {
+  it("brings the path above it, and not the course the path names", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const friend = await signUp("friend@example.com");
+
+    // The names above the note, sealed under the note's own key — so the row store files it
+    // where the note is, and it reaches exactly who the note does.
+    await syncAs(owner, [row({ id: "note-1", store: "share-paths", keyId: "note-key" })]);
+    await post(owner, "/v1/keys/share", {
+      keyId: "note-key",
+      email: "friend@example.com",
+      role: "reader",
+      wrapped: "note-for-friend",
+    });
+
+    const theirs = await syncAs(friend);
+
+    expect(theirs.rows.map((each) => `${each.store}/${each.id}`).sort()).toEqual([
+      "notes-directory/note-1",
+      "share-paths/note-1",
+    ]);
+  });
+});
+
 describe("a course shared with somebody", () => {
   it("reaches them, along with what is inside it", async () => {
     const owner = await signUp("owner@example.com");

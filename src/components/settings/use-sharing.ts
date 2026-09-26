@@ -8,6 +8,7 @@ import { currentKeyGraph, heldKeyring } from "@/lib/keys/object-keys";
 import { planKeyRotation, reshareRotatedKey } from "@/lib/keys/rotate-key";
 import { rotateRowsToKey } from "@/lib/keys/rotate-rows";
 import { listShareable, type Shareable } from "@/lib/keys/shareable";
+import { writeSharePath } from "@/lib/share-path-storage";
 
 /**
  * Sharing, as a screen sees it.
@@ -50,6 +51,11 @@ export function useSharing(sessionFor: () => ApiSession | null, publicKey: strin
       const listed = await listShares(session, keyId);
 
       setShares(listed.ok ? listed.value.shares : []);
+
+      // Something shared before paths existed gets one the first time its owner looks at it.
+      if (listed.ok && listed.value.shares.length) {
+        await writeSharePath(keyId);
+      }
     },
     [sessionFor],
   );
@@ -89,6 +95,10 @@ export function useSharing(sessionFor: () => ApiSession | null, publicKey: strin
           setError("The server would not record that. Nothing was shared.");
           return false;
         }
+
+        // The names above it, so it arrives somewhere rather than nowhere. Sealed under its
+        // own key: the recipient reads the path and not a sibling on it.
+        await writeSharePath(keyId);
 
         await loadShares(keyId);
         return true;

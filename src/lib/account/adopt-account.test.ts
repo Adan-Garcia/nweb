@@ -9,6 +9,7 @@ import { server } from "@/test/server";
 
 import { getActiveCipher, resetActiveCipher } from "../cipher";
 import { createBranch, createFlight, createWing, listBranches } from "../entity-storage";
+import { isReadOnlyKey } from "../keys/access";
 import { createObjectKey, wrapForRecipient } from "../keys/key-graph";
 import { cipherForObject } from "../keys/object-keys";
 import { refreshKeyGraph } from "../keys/refresh-graph";
@@ -319,6 +320,36 @@ describe("a course somebody shared with you", () => {
     // Falling back to the workspace's own key here would re-seal somebody else's note
     // under a key they do not have, and lock them out of their own course.
     expect(cipherForObject(sharedKeyId)).not.toBe(getActiveCipher());
+  });
+
+  it("remembers that a key shared mid-session came to read and not to change", async () => {
+    await seedWorkspace();
+    await adoptAccount(options());
+
+    const record = await readAccountRecord();
+    const shared = await createObjectKey("branch");
+
+    server.use(
+      http.get(`${BASE}/v1/keys/graph`, async () =>
+        HttpResponse.json({
+          keys: [{ id: shared.keyId, kind: "branch", rotatedFrom: null }],
+          wraps: [],
+          grants: [
+            {
+              keyId: shared.keyId,
+              role: "reader",
+              wrapped: await wrapForRecipient(shared.key, record!.material.publicKey),
+            },
+          ],
+        }),
+      ),
+    );
+
+    await refreshKeyGraph({ baseUrl: BASE, token: "a-token" });
+
+    // Not recorded in the graph this device uploads — it is not ours to record — but the
+    // app still has to know to refuse the pen.
+    expect(isReadOnlyKey(shared.keyId)).toBe(true);
   });
 
   it("survives the next thing you create, having arrived mid-session", async () => {

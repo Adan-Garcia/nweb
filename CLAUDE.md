@@ -260,20 +260,16 @@ without a server has shipped, so what is left here is inherent or waiting on the
 2.  **Route warm-up is best-effort.** `lib/route-warmup.ts` imports the unvisited page
     chunks on idle so the service worker caches them, workspace routes first. A first
     visit closed before it goes idle still leaves routes that will not open offline.
-3.  **A merge restore is last-write-wins and nothing more.** Two devices that changed the
-    same note both keep the later `updatedAt`; there is no field-level merge and no way to
-    see what was dropped. That is the rule sync will need too, so it is the place to start
-    when B2 lands rather than a second implementation.
+3.  **A merge restore is last-write-wins and nothing more.** Sync now merges two edits of
+    one row against the version both started from (`lib/sync/reconcile.ts`), by paragraph,
+    shape or field; restoring a backup file still keeps the later `updatedAt` whole. Within
+    one paragraph, sync is last-write-wins too.
 4.  **A key is only ever rotated on a revoke.** `lib/keys/object-keys.ts` gives every
     shareable object a key of its own and `rotate-key.ts` replaces one when somebody is
     removed, but nothing rotates on a schedule: a key shared and re-shared for years is the
     same key.
-5.  **Shared content is editable when it should not be.** A reader of a shared course can
-    type into its notes and autosave them. The server drops the write, so nothing is lost
-    for anyone else, but the reader's own copy diverges with no sign that it has. Making
-    shared content read-only in the UI is the fix; the server check is a backstop.
-6.  **A note shared on its own is not reachable in the path bar.** A shared *course* is:
-    it lands under "Shared with you", where the wing dropdown offers that in place of a
-    term it cannot read (`workspace-tree.ts`). A lone note points at a branch the recipient
-    does not have, so nothing lists it — its title still shows wherever notes are listed by
-    recency, but there is no path to it.
+5.  **Read-only stops at notes.** A note shared to read opens read-only and its storage
+    refuses the write (`lib/keys/access.ts`); tasks, files and entity names in a shared
+    course are not blocked in the UI yet. Sync never pushes a reader's row and replaces it
+    the next time the row changes on the server, so such an edit is lost rather than spread.
+

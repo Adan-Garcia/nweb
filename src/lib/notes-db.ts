@@ -6,6 +6,8 @@ import { migrateStringPathsToEntities } from "./notes-db-upgrade";
 import type { NotesDirectoryEntry, NotesDocumentRecord, NotesMediaRecord } from "./notes-model";
 import type { Pebble } from "./pebble-model";
 import type { RekeyJournal } from "./rekey-journal";
+import type { SharePathRecord } from "./share-path-model";
+import type { SyncBaseRecord } from "./sync/reconcile";
 import type { Twig } from "./twig-model";
 import type { WorkspaceLockRecord } from "./workspace-lock-model";
 
@@ -51,8 +53,15 @@ const NOTES_DB_NAME = "cuervo-notes";
  * signing in once is enough to open the workspace offline ever after. Rewrites no rows: a
  * database with no account row is a device that has never signed in, which is every one of
  * them until it does.
+ *
+ * 11 added two stores and rewrote nothing. `sync-bases` keeps the last version of each row
+ * the server handed over, sealed exactly as it arrived, so that two edits of one row can be
+ * merged against the version both started from instead of one silently replacing the other.
+ * `share-paths` holds the names above something shared — the course, term and wing a note
+ * sits in — sealed under the shared thing's own key, so a recipient can show where it lives
+ * without being handed a key that would open its siblings.
  */
-export const NOTES_DB_VERSION = 10;
+export const NOTES_DB_VERSION = 11;
 
 export interface NotesDbSchema extends DBSchema {
   "notes-documents": {
@@ -103,6 +112,14 @@ export interface NotesDbSchema extends DBSchema {
     key: string;
     value: AccountRecord;
   };
+  "sync-bases": {
+    key: string;
+    value: SyncBaseRecord;
+  };
+  "share-paths": {
+    key: string;
+    value: SharePathRecord;
+  };
 }
 
 const STORE_NAMES = [
@@ -118,6 +135,8 @@ const STORE_NAMES = [
   "workspace-keys",
   "workspace-rekey",
   "account",
+  "sync-bases",
+  "share-paths",
 ] as const;
 
 let dbPromise: Promise<IDBPDatabase<NotesDbSchema>> | null = null;

@@ -90,6 +90,24 @@ function setup(isDark = false) {
 }
 
 describe("SpatialNotesEditor", () => {
+  it("opens the canvas in view mode for a note shared to read, and only then", () => {
+    const { unmount } = setup();
+    expect(excalidraw.props.viewModeEnabled).toBe(false);
+    unmount();
+
+    render(
+      <SpatialNotesEditor
+        isDark={false}
+        hostRef={{ current: null }}
+        initialData={null}
+        onChange={vi.fn()}
+        onPaste={vi.fn()}
+        isReadOnly
+      />,
+    );
+    expect(excalidraw.props.viewModeEnabled).toBe(true);
+  });
+
   it("passes the light or dark theme to the canvas", () => {
     const { unmount } = setup(false);
     expect(screen.getByTestId("excalidraw")).toHaveAttribute("data-theme", "light");

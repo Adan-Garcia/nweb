@@ -1,5 +1,6 @@
 import { blobToDataUrl } from "./blob-utils";
 import { decryptWith } from "./cipher";
+import { canWriteNote } from "./keys/access";
 import { cipherForObject } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { touchNotesDirectoryEntry } from "./notes-directory-storage";
@@ -117,6 +118,12 @@ export async function saveLinearDocumentPayload({
   compressed: Uint8Array;
   createdMode?: NotesDocumentMode;
 }) {
+  // The editor is read-only for a reader already; this is the backstop for any path that
+  // still reaches a save, so a shared note's copy here never drifts from the real one.
+  if (!(await canWriteNote(documentId))) {
+    return;
+  }
+
   const database = await getNotesDb();
   const existingDocument =
     (await database.get("notes-documents", documentId)) ?? buildEmptyDocument(documentId);
@@ -151,6 +158,10 @@ export async function saveSpatialDocumentPayload({
   referencedFileIds?: readonly string[];
   createdMode?: NotesDocumentMode;
 }) {
+  if (!(await canWriteNote(documentId))) {
+    return;
+  }
+
   const database = await getNotesDb();
   // Sealed before the transaction opens, not inside it: awaiting anything that is not an
   // IndexedDB request lets the transaction auto-commit, and the puts below would then fail

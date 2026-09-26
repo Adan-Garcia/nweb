@@ -1,3 +1,4 @@
+import { isReadOnlyKey } from "./keys/access";
 import { cipherForObject, provisionObjectKey, wrapUnderAlso } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import type { NotesDirectoryEntry, NotesDocumentMode } from "./notes-model";
@@ -155,7 +156,9 @@ export async function renameNotesDirectoryEntry(
   const database = await getNotesDb();
   const existing = await database.get("notes-directory", id);
 
-  if (!existing || existing.deletedAt) {
+  // A note shared to read is not this device's to rename or move: the server would refuse
+  // the edit, and the copy here would quietly stop matching everybody else's.
+  if (!existing || existing.deletedAt || isReadOnlyKey(existing.keyId)) {
     return null;
   }
 
@@ -181,7 +184,9 @@ export async function setNotesDirectoryEntryPlacement(
   const database = await getNotesDb();
   const existing = await database.get("notes-directory", id);
 
-  if (!existing || existing.deletedAt) {
+  // A note shared to read is not this device's to rename or move: the server would refuse
+  // the edit, and the copy here would quietly stop matching everybody else's.
+  if (!existing || existing.deletedAt || isReadOnlyKey(existing.keyId)) {
     return null;
   }
 

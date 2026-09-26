@@ -17,7 +17,40 @@ beforeEach(async () => {
     database.clear("flights"),
     database.clear("branches"),
     database.clear("nests"),
+    database.clear("share-paths"),
   ]);
+});
+
+/** A path somebody shared into this workspace, stored as a recipient would hold it. */
+async function receivePath() {
+  const database = await getNotesDb();
+
+  await database.put("share-paths", {
+    id: "their-note",
+    kind: "feather",
+    path: JSON.stringify({
+      wings: [
+        { id: "their-wing", name: "Adan's wing", createdAt: 1, updatedAt: 1, deletedAt: null },
+      ],
+      flights: [],
+      branches: [],
+      nests: [],
+    }),
+    updatedAt: 1,
+    deletedAt: null,
+  });
+}
+
+describe("loadWorkspaceSnapshot", () => {
+  it("adds the names on a shared path, marked as nobody's to edit here", async () => {
+    await createWing("Mine");
+    await receivePath();
+
+    const snapshot = await loadWorkspaceSnapshot();
+
+    expect(snapshot.wings.map((wing) => wing.name)).toEqual(["Adan's wing", "Mine"]);
+    expect(snapshot.pathOnly?.has("their-wing")).toBe(true);
+  });
 });
 
 describe("currentFlightName", () => {
@@ -29,6 +62,15 @@ describe("currentFlightName", () => {
 });
 
 describe("ensureDefaultWorkspace", () => {
+  it("never files a first note under somebody else's wing from a shared path", async () => {
+    await receivePath();
+
+    const { path, snapshot } = await ensureDefaultWorkspace();
+
+    expect(path.wing.name).toBe(DEFAULT_WING_NAME);
+    expect(snapshot.wings.map((wing) => wing.name)).toEqual(["Adan's wing", DEFAULT_WING_NAME]);
+  });
+
   it("builds a complete path on a first run, because a note must belong to a branch", async () => {
     const { snapshot, path } = await ensureDefaultWorkspace();
 

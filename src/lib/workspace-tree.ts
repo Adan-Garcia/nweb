@@ -7,6 +7,13 @@ export type WorkspaceSnapshot = {
   flights: Flight[];
   branches: Branch[];
   nests: Nest[];
+  /**
+   * Ids of rows that are only a name on the path to something shared with you — somebody
+   * else's wing, term or course, known here by name and nothing more. They are shown so the
+   * shared thing sits where it really lives, and are never offered for editing. Absent when
+   * nothing shared came with a path.
+   */
+  pathOnly?: ReadonlySet<string>;
 };
 
 /** A branch together with the flight and wing above it. */
@@ -30,6 +37,64 @@ export const SHARED_SEGMENT_LABEL = "Shared with you";
 
 export function emptyWorkspaceSnapshot(): WorkspaceSnapshot {
   return { wings: [], flights: [], branches: [], nests: [] };
+}
+
+/**
+ * This workspace's own rows, with the names on the paths to anything shared added beneath
+ * them. A row this device already has is never replaced by a path's copy of it: the real
+ * row is newer or the same, and it is the one that can be edited.
+ */
+export function withSharePaths(
+  own: WorkspaceSnapshot,
+  paths: Omit<WorkspaceSnapshot, "pathOnly">,
+): WorkspaceSnapshot {
+  const known = new Set(
+    [...own.wings, ...own.flights, ...own.branches, ...own.nests].map((row) => row.id),
+  );
+  const pathOnly = new Set<string>();
+  const unknown = <Row extends { id: string }>(rows: Row[]) =>
+    rows.filter((row) => !known.has(row.id) && Boolean(pathOnly.add(row.id)));
+
+  const added = {
+    wings: unknown(paths.wings),
+    flights: unknown(paths.flights),
+    branches: unknown(paths.branches),
+    nests: unknown(paths.nests),
+  };
+
+  if (!pathOnly.size) {
+    return own;
+  }
+
+  return {
+    wings: [...own.wings, ...added.wings].sort((a, b) => a.name.localeCompare(b.name)),
+    flights: [...own.flights, ...added.flights],
+    branches: [...own.branches, ...added.branches],
+    nests: [...own.nests, ...added.nests],
+    pathOnly,
+  };
+}
+
+/** The snapshot without anything that is only a name on somebody else's path. */
+export function ownRows(snapshot: WorkspaceSnapshot): WorkspaceSnapshot {
+  if (!snapshot.pathOnly) {
+    return snapshot;
+  }
+
+  const own = <Row extends { id: string }>(rows: Row[]) =>
+    rows.filter((row) => !isPathOnly(snapshot, row.id));
+
+  return {
+    wings: own(snapshot.wings),
+    flights: own(snapshot.flights),
+    branches: own(snapshot.branches),
+    nests: own(snapshot.nests),
+  };
+}
+
+/** Whether a row is only a name on somebody else's path, and so not this workspace's. */
+export function isPathOnly(snapshot: WorkspaceSnapshot, id: string): boolean {
+  return snapshot.pathOnly?.has(id) ?? false;
 }
 
 export function findWing(snapshot: WorkspaceSnapshot, id: string | null) {

@@ -35,6 +35,7 @@ beforeEach(async () => {
     database.clear("branches"),
     database.clear("nests"),
     database.clear("twigs"),
+    database.clear("share-paths"),
   ]);
 });
 
@@ -187,5 +188,30 @@ describe("WorkspaceEditorCard", () => {
 
     expect(await screen.findByRole("status")).toHaveTextContent("could not be read");
     expect(branch.wing.id).not.toHaveLength(0);
+  });
+
+  it("does not offer somebody else's wing, known here only as a shared path, for editing", async () => {
+    await seedWorkspace();
+    await (
+      await getNotesDb()
+    ).put("share-paths", {
+      id: "their-note",
+      kind: "feather",
+      path: JSON.stringify({
+        wings: [
+          { id: "their-wing", name: "Their Wing", createdAt: 1, updatedAt: 1, deletedAt: null },
+        ],
+        flights: [],
+        branches: [],
+        nests: [],
+      }),
+      updatedAt: 1,
+      deletedAt: null,
+    });
+
+    render(<Harness />);
+
+    expect(await screen.findByText("My Wing")).toBeVisible();
+    expect(screen.queryByText("Their Wing")).not.toBeInTheDocument();
   });
 });

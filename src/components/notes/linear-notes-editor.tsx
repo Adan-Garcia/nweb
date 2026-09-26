@@ -21,13 +21,16 @@ const EDITOR_CLASSES =
 export function LinearNotesEditor({
   value,
   onChange,
+  isReadOnly = false,
 }: {
   value: string;
   onChange: (value: string) => void;
+  isReadOnly?: boolean;
 }) {
   const editor = useTiptapEditor({
     extensions: [StarterKit],
     content: value,
+    editable: !isReadOnly,
     immediatelyRender: false,
     editorProps: {
       attributes: {
@@ -48,6 +51,10 @@ export function LinearNotesEditor({
       editor.commands.setContent(value);
     }
   }, [editor, value]);
+
+  useEffect(() => {
+    editor?.setEditable(!isReadOnly);
+  }, [editor, isReadOnly]);
 
   return (
     <section className={SHELL_CLASSES}>

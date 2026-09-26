@@ -82,10 +82,11 @@ describe("SharingCard", () => {
     expect(screen.getByText(/Everything inside it comes too/i)).toBeInTheDocument();
   });
 
-  it("says a note arrives with no home, which is the honest consequence", () => {
+  it("says a note arrives with its path by name, and nothing else on it", () => {
     setup({ selected: "note-key" });
 
-    expect(screen.getByText(/arrives with no course and no tags/i)).toBeInTheDocument();
+    expect(screen.getByText(/see where it lives/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing else in them/i)).toBeInTheDocument();
   });
 
   it("shares with an address and a role", async () => {
@@ -128,8 +129,34 @@ describe("SharingCard", () => {
       ],
     });
 
-    expect(screen.getByText(/friend@example.com — can read/)).toBeInTheDocument();
-    expect(screen.getByText(/tutor@example.com — can change/)).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "What friend@example.com can do" })).toHaveValue(
+      "reader",
+    );
+    expect(screen.getByRole("combobox", { name: "What tutor@example.com can do" })).toHaveValue(
+      "writer",
+    );
+  });
+
+  it("changes what someone can do by sharing again at the new role", async () => {
+    const user = userEvent.setup();
+    const props = setup({
+      selected: "branch-key",
+      shares: [{ email: "friend@example.com", role: "reader" }],
+    });
+
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "What friend@example.com can do" }),
+      "Can change",
+    );
+
+    expect(props.onShare).toHaveBeenCalledWith("branch-key", "friend@example.com", "writer");
+
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "What friend@example.com can do" }),
+      "Can read",
+    );
+
+    expect(props.onShare).toHaveBeenLastCalledWith("branch-key", "friend@example.com", "reader");
   });
 
   it("says plainly when nobody else has it", () => {

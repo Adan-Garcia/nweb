@@ -15,6 +15,7 @@ import {
   renameWing,
   setBranchColor,
 } from "@/lib/entity-storage";
+import { ownRows } from "@/lib/workspace-tree";
 
 /** Which level a row belongs to. The storage call differs; nothing else about it does. */
 export type WorkspaceLevel = "wing" | "flight" | "branch" | "nest";
@@ -93,5 +94,7 @@ export function useWorkspaceEditor() {
     [run],
   );
 
-  return { snapshot, status, isWorking, rename, recolour, remove };
+  // Somebody else's wing, known here only as the path to what they shared, is theirs to
+  // rename. Listing it would offer a rename that could never reach them.
+  return { snapshot: ownRows(snapshot), status, isWorking, rename, recolour, remove };
 }

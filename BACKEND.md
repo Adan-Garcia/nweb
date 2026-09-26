@@ -66,6 +66,36 @@ Existence and freshness are separate questions — a row that exists but loses o
 is still that row's edit — and a caller who may read but not write has the edit dropped,
 because the server cannot merge ciphertext and must not fork it.
 
+The client refuses that pen before the server has to. `lib/keys/access.ts` walks the graph
+the way the server does — from writer grants, everything beneath is writable — so a note
+shared to read opens read-only (TipTap not editable, Excalidraw in view mode), its storage
+module refuses to save, rename, move or delete it, and sync never pushes a reader's copy.
+A pulled row under a read-only key replaces the local one outright, which also heals a copy
+that drifted before this existed. The sharing screen changes a role in place: re-sharing at
+the new role is the same `POST /v1/keys/share`, and the server clamps it to the sharer's own.
+
+### Merging two edits of one row
+
+The server orders writes and cannot merge them, so a device that finds two versions merges
+on its own (`lib/sync/reconcile.ts`). It keeps the last version of each row the server
+handed over — sealed exactly as it arrived, in the `sync-bases` store — as the *base*. When
+a pulled row differs from the base and the local row does too, both sides changed, and the
+two are merged against the base instead of one replacing the other:
+
+*   **A note's text** is merged by top-level block (a paragraph, a heading, a whole list):
+    diff3 over the blocks, with a stretch edited in place resolved block by block, so two
+    people editing different — even adjacent — paragraphs both keep their edits.
+*   **A canvas** is merged by element, using Excalidraw's per-element `version`: whichever
+    side touched a shape wins it, an edit beats a delete, and stacking follows the
+    fractional `index`.
+*   **Every other row** is merged field by field, the one sealed display field opened first.
+
+Where both sides changed the *same* block, shape or field, the later edit wins that piece and
+nothing else. The merge is sealed under the row's own key (or abandoned, falling back to last
+write wins, if this device does not hold it), stamped newer than both sides, and pushed on
+the next round, so every device converges on it by the server's ordinary rule. A row with no
+base yet — anything last synced before this existed — is last-write-wins until it has one.
+
 ### What each share actually gives away
 
 | Shared | The other person gets | They do not get |
@@ -74,11 +104,19 @@ because the server cannot merge ciphertext and must not fork it.
 | A flight | Its courses, tags, notes, tasks, files | The wing's name, or anything in other flights |
 | A branch | That course and everything under it | The flight or wing it sits in |
 | A nest | The notes, twigs and pebbles carrying that tag | Anything in the branch that is not tagged |
-| One note | That note's title, text, drawing and images | Its course, its tag, its neighbours |
+| One note | That note's title, text, drawing and images, and the names on its path | Anything else in its course or tags, its neighbours |
 
-A note shared on its own arrives with no path, because the path is a set of names under
-keys the recipient does not hold. That is the honest consequence of sharing narrowly, and
-the UI has to show it as a note with no home rather than invent one.
+Every row above the shared thing — "Above it" in the table — is still sealed under a key the
+recipient does not hold. What they get instead is its **path**: a `share-paths` row
+(`lib/share-path-model.ts`) holding just the names on the way down — wing, term, course and
+the note's own tags — sealed under the shared object's *own* key. The row store files it
+under that key, so it reaches exactly the people the object does, and a grant re-stamps it
+with everything else. The recipient's path bar shows the shared thing where it really lives;
+those rows are marked path-only in the snapshot, never offered for editing, and never chosen
+as the home of a new note. Sharing writes the path; each sync round rewrites it if a name on
+it changed, but only from a device that can see the whole path and may write the object.
+Where there is no path — a share made before paths existed, until its owner opens it on the
+sharing screen — a course still falls back to "Shared with you".
 
 ### Media, which is shared already
 
@@ -259,10 +297,14 @@ to make sharing possible need one too.
 
 ### What is still missing
 
-*   **Shared content is not read-only in the app.** A reader can open a shared note, type,
-    and watch it autosave. The server drops the edit — it cannot merge ciphertext and must
-    not fork it — so nothing is corrupted, but their local copy quietly diverges from what
-    everybody else sees. The UI has to refuse the pen; the backstop is not the answer.
+*   **Read-only covers notes, not everything shared.** A reader's note is read-only in the
+    editor and in storage, and no reader row is ever pushed. Tasks, files and the names of
+    a shared course are not blocked in the UI yet: an edit to one is never sent, and is
+    replaced the next time that row changes on the server.
+*   **An open note does not refresh when a merge lands.** A merge writes the stored row;
+    the editor shows it the next time the note is opened, as it already did for any pulled
+    edit. Until then an autosave from the open editor is a newer local edit, and is merged
+    again on the next round rather than lost.
 *   **A grant re-stamps every row under the key it hands over.** `seq` is the server's
     answer to "what is new to me", and a recipient who has used their own workspace has a
     cursor past the owner's writes — so without the re-stamp the share is invisible to them.
@@ -273,12 +315,9 @@ to make sharing possible need one too.
     which is fine for one deployment and is the first thing to make recursive in SQL.
 *   **Nothing rotates on a schedule.** Revoking rotates the key it was asked about, and
     only that one. A key shared and re-shared for years is the same key.
-*   **A note shared on its own has no path to it.** A shared course is reachable: the row
-    store serves it, and the path bar lists it under "Shared with you". A lone note points
-    at a branch the recipient has no row for, so nothing lists it — the title shows wherever
-    notes are listed by recency, and there is no way to navigate to it.
-*   **Sync is last-write-wins and says nothing about it.** Two devices that changed the same
-    note both keep the later `updatedAt`, and there is no way to see what was dropped.
+*   **A clash inside one paragraph goes to the later edit.** The merge is by block, not by
+    character: two people rewriting the same paragraph keep one version of it, with no
+    sign that the other existed.
 *   **Paid tiers.** Not started, and needs billing infrastructure this repository has none
     of.
 
@@ -292,10 +331,11 @@ to make sharing possible need one too.
     structure. How many notes a course has, who shares what with whom, and when things are
     due are all visible. Say "the server cannot read your notes", never "the server knows
     nothing".
-*   **Last write wins loses edits.** It is right for tasks and metadata and wrong for two
-    people typing in one note. Live collaborative editing needs a CRDT (Yjs or Automerge)
-    and a different sync path; it is not in this plan, and should not be started until
-    someone actually wants it.
+*   **A three-way merge is not live co-editing.** Edits to different paragraphs, shapes or
+    fields survive; two people typing in the same paragraph at once do not both survive, and
+    nobody sees the other's cursor. That needs a CRDT (Yjs or Automerge) and a different sync
+    path — a new dependency and a new document format — and should not be started until
+    somebody actually wants it.
 
 ## Deliberately not doing
 

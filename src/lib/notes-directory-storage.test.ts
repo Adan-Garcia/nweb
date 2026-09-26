@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { BRANCH_ID, NEST_ID } from "@/test/workspace-fixtures";
 
+import { forgetKeyring, holdKeyring } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import {
   createNotesDirectoryEntry,
@@ -13,6 +14,15 @@ import {
   upsertNotesDirectoryEntry,
 } from "./notes-directory-storage";
 import type { NotesDirectoryEntry } from "./notes-model";
+
+/** This account holds the note's key through a reader grant, and nothing more. */
+function readOnly(keyId: string) {
+  holdKeyring(new Map(), {
+    keys: [],
+    wraps: [],
+    grants: [{ keyId, role: "reader", wrapped: "g" }],
+  });
+}
 
 describe("notes directory storage", () => {
   it("creates an entry, defaulting the created mode to linear", async () => {
@@ -183,5 +193,25 @@ describe("stable ids and tombstones", () => {
 
     expect(entries.some((entry) => entry.id === created.id)).toBe(false);
     expect(await findNotesDirectoryEntry({ branchId: BRANCH_ID, feather: "Doomed" })).toBeNull();
+  });
+
+  it("will not rename or move a note shared with this account to read", async () => {
+    const entry = await createNotesDirectoryEntry({ branchId: BRANCH_ID, feather: "Theirs" });
+    const database = await getNotesDb();
+    const stored = await database.get("notes-directory", entry.id);
+
+    await database.put("notes-directory", { ...stored!, keyId: "their-key" });
+    readOnly("their-key");
+
+    try {
+      expect(await renameNotesDirectoryEntry(entry.id, "Mine now")).toBeNull();
+      expect(await setNotesDirectoryEntryPlacement(entry.id, { nestIds: [NEST_ID] })).toBeNull();
+      expect(await database.get("notes-directory", entry.id)).toMatchObject({
+        feather: "Theirs",
+        nestIds: [],
+      });
+    } finally {
+      forgetKeyring();
+    }
   });
 });

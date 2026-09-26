@@ -31,8 +31,10 @@ export function SpatialNotesEditor({
   initialData,
   onChange,
   onPaste,
+  isReadOnly = false,
 }: {
   isDark: boolean;
+  isReadOnly?: boolean;
   hostRef: RefObject<HTMLDivElement | null>;
   initialData: NotesSpatialInitialData;
   onChange: NonNullable<ExcalidrawProps["onChange"]>;
@@ -56,6 +58,7 @@ export function SpatialNotesEditor({
       <div className="h-full min-h-0" ref={hostRef}>
         <Excalidraw
           theme={isDark ? "dark" : "light"}
+          viewModeEnabled={isReadOnly}
           initialData={initialData}
           validateEmbeddable={isPdfEmbeddableUrl}
           excalidrawAPI={handleExcalidrawApi}

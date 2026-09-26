@@ -14,9 +14,11 @@ import {
   listNests,
   listWings,
 } from "./entity-storage";
+import { listSharePathEntities } from "./share-path-storage";
 import {
   branchesForFlight,
   flightsForWing,
+  withSharePaths,
   type WorkspacePath,
   type WorkspaceSnapshot,
 } from "./workspace-tree";
@@ -24,7 +26,8 @@ import {
 export const DEFAULT_WING_NAME = "My Wing";
 export const DEFAULT_BRANCH_NAME = "General";
 
-export async function loadWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
+/** Only the rows this workspace holds itself: what a new note may be filed under. */
+async function loadOwnSnapshot(): Promise<WorkspaceSnapshot> {
   const [wings, flights, branches, nests] = await Promise.all([
     listWings(),
     listFlights(),
@@ -33,6 +36,13 @@ export async function loadWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
   ]);
 
   return { wings, flights, branches, nests };
+}
+
+/** Everything the path bar shows: this workspace, and the paths to what was shared into it. */
+export async function loadWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
+  const [own, paths] = await Promise.all([loadOwnSnapshot(), listSharePathEntities()]);
+
+  return withSharePaths(own, paths);
 }
 
 /** The flight a new workspace starts in: the term today falls in. */
@@ -49,7 +59,9 @@ export async function ensureDefaultWorkspace(): Promise<{
   snapshot: WorkspaceSnapshot;
   path: WorkspacePath;
 }> {
-  let snapshot = await loadWorkspaceSnapshot();
+  // Own rows only: a default note must never be filed under somebody else's wing because
+  // a path to something they shared happens to sort first.
+  let snapshot = await loadOwnSnapshot();
 
   const wing: Wing = snapshot.wings[0] ?? (await createWing(DEFAULT_WING_NAME));
   let flight: Flight | undefined = flightsForWing(snapshot, wing.id)[0];

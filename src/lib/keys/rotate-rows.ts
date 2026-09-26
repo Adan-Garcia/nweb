@@ -143,6 +143,10 @@ export async function rotateRowsToKey(from: Cipher, to: Cipher): Promise<Rotatio
     )) +
     (await rotateNames(await database.getAll("pebbles"), "name", from, to, (row) =>
       database.put("pebbles", row),
+    )) +
+    // The path above a shared thing is sealed under that thing's key, so it moves with it.
+    (await rotateNames(await database.getAll("share-paths"), "path", from, to, (row) =>
+      database.put("share-paths", row),
     ));
 
   return { documents, media, names };

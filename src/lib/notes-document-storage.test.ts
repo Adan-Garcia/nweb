@@ -6,6 +6,7 @@ import {
   resetActiveCipher,
   setActiveCipher,
 } from "./cipher";
+import { forgetKeyring, holdKeyring } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { listNotesDirectoryEntries, upsertNotesDirectoryEntry } from "./notes-directory-storage";
 import {
@@ -20,6 +21,15 @@ import type { PersistedSceneFile } from "./notes-model";
 vi.mock("./blob-utils", () => ({
   blobToDataUrl: vi.fn(() => Promise.resolve("data:mock")),
 }));
+
+/** This account holds the note's key through a reader grant, and nothing more. */
+function readOnly(keyId: string) {
+  holdKeyring(new Map(), {
+    keys: [],
+    wraps: [],
+    grants: [{ keyId, role: "reader", wrapped: "g" }],
+  });
+}
 
 function sceneFile(id: string, text: string): PersistedSceneFile {
   return {
@@ -276,5 +286,32 @@ describe("the cipher seam", () => {
     expect(new TextDecoder().decode(loaded?.document.linearCompressed ?? new Uint8Array())).toBe(
       "older note",
     );
+  });
+
+  it("refuses to save a note shared with this account to read", async () => {
+    await upsertNotesDirectoryEntry({ id: "shared", branchId: "b", feather: "Theirs" });
+    const database = await getNotesDb();
+    const entry = await database.get("notes-directory", "shared");
+
+    await database.put("notes-directory", { ...entry!, keyId: "their-key" });
+    readOnly("their-key");
+
+    try {
+      await saveLinearDocumentPayload({
+        documentId: "shared",
+        compressionAlgorithm: "none",
+        compressed: new Uint8Array([1]),
+      });
+      await saveSpatialDocumentPayload({
+        documentId: "shared",
+        compressionAlgorithm: "none",
+        compressed: new Uint8Array([1]),
+        files: [],
+      });
+
+      expect(await database.get("notes-documents", "shared")).toBeUndefined();
+    } finally {
+      forgetKeyring();
+    }
   });
 });

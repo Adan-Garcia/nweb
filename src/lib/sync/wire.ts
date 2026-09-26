@@ -6,6 +6,7 @@ import { type Cipher, decryptWith } from "../cipher";
 import { branchSchema, flightSchema, nestSchema, wingSchema } from "../entity-model";
 import { cipherForObject } from "../keys/object-keys";
 import { pebbleSchema } from "../pebble-model";
+import { sharePathRecordSchema } from "../share-path-model";
 import { twigSchema } from "../twig-model";
 
 /**
@@ -56,6 +57,7 @@ export const PAYLOAD_SCHEMAS = {
   nests: nestSchema,
   twigs: twigSchema,
   pebbles: pebbleSchema,
+  "share-paths": sharePathRecordSchema,
 } as const;
 
 /**

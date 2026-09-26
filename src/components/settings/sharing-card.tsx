@@ -1,3 +1,4 @@
+import { ShareEntryRow } from "@/components/settings/share-entry-row";
 import { ShareForm } from "@/components/settings/share-form";
 import type { ShareEntry } from "@/components/settings/use-sharing";
 import { Button } from "@/components/ui/button";
@@ -83,8 +84,8 @@ export function SharingCard({
               <p className="m-0 text-sm">
                 Sharing <strong>{chosen.name}</strong>.{" "}
                 {chosen.kind === "feather"
-                  ? "A note on its own arrives with no course and no tags, because those are names under keys they will not hold."
-                  : "Everything inside it comes too, now and later. Nothing above it does."}
+                  ? "They see where it lives — its course, term and tags, by name — and nothing else in them."
+                  : "Everything inside it comes too, now and later. Above it they see only the names on the way down."}
               </p>
 
               <ShareForm
@@ -97,23 +98,17 @@ export function SharingCard({
               {shares.length ? (
                 <ul className="m-0 grid list-none gap-2 p-0">
                   {shares.map((entry) => (
-                    <li key={entry.email} className="flex items-center justify-between gap-2">
-                      <span className="text-sm">
-                        {entry.email} — {entry.role === "reader" ? "can read" : "can change"}
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={isWorking}
-                        aria-label={`Remove ${entry.email}`}
-                        onClick={() => {
-                          onRevoke(chosen.keyId, entry.email);
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    </li>
+                    <ShareEntryRow
+                      key={entry.email}
+                      entry={entry}
+                      isDisabled={isWorking}
+                      onChangeRole={(role) => {
+                        onShare(chosen.keyId, entry.email, role);
+                      }}
+                      onRevoke={() => {
+                        onRevoke(chosen.keyId, entry.email);
+                      }}
+                    />
                   ))}
                 </ul>
               ) : (

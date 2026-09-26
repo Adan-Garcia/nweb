@@ -6,8 +6,10 @@ import { server } from "@/test/server";
 
 import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "../cipher";
 import { createBranch } from "../entity-storage";
+import { forgetKeyring, holdKeyring } from "../keys/object-keys";
 import { getNotesDb } from "../notes-db";
-import { createTwig, listTwigs } from "../twig-storage";
+import { twigSchema } from "../twig-model";
+import { createTwig, listTwigs, updateTwig } from "../twig-storage";
 import { EMPTY_SYNC_STATE, runSync, syncUntilSettled } from "./run-sync";
 import { fromSyncRow, toSyncRow } from "./wire";
 
@@ -60,9 +62,30 @@ beforeEach(async () => {
 
 afterEach(() => {
   resetActiveCipher();
+  forgetKeyring();
 });
 
 describe("runSync", () => {
+  it("never sends a reader's copy of something shared with them", async () => {
+    const { received } = fakeServer();
+    const mine = await createTwig({ branchId: "branch-1", title: "Mine" });
+    const database = await getNotesDb();
+
+    holdKeyring(new Map(), {
+      keys: [],
+      wraps: [],
+      grants: [{ keyId: "their-key", role: "reader", wrapped: "g" }],
+    });
+    await database.put(
+      "twigs",
+      twigSchema.parse({ ...mine, id: "theirs", title: "Theirs", keyId: "their-key" }),
+    );
+
+    await runSync(SESSION, EMPTY_SYNC_STATE);
+
+    expect(received[0].map((row) => row.id)).toEqual([mine.id]);
+  });
+
   it("sends what has changed and marks it as sent", async () => {
     const { received } = fakeServer();
     const branch = await createBranch({ flightId: "flight-1", name: "Organic Chemistry" });
@@ -315,5 +338,61 @@ describe("the wire format", () => {
 
     expect(Array.from(opened?.linearCompressed as Uint8Array)).toEqual([1, 2, 3]);
     expect(opened?.sceneCompressed).toBeNull();
+  });
+});
+
+describe("two devices editing one row", () => {
+  /** Keeps a row only when it is newer, the way the real server does. */
+  function lastWriteWinsServer() {
+    const stored: SyncRow[] = [];
+
+    server.use(
+      http.post("https://api.example/v1/sync", async ({ request }) => {
+        const body = (await request.json()) as { since: number; rows: SyncRow[] };
+
+        for (const row of body.rows) {
+          const index = stored.findIndex((candidate) => candidate.id === row.id);
+
+          if (index < 0 || stored[index].updatedAt < row.updatedAt) {
+            stored.splice(index < 0 ? stored.length : index, index < 0 ? 0 : 1);
+            stored.push(row);
+          }
+        }
+
+        const page = stored.slice(body.since);
+
+        return HttpResponse.json({ seq: body.since + page.length, rows: page, hasMore: false });
+      }),
+    );
+
+    return stored;
+  }
+
+  it("keeps both edits instead of dropping the one that lost on time", async () => {
+    const stored = lastWriteWinsServer();
+    const twig = await createTwig({ branchId: "branch-1", title: "Essay" });
+    const first = await runSync(SESSION, EMPTY_SYNC_STATE);
+
+    // Somebody else renames it, and their edit reaches the server first...
+    const theirs = await toSyncRow("twigs", {
+      ...twig,
+      title: "Essay — final",
+      updatedAt: Date.now() + 60_000,
+    });
+    stored.splice(0, stored.length, theirs);
+
+    // ...while this device marks it done. Its push loses on time and is dropped.
+    await updateTwig(twig.id, { status: "complete" });
+    const second = await runSync(SESSION, { ...first!.state, cursor: 0 });
+
+    expect((await listTwigs())[0]).toMatchObject({ title: "Essay — final", status: "complete" });
+
+    // The merge is newer than both, so the next round wins it back onto the server.
+    await runSync(SESSION, second!.state);
+
+    expect(await fromSyncRow(stored[0])).toMatchObject({
+      title: "Essay — final",
+      status: "complete",
+    });
   });
 });
