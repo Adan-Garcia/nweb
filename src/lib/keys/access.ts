@@ -67,6 +67,27 @@ export function isReadOnlyKey(
   return access.reachable.has(keyId) && !access.writable.has(keyId);
 }
 
+/** Whether any of these keys was shared with this account only to read. */
+export function anyReadOnly(keyIds: (string | null | undefined)[]): boolean {
+  const access = keyAccess([currentKeyGraph(), servedKeyGraph()]);
+
+  return keyIds.some((keyId) => isReadOnlyKey(keyId, access));
+}
+
+/**
+ * Thrown when something new would be filed inside a thing shared to read.
+ *
+ * A thrown error rather than a quiet no-op, because a create has nothing sensible to hand
+ * back: the new row's key could only hang under a key the server will not let this account
+ * hang things under, so no other device — not even this account's own — could ever open it.
+ */
+export class ReadOnlyError extends Error {
+  constructor() {
+    super("That was shared with you to read, so nothing can be added to it.");
+    this.name = "ReadOnlyError";
+  }
+}
+
 /**
  * Whether the note with this id may be edited here. The directory row is the one that says
  * which key a note is under, as it is for every other question about a note's key.

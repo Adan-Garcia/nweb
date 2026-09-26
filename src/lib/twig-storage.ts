@@ -1,4 +1,5 @@
 import { currentTimeZone, parseDueTime } from "./due-time";
+import { anyReadOnly, isReadOnlyKey, ReadOnlyError } from "./keys/access";
 import { cipherForObject, provisionObjectKey, wrapUnderAlso } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { openRow, openRows, sealRow } from "./sealed-text";
@@ -103,10 +104,13 @@ export async function createTwig(draft: TwigDraft): Promise<Twig> {
     deletedAt: null,
   };
 
-  const cipher = await provisionObjectKey(
-    "twig",
-    await containerKeyIds(twig.branchId, twig.nestIds),
-  );
+  const parents = await containerKeyIds(twig.branchId, twig.nestIds);
+
+  if (anyReadOnly(parents)) {
+    throw new ReadOnlyError();
+  }
+
+  const cipher = await provisionObjectKey("twig", parents);
 
   await database.put("twigs", await sealRow(twig, "title", cipher));
   return twig;
@@ -119,7 +123,8 @@ export async function updateTwig(
   const database = await getNotesDb();
   const stored = await database.get("twigs", id);
 
-  if (!stored || stored.deletedAt) {
+  // A task shared to read is not this device's to change; the server would drop the edit.
+  if (!stored || stored.deletedAt || isReadOnlyKey(stored.keyId)) {
     return null;
   }
 
@@ -127,6 +132,11 @@ export async function updateTwig(
   // title does not have to know that one of the two is sealed and the other is not.
   const existing = withParsedTime(await openRow(stored, "title"));
   const next: Twig = { ...existing, ...changes, updatedAt: Date.now() };
+
+  // Nor can it be moved into, or tagged with, something shared to read.
+  if (anyReadOnly(await containerKeyIds(next.branchId, next.nestIds))) {
+    return null;
+  }
 
   // The parsed half is derived, so it is re-derived whenever the text it comes from moves
   // rather than being something a caller can set out of step with it.
@@ -150,7 +160,7 @@ export async function softDeleteTwig(id: string): Promise<boolean> {
   const database = await getNotesDb();
   const existing = await database.get("twigs", id);
 
-  if (!existing || existing.deletedAt) {
+  if (!existing || existing.deletedAt || isReadOnlyKey(existing.keyId)) {
     return false;
   }
 
@@ -207,8 +217,12 @@ export async function moveTwig({
   const database = await getNotesDb();
   const all = await listTwigs();
   const moving = all.find((twig) => twig.id === twigId);
+  // `listTwigs` hands back opened rows with no key on them; the stored rows say which key
+  // each title is sealed under, and a move must re-seal it under that key and no other.
+  const keyIds = new Map((await database.getAll("twigs")).map((row) => [row.id, row.keyId]));
+  const sealAsStored = (twig: Twig) => sealRow(twig, "title", cipherForObject(keyIds.get(twig.id)));
 
-  if (!moving) {
+  if (!moving || isReadOnlyKey(keyIds.get(twigId))) {
     return [];
   }
 
@@ -219,23 +233,26 @@ export async function moveTwig({
 
   if (resolved !== "renumber") {
     const next: Twig = { ...moving, status, boardOrder: resolved, updatedAt: now };
-    await database.put("twigs", await sealRow(next, "title"));
+    await database.put("twigs", await sealAsStored(next));
     return [next];
   }
 
   const reordered = [...column];
   reordered.splice(clampedIndex, 0, moving);
 
-  const changed = reordered.map((twig, index) => ({
-    ...twig,
-    status,
-    boardOrder: index * BOARD_ORDER_STEP,
-    updatedAt: now,
-  }));
+  // A task shared to read keeps its place: renumbering it would be an edit nobody sends.
+  const changed = reordered
+    .map((twig, index) => ({
+      ...twig,
+      status,
+      boardOrder: index * BOARD_ORDER_STEP,
+      updatedAt: now,
+    }))
+    .filter((twig) => !isReadOnlyKey(keyIds.get(twig.id)));
 
   // Sealed before the transaction opens, never inside it: a transaction held across a
   // non-IndexedDB await commits itself, and the puts after it fail in a real browser.
-  const sealed = await Promise.all(changed.map((twig) => sealRow(twig, "title")));
+  const sealed = await Promise.all(changed.map(sealAsStored));
   const transaction = database.transaction("twigs", "readwrite");
 
   await Promise.all(sealed.map((twig) => transaction.store.put(twig)));

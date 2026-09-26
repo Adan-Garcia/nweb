@@ -14,6 +14,12 @@ export type WorkspaceSnapshot = {
    * nothing shared came with a path.
    */
   pathOnly?: ReadonlySet<string>;
+  /**
+   * Ids of rows this account holds but was given only to read: a course or tag somebody
+   * shared. Shown as they are, and never offered for renaming, deleting or filing anything
+   * new under. Absent when there are none.
+   */
+  readOnly?: ReadonlySet<string>;
 };
 
 /** A branch together with the flight and wing above it. */
@@ -72,17 +78,21 @@ export function withSharePaths(
     branches: [...own.branches, ...added.branches],
     nests: [...own.nests, ...added.nests],
     pathOnly,
+    ...(own.readOnly ? { readOnly: own.readOnly } : {}),
   };
 }
 
-/** The snapshot without anything that is only a name on somebody else's path. */
+/**
+ * The snapshot without anything this workspace may not change: names on somebody else's
+ * path, and what was shared with it only to read.
+ */
 export function ownRows(snapshot: WorkspaceSnapshot): WorkspaceSnapshot {
-  if (!snapshot.pathOnly) {
+  if (!snapshot.pathOnly && !snapshot.readOnly) {
     return snapshot;
   }
 
   const own = <Row extends { id: string }>(rows: Row[]) =>
-    rows.filter((row) => !isPathOnly(snapshot, row.id));
+    rows.filter((row) => !isPathOnly(snapshot, row.id) && !isReadOnlyEntity(snapshot, row.id));
 
   return {
     wings: own(snapshot.wings),
@@ -90,6 +100,16 @@ export function ownRows(snapshot: WorkspaceSnapshot): WorkspaceSnapshot {
     branches: own(snapshot.branches),
     nests: own(snapshot.nests),
   };
+}
+
+/** Whether a row was shared with this account to read, and so is not its to change. */
+export function isReadOnlyEntity(snapshot: WorkspaceSnapshot, id: string | null): boolean {
+  return id !== null && (snapshot.readOnly?.has(id) ?? false);
+}
+
+/** Whether anything new may be filed under this row: not a path name, not read-only. */
+export function canFileUnder(snapshot: WorkspaceSnapshot, id: string | null): boolean {
+  return id === null || (!isPathOnly(snapshot, id) && !isReadOnlyEntity(snapshot, id));
 }
 
 /** Whether a row is only a name on somebody else's path, and so not this workspace's. */

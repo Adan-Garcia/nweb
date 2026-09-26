@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { sharedToRead } from "@/test/read-only";
+
 import { BRANCH_COLORS } from "./entity-model";
 import {
   createBranch,
@@ -16,6 +18,7 @@ import {
   renameWing,
   setBranchColor,
 } from "./entity-storage";
+import { ReadOnlyError } from "./keys/access";
 import { getNotesDb } from "./notes-db";
 
 beforeEach(async () => {
@@ -134,5 +137,46 @@ describe("renaming entities", () => {
     expect(await renameBranch("missing", "X")).toBeNull();
     expect(await renameNest("missing", "X")).toBeNull();
     expect(await setBranchColor("missing", "rose")).toBeNull();
+  });
+});
+
+describe("a course or tag shared to read", () => {
+  it("cannot be renamed or recoloured here, and takes nothing new under it", async () => {
+    const database = await getNotesDb();
+    const wing = await createWing("Theirs");
+    const flight = await createFlight({ wingId: wing.id, name: "Fall 2026" });
+    const branch = await createBranch({ flightId: flight.id, name: "Their course" });
+    const nest = await createNest({ branchId: branch.id, name: "Their tag" });
+
+    for (const [store, id] of [
+      ["wings", wing.id],
+      ["flights", flight.id],
+      ["branches", branch.id],
+      ["nests", nest.id],
+    ] as const) {
+      const row = await database.get(store, id);
+
+      await database.put(store, { ...row!, keyId: "their-key" });
+    }
+
+    const undo = sharedToRead("their-key");
+
+    try {
+      expect(await renameWing(wing.id, "Mine")).toBeNull();
+      expect(await renameFlight(flight.id, "Spring 2027")).toBeNull();
+      expect(await renameBranch(branch.id, "Mine")).toBeNull();
+      expect(await setBranchColor(branch.id, "rose")).toBeNull();
+      expect(await renameNest(nest.id, "Mine")).toBeNull();
+
+      await expect(createFlight({ wingId: wing.id, name: "Summer 2027" })).rejects.toThrow(
+        ReadOnlyError,
+      );
+      await expect(createBranch({ flightId: flight.id, name: "New" })).rejects.toThrow(
+        ReadOnlyError,
+      );
+      await expect(createNest({ branchId: branch.id, name: "New" })).rejects.toThrow(ReadOnlyError);
+    } finally {
+      undo();
+    }
   });
 });

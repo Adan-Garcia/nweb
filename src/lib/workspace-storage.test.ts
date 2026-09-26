@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { sharedToRead } from "@/test/read-only";
+
 import { createBranch, createFlight, createWing } from "./entity-storage";
 import { getNotesDb } from "./notes-db";
 import {
@@ -50,6 +52,30 @@ describe("loadWorkspaceSnapshot", () => {
 
     expect(snapshot.wings.map((wing) => wing.name)).toEqual(["Adan's wing", "Mine"]);
     expect(snapshot.pathOnly?.has("their-wing")).toBe(true);
+  });
+});
+
+describe("loadWorkspaceSnapshot — shared to read", () => {
+  it("marks the rows this account holds under a reader's key", async () => {
+    const wing = await createWing("Mine");
+    const flight = await createFlight({ wingId: wing.id, name: "Fall 2026" });
+    const theirs = await createBranch({ flightId: flight.id, name: "Theirs" });
+    const database = await getNotesDb();
+
+    await database.put("branches", {
+      ...(await database.get("branches", theirs.id))!,
+      keyId: "their-key",
+    });
+
+    expect((await loadWorkspaceSnapshot()).readOnly).toBeUndefined();
+
+    const undo = sharedToRead("their-key");
+
+    try {
+      expect([...((await loadWorkspaceSnapshot()).readOnly ?? [])]).toEqual([theirs.id]);
+    } finally {
+      undo();
+    }
   });
 });
 

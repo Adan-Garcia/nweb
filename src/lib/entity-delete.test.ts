@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { sharedToRead } from "@/test/read-only";
+
 import {
   softDeleteBranch,
   softDeleteFlight,
@@ -221,5 +223,38 @@ describe("deleting a nest", () => {
     expect(await softDeleteNest("missing")).toBe(false);
     expect(await softDeleteNest(nest.id)).toBe(true);
     expect(await softDeleteNest(nest.id)).toBe(false);
+  });
+});
+
+describe("deleting something shared to read", () => {
+  it("is refused at every level, and leaves what is under it alone", async () => {
+    const database = await getNotesDb();
+    const wing = await createWing("Theirs");
+    const flight = await createFlight({ wingId: wing.id, name: "Fall 2026" });
+    const branch = await createBranch({ flightId: flight.id, name: "Their course" });
+    const nest = await createNest({ branchId: branch.id, name: "Their tag" });
+
+    for (const [store, id] of [
+      ["wings", wing.id],
+      ["flights", flight.id],
+      ["branches", branch.id],
+      ["nests", nest.id],
+    ] as const) {
+      const row = await database.get(store, id);
+
+      await database.put(store, { ...row!, keyId: "their-key" });
+    }
+
+    const undo = sharedToRead("their-key");
+
+    try {
+      expect(await softDeleteWing(wing.id)).toBeNull();
+      expect(await softDeleteFlight(flight.id)).toBeNull();
+      expect(await softDeleteBranch(branch.id)).toBeNull();
+      expect(await softDeleteNest(nest.id)).toBe(false);
+      expect((await loadWorkspaceSnapshot()).branches.map((row) => row.id)).toEqual([branch.id]);
+    } finally {
+      undo();
+    }
   });
 });

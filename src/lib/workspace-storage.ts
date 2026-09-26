@@ -1,5 +1,6 @@
 import {
   type Branch,
+  ENTITY_STORE_NAMES,
   type Flight,
   formatFlightName,
   termForMonth,
@@ -14,6 +15,8 @@ import {
   listNests,
   listWings,
 } from "./entity-storage";
+import { isReadOnlyKey } from "./keys/access";
+import { getNotesDb } from "./notes-db";
 import { listSharePathEntities } from "./share-path-storage";
 import {
   branchesForFlight,
@@ -28,14 +31,33 @@ export const DEFAULT_BRANCH_NAME = "General";
 
 /** Only the rows this workspace holds itself: what a new note may be filed under. */
 async function loadOwnSnapshot(): Promise<WorkspaceSnapshot> {
-  const [wings, flights, branches, nests] = await Promise.all([
+  const [wings, flights, branches, nests, readOnly] = await Promise.all([
     listWings(),
     listFlights(),
     listBranches(),
     listNests(),
+    readOnlyEntityIds(),
   ]);
 
-  return { wings, flights, branches, nests };
+  return { wings, flights, branches, nests, ...(readOnly.size ? { readOnly } : {}) };
+}
+
+/**
+ * The rows held here under a key shared only to read. The listed rows arrive opened, with
+ * their key taken off, so the stored ones are asked instead — `keyId` is never sealed.
+ */
+async function readOnlyEntityIds(): Promise<Set<string>> {
+  const database = await getNotesDb();
+  const stored = await Promise.all(ENTITY_STORE_NAMES.map((store) => database.getAll(store)));
+  const readOnly = new Set<string>();
+
+  for (const row of stored.flat()) {
+    if (isReadOnlyKey(row.keyId)) {
+      readOnly.add(row.id);
+    }
+  }
+
+  return readOnly;
 }
 
 /** Everything the path bar shows: this workspace, and the paths to what was shared into it. */

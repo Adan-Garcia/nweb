@@ -9,6 +9,7 @@ import {
   parseFlightName,
   type Wing,
 } from "./entity-model";
+import { anyReadOnly, isReadOnlyKey, ReadOnlyError } from "./keys/access";
 import { cipherForObject, provisionObjectKey } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { openRow, openRows, type SealedRow, sealRow } from "./sealed-text";
@@ -68,6 +69,18 @@ async function keyIdOf<Store extends "wings" | "flights" | "branches" | "nests">
   return (await database.get(store, id))?.keyId;
 }
 
+/**
+ * A key for something new, hung under its parent — unless the parent was shared with this
+ * account only to read, where nothing new can be hung at all.
+ */
+async function provisionUnder(kind: "flight" | "branch" | "nest", parentKeyId?: string) {
+  if (anyReadOnly([parentKeyId])) {
+    throw new ReadOnlyError();
+  }
+
+  return provisionObjectKey(kind, [parentKeyId]);
+}
+
 export async function createWing(name: string): Promise<Wing> {
   const database = await getNotesDb();
   const wing: Wing = { id: crypto.randomUUID(), name, ...stamps() };
@@ -102,7 +115,7 @@ export async function createFlight(input: {
     ...stamps(),
   };
 
-  const cipher = await provisionObjectKey("flight", [await keyIdOf("wings", input.wingId)]);
+  const cipher = await provisionUnder("flight", await keyIdOf("wings", input.wingId));
 
   await database.put("flights", await sealRow(flight, "name", cipher));
   return flight;
@@ -126,7 +139,7 @@ export async function createBranch(input: {
     ...stamps(),
   };
 
-  const cipher = await provisionObjectKey("branch", [await keyIdOf("flights", input.flightId)]);
+  const cipher = await provisionUnder("branch", await keyIdOf("flights", input.flightId));
 
   await database.put("branches", await sealRow(branch, "name", cipher));
   return branch;
@@ -141,7 +154,7 @@ export async function createNest(input: { branchId: string; name: string }): Pro
     ...stamps(),
   };
 
-  const cipher = await provisionObjectKey("nest", [await keyIdOf("branches", input.branchId)]);
+  const cipher = await provisionUnder("nest", await keyIdOf("branches", input.branchId));
 
   await database.put("nests", await sealRow(nest, "name", cipher));
   return nest;
@@ -170,7 +183,8 @@ export async function renameWing(id: string, name: string): Promise<Wing | null>
   const database = await getNotesDb();
   const existing = await database.get("wings", id);
 
-  if (!existing) {
+  // Somebody else's, shared to read: theirs to rename, not this device's.
+  if (!existing || isReadOnlyKey(existing.keyId)) {
     return null;
   }
 
@@ -184,7 +198,8 @@ export async function renameFlight(id: string, name: string): Promise<Flight | n
   const database = await getNotesDb();
   const existing = await database.get("flights", id);
 
-  if (!existing) {
+  // Somebody else's, shared to read: theirs to rename, not this device's.
+  if (!existing || isReadOnlyKey(existing.keyId)) {
     return null;
   }
 
@@ -199,7 +214,8 @@ export async function renameBranch(id: string, name: string): Promise<Branch | n
   const database = await getNotesDb();
   const existing = await database.get("branches", id);
 
-  if (!existing) {
+  // Somebody else's, shared to read: theirs to rename, not this device's.
+  if (!existing || isReadOnlyKey(existing.keyId)) {
     return null;
   }
 
@@ -213,7 +229,8 @@ export async function setBranchColor(id: string, color: BranchColor): Promise<Br
   const database = await getNotesDb();
   const existing = await database.get("branches", id);
 
-  if (!existing) {
+  // Somebody else's, shared to read: theirs to rename, not this device's.
+  if (!existing || isReadOnlyKey(existing.keyId)) {
     return null;
   }
 
@@ -226,7 +243,8 @@ export async function renameNest(id: string, name: string): Promise<Nest | null>
   const database = await getNotesDb();
   const existing = await database.get("nests", id);
 
-  if (!existing) {
+  // Somebody else's, shared to read: theirs to rename, not this device's.
+  if (!existing || isReadOnlyKey(existing.keyId)) {
     return null;
   }
 

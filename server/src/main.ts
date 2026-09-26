@@ -1,5 +1,6 @@
-import { serve } from "@hono/node-server";
+import { serve, upgradeWebSocket } from "@hono/node-server";
 import { Pool, type QueryResultRow } from "pg";
+import { WebSocketServer } from "ws";
 
 import { createApp } from "./app";
 import { ConfigError, readConfig } from "./config";
@@ -45,16 +46,22 @@ async function main(): Promise<void> {
     serverSecret: config.serverSecret,
     allowedOrigins: config.allowedOrigins,
     vapidPublicKey: config.vapid?.publicKey ?? null,
+    upgrade: upgradeWebSocket,
   });
 
-  const server = serve({ fetch: app.fetch, port: config.port }, ({ port }) =>
-    console.info(`Listening on ${port}.`),
+  // `noServer`: the adapter hands it upgrades from the HTTP server it already runs, so the
+  // live channel shares the port, the TLS terminator and the proxy with everything else.
+  const websockets = new WebSocketServer({ noServer: true });
+  const server = serve(
+    { fetch: app.fetch, port: config.port, websocket: { server: websockets } },
+    ({ port }) => console.info(`Listening on ${port}.`),
   );
 
   // Finish what is in flight, then let the process go. Without this a deploy drops
   // whatever request happened to be open.
   const shutdown = () => {
     sweep?.stop();
+    websockets.close();
     server.close(() => void pool.end());
   };
 

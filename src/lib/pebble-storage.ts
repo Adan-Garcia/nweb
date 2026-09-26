@@ -1,4 +1,5 @@
 import { decryptWith } from "./cipher";
+import { anyReadOnly, isReadOnlyKey, ReadOnlyError } from "./keys/access";
 import { cipherForObject, provisionObjectKey, wrapUnderAlso } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { type Pebble } from "./pebble-model";
@@ -71,10 +72,13 @@ export async function createPebble({
   // Everything that needs the cipher happens before the transaction opens: awaiting
   // anything that is not an IndexedDB request lets the transaction auto-commit, and the
   // puts below would then fail with TransactionInactiveError in a real browser.
-  const cipher = await provisionObjectKey(
-    "pebble",
-    await containerKeyIds(branchId, pebble.nestIds),
-  );
+  const parents = await containerKeyIds(branchId, pebble.nestIds);
+
+  if (anyReadOnly(parents)) {
+    throw new ReadOnlyError();
+  }
+
+  const cipher = await provisionObjectKey("pebble", parents);
   const sealedPebble = await sealRow(pebble, "name", cipher);
   const sealedBlob =
     cipher.name === "none"
@@ -142,12 +146,17 @@ export async function updatePebble(
   const database = await getNotesDb();
   const stored = await database.get("pebbles", id);
 
-  if (!stored || stored.deletedAt) {
+  // A file shared to read is not this device's to rename, move or re-tag.
+  if (!stored || stored.deletedAt || isReadOnlyKey(stored.keyId)) {
     return null;
   }
 
   const existing = await openRow(stored, "name");
   const next: Pebble = { ...existing, ...changes, updatedAt: Date.now() };
+
+  if (anyReadOnly(await containerKeyIds(next.branchId, next.nestIds))) {
+    return null;
+  }
 
   await database.put("pebbles", await sealRow(next, "name", cipherForObject(stored.keyId)));
 
@@ -172,7 +181,7 @@ export async function softDeletePebble(id: string): Promise<boolean> {
   const pebbleStore = transaction.objectStore("pebbles");
   const existing = await pebbleStore.get(id);
 
-  if (!existing || existing.deletedAt) {
+  if (!existing || existing.deletedAt || isReadOnlyKey(existing.keyId)) {
     await transaction.done;
     return false;
   }

@@ -2,6 +2,7 @@ import type { ApiError } from "@shared/account-contract";
 
 import { userForToken, type UserRow } from "./accounts";
 import type { Sql } from "./db";
+import type { LiveHub } from "./live";
 import type { RateLimiter } from "./rate-limit";
 import { bearerToken } from "./tokens";
 
@@ -37,6 +38,8 @@ export type RouteDeps = {
   attempts: RateLimiter;
   /** Published so a device can subscribe. Null when this deployment sends no reminders. */
   vapidPublicKey: string | null;
+  /** Nudged after anything a connected device might want to sync. */
+  live: LiveHub;
 };
 
 export type Caller = { token: string; user: UserRow };

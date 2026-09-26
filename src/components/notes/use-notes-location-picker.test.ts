@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { NotesDirectoryEntry } from "@/components/notes/types";
 import { createBranch, createFlight, createNest, createWing } from "@/lib/entity-storage";
+import { ReadOnlyError } from "@/lib/keys/access";
 import { getNotesDb } from "@/lib/notes-db";
 import { loadWorkspaceSnapshot } from "@/lib/workspace-storage";
+import { sharedToRead } from "@/test/read-only";
 
 import { selectionForEntry } from "./location-hierarchy";
 import { useNotesLocationPicker } from "./use-notes-location-picker";
@@ -225,6 +227,21 @@ describe("useNotesLocationPicker: creating a note", () => {
     expect(result.current.createNote.isOpen).toBe(true);
     expect(result.current.createNote.isCreating).toBe(false);
   });
+
+  it("says so, instead of failing, when the course was shared to read", async () => {
+    const { result, createNoteAt } = await setup();
+    createNoteAt.mockRejectedValueOnce(new ReadOnlyError());
+    act(() => result.current.createNote.setIsOpen(true));
+    act(() => result.current.createNote.setTitle("Brand new"));
+
+    await act(async () => {
+      await result.current.createNote.submit();
+    });
+
+    expect(result.current.notice).toMatch(/shared with you to read/);
+    expect(result.current.createNote.isOpen).toBe(false);
+    expect(result.current.createNote.isCreating).toBe(false);
+  });
 });
 
 describe("useNotesLocationPicker: adding a level", () => {
@@ -281,6 +298,32 @@ describe("useNotesLocationPicker: adding a level", () => {
       year: 2027,
     });
     expect(snapshot.wings.map((wing) => wing.name)).toContain("School");
+  });
+
+  it("refuses a tag under a course shared to read, and says why", async () => {
+    const { result, seeded } = await setup();
+    const database = await getNotesDb();
+
+    await database.put("branches", {
+      ...(await database.get("branches", seeded.math.id))!,
+      keyId: "their-key",
+    });
+    const undo = sharedToRead("their-key");
+
+    try {
+      act(() => result.current.segmentModal.open("nest", "Unit"));
+      act(() => result.current.segmentModal.setDraftValue("Unit 9"));
+      await act(async () => {
+        await result.current.segmentModal.submit();
+      });
+
+      expect(result.current.notice).toMatch(/shared with you to read/);
+      expect((await loadWorkspaceSnapshot()).nests.map((nest) => nest.name)).not.toContain(
+        "Unit 9",
+      );
+    } finally {
+      undo();
+    }
   });
 
   it("ignores a blank value and does nothing without an open dialog", async () => {

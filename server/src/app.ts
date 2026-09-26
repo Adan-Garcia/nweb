@@ -1,9 +1,12 @@
+import type { upgradeWebSocket } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 import { authRoutes } from "./auth-routes";
 import type { Sql } from "./db";
 import type { RouteDeps } from "./http";
+import { createLiveHub, type LiveHub } from "./live";
+import { liveRoutes } from "./live-routes";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
 import { sharingRoutes } from "./sharing-routes";
 import { syncRoutes } from "./sync-routes";
@@ -16,6 +19,13 @@ export type AppOptions = {
   limiter?: RateLimiter;
   /** Published at `/v1/push/key`. Null when this deployment sends no reminders. */
   vapidPublicKey?: string | null;
+  /** Who is connected for live nudges. One is made when none is passed. */
+  live?: LiveHub;
+  /**
+   * The WebSocket upgrade, from the Node adapter. Absent in tests that drive the app with
+   * `app.request`, which cannot upgrade: `/v1/live` is simply not mounted there.
+   */
+  upgrade?: typeof upgradeWebSocket;
 };
 
 /**
@@ -32,6 +42,8 @@ export function createApp({
   allowedOrigins,
   limiter,
   vapidPublicKey,
+  live,
+  upgrade,
 }: AppOptions) {
   // Five attempts a minute per address. Enough that nobody notices a typo, far too few to
   // work through a list.
@@ -40,6 +52,7 @@ export function createApp({
     serverSecret,
     attempts: limiter ?? createRateLimiter({ limit: 5, windowMs: 60_000 }),
     vapidPublicKey: vapidPublicKey ?? null,
+    live: live ?? createLiveHub(),
   };
   const app = new Hono();
 
@@ -48,6 +61,10 @@ export function createApp({
   app.route("/", authRoutes(deps));
   app.route("/", syncRoutes(deps));
   app.route("/", sharingRoutes(deps));
+
+  if (upgrade) {
+    app.route("/", liveRoutes({ sql, hub: deps.live, upgrade }));
+  }
 
   return app;
 }

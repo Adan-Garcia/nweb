@@ -14,7 +14,7 @@ import { publicKeyFor, putKeys, revoke, share, sharesOf } from "./sharing";
  * yours" and "nobody has that address" are both things the caller can do nothing about,
  * and telling them apart would answer a question about who has an account.
  */
-export function sharingRoutes({ sql, attempts }: RouteDeps) {
+export function sharingRoutes({ sql, attempts, live }: RouteDeps) {
   const routes = new Hono();
 
   routes.get("/v1/keys/graph", async (context) => {
@@ -60,7 +60,15 @@ export function sharingRoutes({ sql, attempts }: RouteDeps) {
 
     const outcome = await share(sql, caller.user.id, parsed.data);
 
-    return outcome === "shared" ? noContent() : fail("invalid_request");
+    if (outcome !== "shared") {
+      return fail("invalid_request");
+    }
+
+    // The recipient can reach the key now, so a nudge under it finds them: an open app
+    // picks the share up at once instead of on its next periodic round.
+    await live.nudge(sql, { keyIds: [parsed.data.keyId], userIds: [] });
+
+    return noContent();
   });
 
   routes.post("/v1/keys/revoke", async (context) => {

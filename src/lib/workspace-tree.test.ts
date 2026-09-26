@@ -17,12 +17,14 @@ import {
   branchesForFlight,
   branchesForSelection,
   branchPath,
+  canFileUnder,
   displayLocation,
   emptyWorkspaceSnapshot,
   entriesForNest,
   flightsForWing,
   formatLocationPath,
   isPathOnly,
+  isReadOnlyEntity,
   nestsForBranch,
   ownRows,
   SHARED_SEGMENT_LABEL,
@@ -305,5 +307,43 @@ describe("the path to something shared", () => {
 
     expect(ownRows(snapshot)).toEqual({ ...own });
     expect(ownRows(own)).toBe(own);
+  });
+});
+
+describe("what was shared to read", () => {
+  const own = makeSnapshot({
+    wings: [makeWing({ id: "mine" })],
+    flights: [makeFlight({ id: "term", wingId: "mine" })],
+    branches: [
+      makeBranch({ id: "my-course", flightId: "term" }),
+      makeBranch({ id: "their-course", flightId: "their-term" }),
+    ],
+    nests: [],
+    readOnly: new Set(["their-course"]),
+  });
+
+  it("says which rows are read-only, and that nothing may be filed under them", () => {
+    expect(isReadOnlyEntity(own, "their-course")).toBe(true);
+    expect(isReadOnlyEntity(own, "my-course")).toBe(false);
+    expect(isReadOnlyEntity(own, null)).toBe(false);
+    expect(isReadOnlyEntity(makeSnapshot(), "their-course")).toBe(false);
+
+    expect(canFileUnder(own, "my-course")).toBe(true);
+    expect(canFileUnder(own, "their-course")).toBe(false);
+    expect(canFileUnder(own, null)).toBe(true);
+  });
+
+  it("keeps the read-only marks when a path is added, and leaves them out of ownRows", () => {
+    const withPath = withSharePaths(own, {
+      wings: [makeWing({ id: "their-wing" })],
+      flights: [makeFlight({ id: "their-term", wingId: "their-wing" })],
+      branches: [],
+      nests: [],
+    });
+
+    expect(isReadOnlyEntity(withPath, "their-course")).toBe(true);
+    expect(canFileUnder(withPath, "their-term")).toBe(false);
+    expect(ownRows(withPath).branches.map((branch) => branch.id)).toEqual(["my-course"]);
+    expect(ownRows(withPath).wings.map((wing) => wing.id)).toEqual(["mine"]);
   });
 });

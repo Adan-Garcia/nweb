@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { sharedToRead } from "@/test/read-only";
 import { BRANCH_ID, makeTwig } from "@/test/workspace-fixtures";
 
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "./cipher";
+import { createBranch, createFlight, createWing } from "./entity-storage";
+import { ReadOnlyError } from "./keys/access";
+import { createObjectKey } from "./keys/key-graph";
+import { forgetKeyring, holdKeyring } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import { BOARD_ORDER_STEP, compareTwigsByDue } from "./twig-model";
 import {
@@ -204,5 +210,138 @@ describe("the machine-readable half of a due time", () => {
 
     const [listed] = await listTwigs();
     expect(listed.dueMinutes).toBe(15 * 60 + 30);
+  });
+});
+
+describe("a task shared to read", () => {
+  /** A twig stamped with a key this account holds only as a reader. */
+  async function theirTwig() {
+    const twig = await createTwig({ branchId: BRANCH_ID, title: "Theirs" });
+    const database = await getNotesDb();
+    const stored = await database.get("twigs", twig.id);
+
+    await database.put("twigs", { ...stored!, keyId: "their-key" });
+
+    return twig;
+  }
+
+  it("cannot be changed, moved on the board, or deleted here", async () => {
+    const twig = await theirTwig();
+    const undo = sharedToRead("their-key");
+
+    try {
+      expect(await updateTwig(twig.id, { title: "Mine now" })).toBeNull();
+      expect(await moveTwig({ twigId: twig.id, status: "complete", targetIndex: 0 })).toEqual([]);
+      expect(await softDeleteTwig(twig.id)).toBe(false);
+      expect((await listTwigs())[0]).toMatchObject({ title: "Theirs", status: "incomplete" });
+    } finally {
+      undo();
+    }
+  });
+
+  it("keeps its place when the column around it is renumbered", async () => {
+    const theirs = await theirTwig();
+    const mine = await createTwig({ branchId: BRANCH_ID, title: "Mine" });
+    const database = await getNotesDb();
+
+    // Two rows one apart leave no room between them, so the drop renumbers the column.
+    await database.put("twigs", { ...(await database.get("twigs", theirs.id))!, boardOrder: 0 });
+    await database.put("twigs", { ...(await database.get("twigs", mine.id))!, boardOrder: 1 });
+
+    const other = await createTwig({ branchId: BRANCH_ID, title: "Dropped", status: "complete" });
+    const undo = sharedToRead("their-key");
+
+    try {
+      const changed = await moveTwig({ twigId: other.id, status: "incomplete", targetIndex: 1 });
+
+      expect(changed.map((twig) => twig.id)).not.toContain(theirs.id);
+      expect((await database.get("twigs", theirs.id))?.boardOrder).toBe(0);
+    } finally {
+      undo();
+    }
+  });
+
+  it("takes no new task filed inside it", async () => {
+    const database = await getNotesDb();
+
+    await database.put("branches", {
+      id: "their-course",
+      flightId: "f",
+      name: "Theirs",
+      color: "emerald",
+      createdAt: 1,
+      updatedAt: 1,
+      deletedAt: null,
+      keyId: "their-key",
+    });
+    const undo = sharedToRead("their-key");
+
+    try {
+      await expect(createTwig({ branchId: "their-course", title: "Sneaky" })).rejects.toThrow(
+        ReadOnlyError,
+      );
+      expect(await listTwigs()).toEqual([]);
+    } finally {
+      undo();
+      await database.delete("branches", "their-course");
+    }
+  });
+
+  it("cannot take a task of this device's moved into it", async () => {
+    const database = await getNotesDb();
+    const mine = await createTwig({ branchId: BRANCH_ID, title: "Mine" });
+
+    await database.put("branches", {
+      id: "their-course",
+      flightId: "f",
+      name: "Theirs",
+      color: "emerald",
+      createdAt: 1,
+      updatedAt: 1,
+      deletedAt: null,
+      keyId: "their-key",
+    });
+    const undo = sharedToRead("their-key");
+
+    try {
+      expect(await updateTwig(mine.id, { branchId: "their-course" })).toBeNull();
+    } finally {
+      undo();
+      await database.delete("branches", "their-course");
+    }
+  });
+});
+
+describe("moving a task on the board", () => {
+  it("re-seals its title under the task's own key, not the workspace's", async () => {
+    const wing = await createObjectKey("wing");
+
+    setActiveCipher(createAesGcmCipher(wing.key, wing.keyId));
+    holdKeyring(new Map([[wing.keyId, wing.key]]), { keys: [], wraps: [], grants: [] });
+
+    try {
+      const flight = await createFlight({ wingId: (await createWing("W")).id, name: "Fall 2026" });
+      const branch = await createBranch({ flightId: flight.id, name: "Course" });
+      const twig = await createTwig({ branchId: branch.id, title: "Problem set" });
+      const database = await getNotesDb();
+      const ownKey = (await database.get("twigs", twig.id))?.keyId;
+
+      expect(ownKey).not.toBe(wing.keyId);
+
+      await moveTwig({ twigId: twig.id, status: "complete", targetIndex: 0 });
+
+      // Under the workspace key, a writer moving somebody's shared task would re-seal it
+      // under a key its owner does not have.
+      expect((await database.get("twigs", twig.id))?.keyId).toBe(ownKey);
+      expect((await listTwigs())[0]?.title).toBe("Problem set");
+    } finally {
+      forgetKeyring();
+      resetActiveCipher();
+      const database = await getNotesDb();
+
+      await Promise.all(
+        (["wings", "flights", "branches"] as const).map((store) => database.clear(store)),
+      );
+    }
   });
 });

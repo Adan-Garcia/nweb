@@ -8,7 +8,12 @@ import {
   type TwigFormValues,
 } from "@/components/calendar/calendar-shared";
 import type { Twig } from "@/lib/twig-model";
-import { branchPath, isPathOnly, type WorkspaceSnapshot } from "@/lib/workspace-tree";
+import {
+  branchPath,
+  canFileUnder,
+  isReadOnlyEntity,
+  type WorkspaceSnapshot,
+} from "@/lib/workspace-tree";
 
 const DEFAULT_EVENT_TIME = "9:00 AM";
 
@@ -37,7 +42,9 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
   const branchOptions = useMemo<BranchOption[]>(
     () =>
       snapshot.branches
-        .filter((branch) => !isPathOnly(snapshot, branch.id))
+        // Only courses a task can be filed under: not a name on somebody's path, and not a
+        // course shared to read.
+        .filter((branch) => canFileUnder(snapshot, branch.id))
         .map((branch) => {
           const path = branchPath(snapshot, branch.id);
 
@@ -84,6 +91,11 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
   };
 
   const openEdit = (twigToEdit: Twig) => {
+    // A task in a course shared to read cannot be saved, so the form is not offered for it.
+    if (isReadOnlyEntity(snapshot, twigToEdit.branchId)) {
+      return;
+    }
+
     setEditingTwigId(twigToEdit.id);
     form.reset({
       title: twigToEdit.title,

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setApiSession } from "@/lib/api/session-store";
 import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/cipher";
+import { holdIdentity } from "@/lib/keys/identity";
 import { createObjectKey, type Keyring } from "@/lib/keys/key-graph";
 import {
   forgetKeyring,
@@ -10,9 +11,15 @@ import {
   keysNeedUpload,
   markKeysUploaded,
 } from "@/lib/keys/object-keys";
+import { getNotesDb } from "@/lib/notes-db";
 import { server } from "@/test/server";
 
-import { resetSyncState, runSyncRound, startBackgroundSync } from "./sync-service";
+import {
+  resetSyncState,
+  runSyncRound,
+  startBackgroundSync,
+  subscribeToSyncChanges,
+} from "./sync-service";
 
 const BASE = "https://cuervo.example.com";
 
@@ -298,5 +305,233 @@ describe("startBackgroundSync", () => {
     await rest(40);
 
     expect(rounds).toBe(roundsWhenStopped);
+  });
+});
+
+describe("what a round tells the app", () => {
+  /** A device with an account identity, so the graph the server hands over is taken. */
+  async function signedIn() {
+    const pair = await crypto.subtle.generateKey(
+      {
+        name: "RSA-OAEP",
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: "SHA-256",
+      },
+      true,
+      ["wrapKey", "unwrapKey"],
+    );
+
+    holdIdentity(pair.privateKey);
+    holdKeyring(new Map(), { keys: [], wraps: [], grants: [] });
+  }
+
+  const sharedTwig = (id: string) => ({
+    store: "twigs",
+    id,
+    updatedAt: 5,
+    deletedAt: null,
+    keyId: "shared-key",
+    encryption: "none",
+    payload: btoa(
+      JSON.stringify({
+        id,
+        branchId: "b",
+        title: "Shared task",
+        createdAt: 1,
+        updatedAt: 5,
+        deletedAt: null,
+      }),
+    ),
+    schedule: null,
+  });
+
+  afterEach(async () => {
+    holdIdentity(null);
+    await (await getNotesDb()).clear("twigs");
+  });
+
+  it("fetches what is under a grant it has not seen, and says which rows changed", async () => {
+    await signedIn();
+    quietServer();
+
+    const backfilled: unknown[] = [];
+
+    server.use(
+      http.get(`${BASE}/v1/keys/graph`, () =>
+        HttpResponse.json({
+          keys: [],
+          wraps: [],
+          grants: [{ keyId: "shared-key", role: "reader", wrapped: "not-openable" }],
+        }),
+      ),
+      http.post(`${BASE}/v1/sync/backfill`, async ({ request }) => {
+        backfilled.push(await request.json());
+
+        return HttpResponse.json({ seq: 9, rows: [sharedTwig("t-1")], hasMore: false });
+      }),
+    );
+
+    const heard = vi.fn();
+    const stop = subscribeToSyncChanges(heard);
+
+    await runSyncRound();
+
+    expect(backfilled).toEqual([{ keyIds: ["shared-key"], after: 0 }]);
+    expect(heard).toHaveBeenCalledWith([{ store: "twigs", id: "t-1" }]);
+
+    // Known now: the next round asks for nothing, and nobody is told of nothing.
+    heard.mockClear();
+    await runSyncRound();
+
+    expect(backfilled).toHaveLength(1);
+    expect(heard).not.toHaveBeenCalled();
+
+    stop();
+  });
+
+  it("carries on with the round when the backfill cannot be had", async () => {
+    await signedIn();
+    quietServer();
+    server.use(
+      http.get(`${BASE}/v1/keys/graph`, () =>
+        HttpResponse.json({
+          keys: [],
+          wraps: [],
+          grants: [{ keyId: "shared-key", role: "reader", wrapped: "not-openable" }],
+        }),
+      ),
+      http.post(`${BASE}/v1/sync/backfill`, () => new HttpResponse(null, { status: 500 })),
+    );
+
+    expect(await runSyncRound()).not.toBeNull();
+  });
+
+  it("stops telling a listener that has stopped listening", async () => {
+    quietServer();
+    server.use(
+      http.post(`${BASE}/v1/sync`, () =>
+        HttpResponse.json({ seq: 1, rows: [sharedTwig("t-2")], hasMore: false }),
+      ),
+    );
+
+    const heard = vi.fn();
+
+    subscribeToSyncChanges(heard)();
+    await runSyncRound();
+
+    expect(heard).not.toHaveBeenCalled();
+  });
+});
+
+describe("the live channel", () => {
+  function liveSocket() {
+    const listeners: {
+      type: string;
+      listener: (event: { data: unknown; code: number }) => void;
+    }[] = [];
+
+    const socket = {
+      send: vi.fn(),
+      close: vi.fn(),
+      addEventListener: (
+        type: "open" | "message" | "close",
+        listener: (event: { data: unknown; code: number }) => void,
+      ) => {
+        listeners.push({ type, listener });
+      },
+    };
+
+    return {
+      create: () => socket,
+      nudge: () => {
+        for (const entry of listeners.filter((each) => each.type === "message")) {
+          entry.listener({ data: JSON.stringify({ type: "changed" }), code: 0 });
+        }
+      },
+    };
+  }
+
+  it("runs a round the moment the server says something changed", async () => {
+    let syncs = 0;
+
+    quietServer(() => (syncs += 1));
+
+    const socket = liveSocket();
+    const onRound = vi.fn();
+    const sync = startBackgroundSync({ everyMs: 60_000, onRound, liveSocket: socket.create });
+
+    socket.nudge();
+    await until(() => onRound.mock.calls.length === 1, "the nudged round");
+
+    expect(syncs).toBe(1);
+    sync.stop();
+  });
+
+  it("runs once more when nudged mid-round, since that round may have missed it", async () => {
+    let syncs = 0;
+    let release: () => void = () => undefined;
+
+    server.use(
+      http.post(`${BASE}/v1/sync`, async () => {
+        syncs += 1;
+
+        if (syncs === 1) {
+          await new Promise<void>((resolve) => (release = resolve));
+        }
+
+        return HttpResponse.json({ seq: 0, rows: [], hasMore: false });
+      }),
+      http.get(`${BASE}/v1/media`, () => HttpResponse.json({ media: [] })),
+    );
+
+    const socket = liveSocket();
+    const onRound = vi.fn();
+    const sync = startBackgroundSync({ everyMs: 60_000, onRound, liveSocket: socket.create });
+
+    socket.nudge();
+    await until(() => syncs === 1, "the first round to start");
+    socket.nudge();
+    socket.nudge();
+    release();
+
+    await until(() => onRound.mock.calls.length === 2, "exactly one more round");
+    await rest(20);
+
+    expect(syncs).toBe(2);
+    sync.stop();
+  });
+
+  it("ignores a nudge while the tab is hidden, and after it has stopped", async () => {
+    let syncs = 0;
+
+    quietServer(() => (syncs += 1));
+
+    const socket = liveSocket();
+    const sync = startBackgroundSync({ everyMs: 60_000, liveSocket: socket.create });
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    socket.nudge();
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+
+    sync.stop();
+    socket.nudge();
+    await rest(20);
+
+    expect(syncs).toBe(0);
+  });
+
+  it("opens the browser's socket by default, and none when told not to", () => {
+    const Native = vi.fn(function () {
+      return { send: vi.fn(), close: vi.fn(), addEventListener: vi.fn() };
+    });
+
+    vi.stubGlobal("WebSocket", Native);
+
+    startBackgroundSync({ liveSocket: false }).stop();
+    expect(Native).not.toHaveBeenCalled();
+
+    startBackgroundSync().stop();
+    expect(Native).toHaveBeenCalledWith("wss://cuervo.example.com/v1/live");
   });
 });

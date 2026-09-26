@@ -61,6 +61,12 @@ export function NotesLocationBar({
 
         <p className="text-xs text-muted-foreground">{autoSaveLabel}</p>
 
+        {picker.notice ? (
+          <p role="status" className="m-0 text-xs text-muted-foreground">
+            {picker.notice}
+          </p>
+        ) : null}
+
         <NotesDeleteNoteControl
           snapshot={snapshot}
           activeEntry={activeEntry}

@@ -1,4 +1,5 @@
 import {
+  type BackfillRequest,
   SYNC_PAGE_SIZE,
   type SyncRequest,
   type SyncResponse,
@@ -6,7 +7,7 @@ import {
 } from "@shared/sync-contract";
 
 import { type Sql, toNumber } from "./db";
-import { reachableKeyIds } from "./key-graph";
+import { keysUnder, reachableKeyIds } from "./key-graph";
 
 /**
  * Sync: take what a device has, give it what it has not seen.
@@ -203,6 +204,33 @@ export async function sync(sql: Sql, userId: string, request: SyncRequest): Prom
 
   const page = rows.slice(0, SYNC_PAGE_SIZE);
   const seq = page.length ? toNumber(page[page.length - 1].seq) : request.since;
+
+  return { seq, rows: page.map(toSyncRow), hasMore: rows.length > SYNC_PAGE_SIZE };
+}
+
+/**
+ * The rows under keys the caller was just given, whatever their `seq`.
+ *
+ * Only keys the caller can actually reach are honoured, so naming somebody else's key
+ * returns nothing — the same rule the ordinary sync is scoped by. Paged by `seq` like a
+ * sync, with its own cursor, so it never disturbs the one the device keeps for sync.
+ */
+export async function backfill(
+  sql: Sql,
+  userId: string,
+  request: BackfillRequest,
+): Promise<SyncResponse> {
+  const readable = new Set(await reachableKeyIds(sql, userId));
+  const granted = request.keyIds.filter((keyId) => readable.has(keyId));
+  const keys = granted.length ? await keysUnder(sql, granted) : [];
+
+  const { rows } = await sql.query<RowRecord>(
+    `select * from rows where seq > $1 and key_id = any($2) order by seq limit $3`,
+    [request.after, keys, SYNC_PAGE_SIZE + 1],
+  );
+
+  const page = rows.slice(0, SYNC_PAGE_SIZE);
+  const seq = page.length ? toNumber(page[page.length - 1].seq) : request.after;
 
   return { seq, rows: page.map(toSyncRow), hasMore: rows.length > SYNC_PAGE_SIZE };
 }

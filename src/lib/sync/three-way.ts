@@ -66,20 +66,36 @@ const sameList = (left: readonly string[], right: readonly string[]) =>
  * diff3 over a list: the stretches both sides left alone anchor the merge, and each gap
  * between two anchors is resolved as a whole — or item by item, when it was edited in place.
  *
- * Two people editing different paragraphs keep both edits, adjacent ones included; two
- * editing the same paragraph leave one, which goes to the preferred side. A gap where lines
- * were added or removed on both sides is the unit of conflict, and goes the same way.
+ * Two people editing different paragraphs keep both edits, adjacent ones included. Where
+ * both edited the same item in place, `clash` gets a chance to merge inside it; without one,
+ * or when it cannot, the preferred side's item is kept. A gap where lines were added or
+ * removed on both sides is the unit of conflict, and goes to the preferred side whole.
  */
+export type Clash = (base: string, local: string, remote: string) => string | null;
+
 export function mergeLists(
   base: readonly string[],
   local: readonly string[],
   remote: readonly string[],
   prefer: Side,
+  clash?: Clash,
 ): string[] {
   const toLocal = matches(base, local);
   const toRemote = matches(base, remote);
   const merged: string[] = [];
   let [b, l, r] = [0, 0, 0];
+
+  const resolveItem = (was: string, mine: string, theirs: string) => {
+    if (mine === theirs || theirs === was) {
+      return mine;
+    }
+
+    if (mine === was) {
+      return theirs;
+    }
+
+    return clash?.(was, mine, theirs) ?? (prefer === "local" ? mine : theirs);
+  };
 
   const flush = (nextB: number, nextL: number, nextR: number) => {
     const gap = [base.slice(b, nextB), local.slice(l, nextL), remote.slice(r, nextR)] as const;
@@ -88,11 +104,7 @@ export function mergeLists(
     // than added or removed. Resolving them one by one is what keeps edits to two adjacent
     // paragraphs — which share no untouched neighbour to anchor on — from clashing.
     if (gap[0].length === gap[1].length && gap[0].length === gap[2].length) {
-      merged.push(
-        ...gap[0].map((item, index) =>
-          pick(item, gap[1][index], gap[2][index], prefer, (x, y) => x === y),
-        ),
-      );
+      merged.push(...gap[0].map((item, index) => resolveItem(item, gap[1][index], gap[2][index])));
       return;
     }
 
@@ -177,13 +189,51 @@ export function splitHtmlBlocks(html: string): string[] {
   return depth === 0 && blocks.join("") === html ? blocks : [html];
 }
 
-/** Two edits of one rich-text note, merged paragraph by paragraph. */
+/** A tag, a word, or a run of whitespace: the units a clash inside one paragraph is merged in. */
+const INLINE_TOKEN = /<(?:"[^"]*"|'[^']*'|[^'">])*>|[^<\s]+|\s+/g;
+
+const inlineTokens = (html: string) => html.match(INLINE_TOKEN) ?? [];
+
+const markupOf = (tokens: readonly string[]) =>
+  tokens.filter((token) => token.startsWith("<")).join("");
+
+/**
+ * Two edits of the same paragraph, merged word by word — or null, and the later edit wins
+ * the paragraph as before.
+ *
+ * Words are merged; markup is not. The result is kept only when its tags are exactly the
+ * tags one of the two sides wrote, so a merge can join two people's words but can never
+ * produce a nesting of bold and italic that neither of them made.
+ */
+export function mergeInline(
+  base: string,
+  local: string,
+  remote: string,
+  prefer: Side,
+): string | null {
+  const sides = [base, local, remote].map(inlineTokens);
+
+  if (sides.some((tokens, index) => tokens.join("") !== [base, local, remote][index])) {
+    return null;
+  }
+
+  const merged = mergeLists(sides[0], sides[1], sides[2], prefer);
+  const markup = markupOf(merged);
+
+  return markup === markupOf(sides[1]) || markup === markupOf(sides[2]) ? merged.join("") : null;
+}
+
+/**
+ * Two edits of one rich-text note: paragraph by paragraph, and word by word inside a
+ * paragraph both of them changed.
+ */
 export function mergeHtml(base: string, local: string, remote: string, prefer: Side): string {
   return mergeLists(
     splitHtmlBlocks(base),
     splitHtmlBlocks(local),
     splitHtmlBlocks(remote),
     prefer,
+    (was, mine, theirs) => mergeInline(was, mine, theirs, prefer),
   ).join("");
 }
 

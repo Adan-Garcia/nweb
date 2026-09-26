@@ -18,7 +18,7 @@ export type RotationSummary = { documents: number; media: number; names: number 
 
 const sealedBy = (row: SealedRow, keyId: string) => (row.keyId ?? "") === keyId;
 
-async function rotateDocuments(from: Cipher, to: Cipher): Promise<number> {
+async function rotateDocuments(from: Cipher, to: Cipher, stamp?: number): Promise<number> {
   const database = await getNotesDb();
   let moved = 0;
 
@@ -42,6 +42,7 @@ async function rotateDocuments(from: Cipher, to: Cipher): Promise<number> {
       sceneCompressed: scene ? await to.encrypt(scene) : null,
       encryption: to.name,
       keyId: to.keyId || undefined,
+      ...(stamp === undefined ? {} : { updatedAt: stamp }),
     });
     moved += 1;
   }
@@ -49,7 +50,7 @@ async function rotateDocuments(from: Cipher, to: Cipher): Promise<number> {
   return moved;
 }
 
-async function rotateMedia(from: Cipher, to: Cipher): Promise<number> {
+async function rotateMedia(from: Cipher, to: Cipher, stamp?: number): Promise<number> {
   const database = await getNotesDb();
   let moved = 0;
 
@@ -72,6 +73,7 @@ async function rotateMedia(from: Cipher, to: Cipher): Promise<number> {
       }),
       encryption: to.name,
       keyId: to.keyId || undefined,
+      ...(stamp === undefined ? {} : { updatedAt: stamp }),
     });
     moved += 1;
   }
@@ -96,6 +98,7 @@ async function rotateNames<Key extends string, Row extends Record<Key, string> &
   from: Cipher,
   to: Cipher,
   put: (row: Row) => Promise<unknown>,
+  stamp?: number,
 ): Promise<number> {
   let moved = 0;
 
@@ -104,7 +107,9 @@ async function rotateNames<Key extends string, Row extends Record<Key, string> &
       continue;
     }
 
-    await put(await sealRow(await openRow(row, field, from), field, to));
+    const resealed = await sealRow(await openRow(row, field, from), field, to);
+
+    await put(stamp === undefined ? resealed : { ...resealed, updatedAt: stamp });
     moved += 1;
   }
 
@@ -116,37 +121,86 @@ async function rotateNames<Key extends string, Row extends Record<Key, string> &
  *
  * Run after the new key has been recorded with the server, not before: a device that seals
  * rows under a key nothing else knows about has made them unreadable everywhere but here.
+ *
+ * `stamp`, when given, becomes every moved row's `updatedAt`. A rotation that other devices
+ * and other people must follow passes one, so sync sends the rows again under the new key;
+ * without it they would stay on the server under the old key the rotation was meant to
+ * retire.
  */
-export async function rotateRowsToKey(from: Cipher, to: Cipher): Promise<RotationSummary> {
+export async function rotateRowsToKey(
+  from: Cipher,
+  to: Cipher,
+  stamp?: number,
+): Promise<RotationSummary> {
   const database = await getNotesDb();
-  const documents = await rotateDocuments(from, to);
-  const media = await rotateMedia(from, to);
+  const documents = await rotateDocuments(from, to, stamp);
+  const media = await rotateMedia(from, to, stamp);
 
   const names =
-    (await rotateNames(await database.getAll("notes-directory"), "feather", from, to, (row) =>
-      database.put("notes-directory", row),
+    (await rotateNames(
+      await database.getAll("notes-directory"),
+      "feather",
+      from,
+      to,
+      (row) => database.put("notes-directory", row),
+      stamp,
     )) +
-    (await rotateNames(await database.getAll("wings"), "name", from, to, (row) =>
-      database.put("wings", row),
+    (await rotateNames(
+      await database.getAll("wings"),
+      "name",
+      from,
+      to,
+      (row) => database.put("wings", row),
+      stamp,
     )) +
-    (await rotateNames(await database.getAll("flights"), "name", from, to, (row) =>
-      database.put("flights", row),
+    (await rotateNames(
+      await database.getAll("flights"),
+      "name",
+      from,
+      to,
+      (row) => database.put("flights", row),
+      stamp,
     )) +
-    (await rotateNames(await database.getAll("branches"), "name", from, to, (row) =>
-      database.put("branches", row),
+    (await rotateNames(
+      await database.getAll("branches"),
+      "name",
+      from,
+      to,
+      (row) => database.put("branches", row),
+      stamp,
     )) +
-    (await rotateNames(await database.getAll("nests"), "name", from, to, (row) =>
-      database.put("nests", row),
+    (await rotateNames(
+      await database.getAll("nests"),
+      "name",
+      from,
+      to,
+      (row) => database.put("nests", row),
+      stamp,
     )) +
-    (await rotateNames(await database.getAll("twigs"), "title", from, to, (row) =>
-      database.put("twigs", row),
+    (await rotateNames(
+      await database.getAll("twigs"),
+      "title",
+      from,
+      to,
+      (row) => database.put("twigs", row),
+      stamp,
     )) +
-    (await rotateNames(await database.getAll("pebbles"), "name", from, to, (row) =>
-      database.put("pebbles", row),
+    (await rotateNames(
+      await database.getAll("pebbles"),
+      "name",
+      from,
+      to,
+      (row) => database.put("pebbles", row),
+      stamp,
     )) +
     // The path above a shared thing is sealed under that thing's key, so it moves with it.
-    (await rotateNames(await database.getAll("share-paths"), "path", from, to, (row) =>
-      database.put("share-paths", row),
+    (await rotateNames(
+      await database.getAll("share-paths"),
+      "path",
+      from,
+      to,
+      (row) => database.put("share-paths", row),
+      stamp,
     ));
 
   return { documents, media, names };

@@ -1,3 +1,4 @@
+import { isReadOnlyKey } from "./keys/access";
 import { getNotesDb } from "./notes-db";
 
 export type EntityDeleteSummary = {
@@ -70,7 +71,7 @@ async function cascadeDelete(scope: {
   if (scope.kind === "wing") {
     const wing = await wingStore.get(scope.id);
 
-    if (!wing || wing.deletedAt) {
+    if (!wing || wing.deletedAt || isReadOnlyKey(wing.keyId)) {
       await transaction.done;
       return null;
     }
@@ -89,7 +90,7 @@ async function cascadeDelete(scope: {
   if (scope.kind === "flight") {
     const flight = await flightStore.get(scope.id);
 
-    if (!flight || flight.deletedAt) {
+    if (!flight || flight.deletedAt || isReadOnlyKey(flight.keyId)) {
       await transaction.done;
       return null;
     }
@@ -102,7 +103,7 @@ async function cascadeDelete(scope: {
   if (scope.kind === "branch") {
     const branch = await branchStore.get(scope.id);
 
-    if (!branch || branch.deletedAt) {
+    if (!branch || branch.deletedAt || isReadOnlyKey(branch.keyId)) {
       await transaction.done;
       return null;
     }
@@ -216,7 +217,7 @@ export async function softDeleteNest(id: string): Promise<boolean> {
   const nestStore = transaction.objectStore("nests");
   const nest = await nestStore.get(id);
 
-  if (!nest || nest.deletedAt) {
+  if (!nest || nest.deletedAt || isReadOnlyKey(nest.keyId)) {
     await transaction.done;
     return false;
   }

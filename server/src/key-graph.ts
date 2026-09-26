@@ -1,6 +1,6 @@
 import type { Grant, KeyGraph } from "@shared/sharing-contract";
 
-import type { Sql } from "./db";
+import { type Sql, toNumber } from "./db";
 
 /**
  * Walking the key graph on the server: who can derive what.
@@ -24,15 +24,49 @@ export async function keyGraphFor(sql: Sql, userId: string): Promise<KeyGraph> {
     id: string;
     kind: KeyGraph["keys"][number]["kind"];
     rotated_from: string | null;
-  }>("select id, kind, rotated_from from keys");
+    created_ms: string | number;
+  }>(
+    `select id, kind, rotated_from,
+       (extract(epoch from created_at) * 1000)::bigint as created_ms
+     from keys where id = any($1)`,
+    [[...reachable]],
+  );
 
   return {
-    keys: keyRows
-      .filter((key) => reachable.has(key.id))
-      .map((key) => ({ id: key.id, kind: key.kind, rotatedFrom: key.rotated_from })),
+    keys: keyRows.map((key) => ({
+      id: key.id,
+      kind: key.kind,
+      rotatedFrom: key.rotated_from,
+      createdAt: toNumber(key.created_ms),
+    })),
     wraps,
     grants,
   };
+}
+
+/**
+ * Every key reachable from the given starting keys, the starting keys included.
+ *
+ * One recursive query rather than the whole `key_wraps` table read into memory and walked
+ * here: the database follows the edges it already has an index on, and touches only the part
+ * of the graph that hangs under these keys. `union` rather than `union all` is what makes it
+ * terminate on a graph — a note in two nests is reached twice and kept once.
+ */
+const REACH = `with recursive reach(key_id) as (
+    select unnest($1::text[])
+    union
+    select key_wraps.child_key_id from key_wraps join reach on key_wraps.parent_key_id = reach.key_id
+  )
+  select key_id from reach`;
+
+async function reachFrom(sql: Sql, roots: string[]): Promise<Set<string>> {
+  if (!roots.length) {
+    return new Set();
+  }
+
+  const { rows } = await sql.query<{ key_id: string }>(REACH, [roots]);
+
+  return new Set(rows.map((row) => row.key_id));
 }
 
 /**
@@ -42,6 +76,10 @@ export async function keyGraphFor(sql: Sql, userId: string): Promise<KeyGraph> {
  * whose content this user may change, which is a different and smaller set than what they
  * may read. Everything below a writer grant is writable, because a key that opens a
  * container opens what the container wraps.
+ *
+ * Only wraps whose parent the caller can derive are returned. A wrap under a key they cannot
+ * reach is useless to them, but it is also a fact about somebody else's workspace, and there
+ * is no reason to publish it.
  */
 async function walkFrom(
   sql: Sql,
@@ -65,39 +103,26 @@ async function walkFrom(
     wrapped: row.wrapped,
   }));
 
+  const reachable = await reachFrom(
+    sql,
+    grants.map((grant) => grant.keyId),
+  );
+
   const { rows: wrapRows } = await sql.query<{
     parent_key_id: string;
     child_key_id: string;
     wrapped: string;
-  }>("select parent_key_id, child_key_id, wrapped from key_wraps");
+  }>(
+    `select parent_key_id, child_key_id, wrapped from key_wraps
+     where parent_key_id = any($1) order by parent_key_id, child_key_id`,
+    [[...reachable]],
+  );
 
-  const byParent = new Map<string, typeof wrapRows>();
-
-  for (const wrap of wrapRows) {
-    byParent.set(wrap.parent_key_id, [...(byParent.get(wrap.parent_key_id) ?? []), wrap]);
-  }
-
-  const reachable = new Set(grants.map((grant) => grant.keyId));
-  const wraps: KeyGraph["wraps"] = [];
-  const queue = [...reachable];
-
-  for (let cursor = 0; cursor < queue.length; cursor += 1) {
-    const parent = queue[cursor];
-
-    for (const wrap of byParent.get(parent) ?? []) {
-      wraps.push({
-        parentKeyId: wrap.parent_key_id,
-        childKeyId: wrap.child_key_id,
-        wrapped: wrap.wrapped,
-      });
-
-      // A graph, not a tree: a note in two nests is reached twice and enqueued once.
-      if (!reachable.has(wrap.child_key_id)) {
-        reachable.add(wrap.child_key_id);
-        queue.push(wrap.child_key_id);
-      }
-    }
-  }
+  const wraps = wrapRows.map((wrap) => ({
+    parentKeyId: wrap.parent_key_id,
+    childKeyId: wrap.child_key_id,
+    wrapped: wrap.wrapped,
+  }));
 
   return { grants, reachable, wraps };
 }
@@ -115,42 +140,22 @@ export async function reachableKeyIds(
   userId: string,
   role?: Grant["role"],
 ): Promise<string[]> {
-  return [...(await walkFrom(sql, userId, role)).reachable];
-}
-
-/**
- * The key and everything hanging under it.
- *
- * A grant makes those rows new to somebody, and `seq` is this server's answer to "what is
- * new to me" — so without re-stamping them, a recipient whose cursor is already past the
- * owner's writes steps straight over the share and never sees it. Anyone who has used their
- * own workspace at all is in that position; only a first-ever sync from zero is not.
- */
-export async function keysUnder(sql: Sql, keyId: string): Promise<string[]> {
-  const { rows } = await sql.query<{ parent_key_id: string; child_key_id: string }>(
-    "select parent_key_id, child_key_id from key_wraps",
+  const { rows } = await sql.query<{ key_id: string }>(
+    role
+      ? "select key_id from grants where user_id = $1 and role = $2"
+      : "select key_id from grants where user_id = $1",
+    role ? [userId, role] : [userId],
   );
 
-  const byParent = new Map<string, string[]>();
+  return [
+    ...(await reachFrom(
+      sql,
+      rows.map((row) => row.key_id),
+    )),
+  ];
+}
 
-  for (const wrap of rows) {
-    byParent.set(wrap.parent_key_id, [
-      ...(byParent.get(wrap.parent_key_id) ?? []),
-      wrap.child_key_id,
-    ]);
-  }
-
-  const reached = new Set([keyId]);
-  const queue = [keyId];
-
-  for (let cursor = 0; cursor < queue.length; cursor += 1) {
-    for (const child of byParent.get(queue[cursor]) ?? []) {
-      if (!reached.has(child)) {
-        reached.add(child);
-        queue.push(child);
-      }
-    }
-  }
-
-  return [...reached];
+/** The keys and everything hanging under them: what a backfill of a new grant covers. */
+export async function keysUnder(sql: Sql, keyIds: string[]): Promise<string[]> {
+  return [...(await reachFrom(sql, keyIds))];
 }

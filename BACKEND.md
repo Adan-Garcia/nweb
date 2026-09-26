@@ -1,8 +1,8 @@
 # The backend
 
 Written 2026-09-21. This is the plan for the half of the app that needs a server:
-accounts, sync, sharing and push. `FEATURES-GAP.md` says what is missing; this says how
-the missing part is meant to be built, and why it is shaped the way it is.
+accounts, sync, sharing and push. It says how that part is built, and why it is shaped the
+way it is.
 
 Phases 0 to 4 are built: `server/` runs, and the app has an account, a sync button and a
 key graph. What is left is listed under "What is still missing" at the end. It replaces
@@ -66,10 +66,23 @@ Existence and freshness are separate questions — a row that exists but loses o
 is still that row's edit — and a caller who may read but not write has the edit dropped,
 because the server cannot merge ciphertext and must not fork it.
 
+A grant does not make rows *newer*, so a recipient whose cursor is already past the owner's
+writes would step straight over a share. The server does not re-stamp those rows — that
+would hand them back to everyone who could already read them. The recipient asks instead:
+a sync round that finds grants it has not seen before calls `POST /v1/sync/backfill` with
+those keys, and gets every row under them once, on a cursor of its own. The key walk that
+decides all of this is one recursive query over `key_wraps` (`server/src/key-graph.ts`),
+touching only the part of the graph under the caller's grants.
+
 The client refuses that pen before the server has to. `lib/keys/access.ts` walks the graph
 the way the server does — from writer grants, everything beneath is writable — so a note
-shared to read opens read-only (TipTap not editable, Excalidraw in view mode), its storage
-module refuses to save, rename, move or delete it, and sync never pushes a reader's copy.
+shared to read opens read-only (TipTap not editable, Excalidraw in view mode), and every
+storage module refuses to change what sits under a reader's key: a note's content, title
+and placement; a task (edit, board move, delete); a file; a course's or tag's name and
+colour; and filing anything new inside it, which throws `ReadOnlyError` and is reported in
+the path bar rather than failing. The snapshot marks those rows `readOnly`, so the settings
+editor does not list them and the task form neither offers the course nor opens for its
+tasks. Sync never pushes a reader's copy.
 A pulled row under a read-only key replaces the local one outright, which also heals a copy
 that drifted before this existed. The sharing screen changes a role in place: re-sharing at
 the new role is the same `POST /v1/keys/share`, and the server clamps it to the sharer's own.
@@ -84,17 +97,37 @@ two are merged against the base instead of one replacing the other:
 
 *   **A note's text** is merged by top-level block (a paragraph, a heading, a whole list):
     diff3 over the blocks, with a stretch edited in place resolved block by block, so two
-    people editing different — even adjacent — paragraphs both keep their edits.
+    people editing different — even adjacent — paragraphs both keep their edits. Where both
+    changed the same paragraph it is merged again word by word, and kept only if its markup
+    is exactly what one side wrote; otherwise the later edit wins that paragraph.
 *   **A canvas** is merged by element, using Excalidraw's per-element `version`: whichever
     side touched a shape wins it, an edit beats a delete, and stacking follows the
     fractional `index`.
 *   **Every other row** is merged field by field, the one sealed display field opened first.
 
-Where both sides changed the *same* block, shape or field, the later edit wins that piece and
+Where both sides changed the *same* words, shape or field, the later edit wins that piece and
 nothing else. The merge is sealed under the row's own key (or abandoned, falling back to last
 write wins, if this device does not hold it), stamped newer than both sides, and pushed on
 the next round, so every device converges on it by the server's ordinary rule. A row with no
 base yet — anything last synced before this existed — is last-write-wins until it has one.
+
+### Seeing another person's edit live
+
+A note open on two devices updates without a reload. The server keeps a WebSocket per
+signed-in device (`GET /v1/live`, `server/src/live.ts`); after a sync that wrote rows, and
+after a share, it nudges every connected account that can read one of the keys touched,
+plus the writer's own other devices. A nudge carries no row and no name — only "sync now" —
+so the change still arrives sealed, validated and merged through the ordinary sync round,
+and a lost nudge costs a minute until the periodic round, never data. The session token is
+the socket's first message, not part of the URL, because browsers cannot set a header on a
+WebSocket and a token in a URL ends up in logs.
+
+On the device, a round reports which rows it changed (`subscribeToSyncChanges`), and the
+notes page reloads the open note when its content changed and nothing typed here is still
+waiting to be saved. With unsaved typing it waits: that edit is saved, merged on the next
+round, and the merged note arrives as one more change, with nothing pending, and is shown.
+The hub is in memory and per process; running more than one server process needs it moved
+onto a shared channel (Postgres `LISTEN/NOTIFY`), and nothing else in the protocol changes.
 
 ### What each share actually gives away
 
@@ -110,7 +143,7 @@ Every row above the shared thing — "Above it" in the table — is still sealed
 recipient does not hold. What they get instead is its **path**: a `share-paths` row
 (`lib/share-path-model.ts`) holding just the names on the way down — wing, term, course and
 the note's own tags — sealed under the shared object's *own* key. The row store files it
-under that key, so it reaches exactly the people the object does, and a grant re-stamps it
+under that key, so it reaches exactly the people the object does, and a backfill brings it
 with everything else. The recipient's path bar shows the shared thing where it really lives;
 those rows are marked path-only in the snapshot, never offered for editing, and never chosen
 as the home of a new note. Sharing writes the path; each sync round rewrites it if a name on
@@ -136,6 +169,14 @@ So revocation is a rotation: new key for the object, re-wrapped for everyone sti
 list, and its content re-encrypted. Doing that eagerly for a whole wing is a rewrite of
 the workspace. Doing it lazily — rotating an object the first time someone edits it after
 the removal — costs nothing until something changes, and is what the app should do.
+
+That is what `lib/keys/rotate-shared.ts` does, on a revoke and on a schedule. Each sync
+round, the device that holds every container above a shared key rotates it once it is older
+than ninety days by the server's `createdAt`, provided somebody else still holds it: a new
+key hung everywhere the old one was, the rows moved onto it and stamped as edits so sync
+carries them, and the new key handed to everyone still on the list, who backfill under it.
+A device missing any of the containers — a writer given one course — never rotates, since
+the new key could not be hung where the owner reaches the old one.
 
 **Say it plainly in the UI:** removing someone stops them seeing what happens next. It
 cannot unsee what they already had. Anything else is a promise the maths does not make.
@@ -194,6 +235,8 @@ DELETE /v1/auth/session         end this session
 POST   /v1/auth/passphrase      reseal the account key, drop every other session
 GET    /v1/keys                 this account's own sealed key material
 POST   /v1/sync                 { since, rows[] } -> { seq, rows[] }
+POST   /v1/sync/backfill        { keyIds[], after } -> every row under keys just granted
+GET    /v1/live                 WebSocket: a "sync now" nudge when readable rows change
 GET    /v1/media                what blobs exist, and their seq
 PUT    /v1/media/:id            store one blob (meta in headers, bytes in the body)
 GET    /v1/media/:id            fetch one blob
@@ -297,27 +340,15 @@ to make sharing possible need one too.
 
 ### What is still missing
 
-*   **Read-only covers notes, not everything shared.** A reader's note is read-only in the
-    editor and in storage, and no reader row is ever pushed. Tasks, files and the names of
-    a shared course are not blocked in the UI yet: an edit to one is never sent, and is
-    replaced the next time that row changes on the server.
-*   **An open note does not refresh when a merge lands.** A merge writes the stored row;
-    the editor shows it the next time the note is opened, as it already did for any pulled
-    edit. Until then an autosave from the open editor is a newer local edit, and is merged
-    again on the next round rather than lost.
-*   **A grant re-stamps every row under the key it hands over.** `seq` is the server's
-    answer to "what is new to me", and a recipient who has used their own workspace has a
-    cursor past the owner's writes — so without the re-stamp the share is invisible to them.
-    The cost is that everyone else re-downloads those rows once, which is idempotent and
-    wasteful in proportion to how big the shared thing is.
-*   **`walkFrom` reads the whole `key_wraps` table.** Every sync round calls it twice, and
-    each media read once more. Correct and linear in the number of wraps in the database,
-    which is fine for one deployment and is the first thing to make recursive in SQL.
-*   **Nothing rotates on a schedule.** Revoking rotates the key it was asked about, and
-    only that one. A key shared and re-shared for years is the same key.
-*   **A clash inside one paragraph goes to the later edit.** The merge is by block, not by
-    character: two people rewriting the same paragraph keep one version of it, with no
-    sign that the other existed.
+*   **Live nudges are per process.** Fine for one server; a second process needs the hub
+    on a shared channel before a device connected to one hears a write made through the
+    other.
+*   **Two people rewriting the same words keep one version.** Word-level merge keeps edits
+    to different words of one paragraph; the same words, or formatting changed both ways
+    at once, still go to the later edit with no sign the other existed.
+*   **A retired key is not revoked.** Scheduled rotation hands everyone the new key and
+    moves every row onto it, so the old key opens nothing written after — but the grants on
+    the old key are left in place rather than cleaned up.
 *   **Paid tiers.** Not started, and needs billing infrastructure this repository has none
     of.
 
@@ -331,11 +362,12 @@ to make sharing possible need one too.
     structure. How many notes a course has, who shares what with whom, and when things are
     due are all visible. Say "the server cannot read your notes", never "the server knows
     nothing".
-*   **A three-way merge is not live co-editing.** Edits to different paragraphs, shapes or
-    fields survive; two people typing in the same paragraph at once do not both survive, and
-    nobody sees the other's cursor. That needs a CRDT (Yjs or Automerge) and a different sync
-    path — a new dependency and a new document format — and should not be started until
-    somebody actually wants it.
+*   **A three-way merge is not live co-editing.** Edits to different words, shapes or
+    fields survive, and the other person sees them within a sync round of the nudge; two
+    people typing the same words at once do not both survive, and nobody sees the other's
+    cursor. That needs a CRDT (Yjs or Automerge) and a different sync path — a new
+    dependency and a new document format — and should not be started until somebody
+    actually wants it.
 
 ## Deliberately not doing
 

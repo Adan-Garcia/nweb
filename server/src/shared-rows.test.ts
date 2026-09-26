@@ -109,6 +109,32 @@ afterEach(async () => {
   await database.close();
 });
 
+describe("the key graph", () => {
+  it("says when the server first recorded each key, which is what rotation ages by", async () => {
+    const owner = await signUp("owner@example.com");
+    const before = Date.now() - 1_000;
+
+    await seedCourse(owner);
+
+    const response = await app.request("/v1/keys/graph", {
+      headers: { authorization: `Bearer ${owner}` },
+    });
+    const graph = (await response.json()) as { keys: { id: string; createdAt: number }[] };
+
+    expect(graph.keys.map((key) => key.id).sort()).toEqual([
+      "branch-key",
+      "note-key",
+      "other-branch-key",
+      "wing-key",
+    ]);
+
+    for (const key of graph.keys) {
+      expect(key.createdAt).toBeGreaterThan(before);
+      expect(key.createdAt).toBeLessThanOrEqual(Date.now() + 1_000);
+    }
+  });
+});
+
 describe("a note shared on its own", () => {
   it("brings the path above it, and not the course the path names", async () => {
     const owner = await signUp("owner@example.com");
@@ -479,7 +505,14 @@ describe("recording keys you did make", () => {
 });
 
 describe("a share that arrives after the recipient has already synced", () => {
-  it("still reaches them, though their cursor is past those rows", async () => {
+  const backfillAs = async (token: string, keyIds: string[], after = 0) =>
+    (await post(token, "/v1/sync/backfill", { keyIds, after })).json() as Promise<{
+      seq: number;
+      rows: SyncRow[];
+      hasMore: boolean;
+    }>;
+
+  it("reaches them by backfill, though their cursor is past those rows", async () => {
     const owner = await signUp("owner@example.com");
     await seedCourse(owner);
     const friend = await signUp("friend@example.com");
@@ -495,9 +528,56 @@ describe("a share that arrives after the recipient has already synced", () => {
       wrapped: "branch-for-friend",
     });
 
-    const after = await syncAs(friend, [], caughtUp.seq);
+    // The cursor steps over them: a grant does not make rows newer...
+    expect((await syncAs(friend, [], caughtUp.seq)).rows).toEqual([]);
 
-    expect(after.rows.map((each) => each.id).sort()).toEqual(["branch-1", "note-1"]);
+    // ...so the recipient asks for what is under the new key, once.
+    const filled = await backfillAs(friend, ["branch-key"]);
+
+    expect(filled.rows.map((each) => each.id).sort()).toEqual(["branch-1", "note-1"]);
+    expect(filled.hasMore).toBe(false);
+    expect((await backfillAs(friend, ["branch-key"], filled.seq)).rows).toEqual([]);
+  });
+
+  it("costs nobody else a download", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const ownerCursor = (await syncAs(owner)).seq;
+    await signUp("friend@example.com");
+
+    await post(owner, "/v1/keys/share", {
+      keyId: "branch-key",
+      email: "friend@example.com",
+      role: "reader",
+      wrapped: "branch-for-friend",
+    });
+
+    // Re-stamping the rows would have handed the whole course back to its owner too.
+    expect((await syncAs(owner, [], ownerCursor)).rows).toEqual([]);
+  });
+
+  it("returns nothing under a key the caller was never given", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const stranger = await signUp("stranger@example.com");
+
+    expect((await backfillAs(stranger, ["branch-key"])).rows).toEqual([]);
+  });
+
+  it("refuses a malformed request and one with no session", async () => {
+    const owner = await signUp("owner@example.com");
+
+    expect((await post(owner, "/v1/sync/backfill", { keyIds: [] })).status).toBe(400);
+    expect(
+      (
+        await app.request("/v1/sync/backfill", {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${owner}` },
+          body: "{not json",
+        })
+      ).status,
+    ).toBe(400);
+    expect((await post("nope", "/v1/sync/backfill", { keyIds: ["k"], after: 0 })).status).toBe(401);
   });
 });
 

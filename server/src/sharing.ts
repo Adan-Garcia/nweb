@@ -1,7 +1,7 @@
 import type { Grant, PutKeysRequest, RevokeRequest, ShareRequest } from "@shared/sharing-contract";
 
 import { normalizeEmail, type Sql } from "./db";
-import { keyGraphFor, keysUnder, reachableKeyIds } from "./key-graph";
+import { keyGraphFor, reachableKeyIds } from "./key-graph";
 
 /**
  * The key graph, stored by a server that can open none of it.
@@ -129,10 +129,9 @@ export async function share(
     [request.keyId, rows[0].id, mayWrite ? request.role : "reader", request.wrapped],
   );
 
-  await sql.query("update rows set seq = nextval('rows_seq') where key_id = any($1)", [
-    await keysUnder(sql, request.keyId),
-  ]);
-
+  // No rows are touched here. A grant makes rows new to one person, and re-stamping them
+  // would make them new to everybody who can already read them too; the recipient asks for
+  // them instead (`backfill` in `sync.ts`), which costs exactly one download, theirs.
   return "shared";
 }
 

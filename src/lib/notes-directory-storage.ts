@@ -1,4 +1,4 @@
-import { isReadOnlyKey } from "./keys/access";
+import { anyReadOnly, isReadOnlyKey, ReadOnlyError } from "./keys/access";
 import { cipherForObject, provisionObjectKey, wrapUnderAlso } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import type { NotesDirectoryEntry, NotesDocumentMode } from "./notes-model";
@@ -101,10 +101,13 @@ export async function createNotesDirectoryEntry({
     deletedAt: null,
   };
 
-  const cipher = await provisionObjectKey(
-    "feather",
-    await containerKeyIds(branchId, entry.nestIds),
-  );
+  const parents = await containerKeyIds(branchId, entry.nestIds);
+
+  if (anyReadOnly(parents)) {
+    throw new ReadOnlyError();
+  }
+
+  const cipher = await provisionObjectKey("feather", parents);
 
   await database.put("notes-directory", await sealRow(entry, "feather", cipher));
   return entry;
@@ -197,6 +200,11 @@ export async function setNotesDirectoryEntryPlacement(
     ...placement,
     updatedAt: Date.now(),
   };
+
+  // Nor can a note of this device's be moved into something shared to read.
+  if (anyReadOnly(await containerKeyIds(next.branchId, next.nestIds))) {
+    return null;
+  }
 
   await database.put("notes-directory", next);
 

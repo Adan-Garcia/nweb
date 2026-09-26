@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { sharedToRead } from "@/test/read-only";
 import { BRANCH_ID } from "@/test/workspace-fixtures";
 
+import { ReadOnlyError } from "./keys/access";
 import { getNotesDb } from "./notes-db";
 import { buildPebbleName, formatPebbleSize } from "./pebble-model";
 import {
@@ -168,5 +170,53 @@ describe("pebble storage", () => {
     expect(await softDeletePebble(pebble.id)).toBe(true);
     expect(await softDeletePebble(pebble.id)).toBe(false);
     expect(await loadPebbleBlob(pebble)).toBeNull();
+  });
+});
+
+describe("a file shared to read", () => {
+  it("cannot be renamed, moved or deleted here, and takes no new file inside it", async () => {
+    const database = await getNotesDb();
+    const pebble = await createPebble({
+      branchId: BRANCH_ID,
+      name: "theirs.pdf",
+      blob: new Blob(["x"], { type: "application/pdf" }),
+    });
+
+    await database.put("pebbles", {
+      ...(await database.get("pebbles", pebble.id))!,
+      keyId: "their-key",
+    });
+    await database.put("branches", {
+      id: "their-course",
+      flightId: "f",
+      name: "Theirs",
+      color: "emerald",
+      createdAt: 1,
+      updatedAt: 1,
+      deletedAt: null,
+      keyId: "their-key",
+    });
+    const mine = await createPebble({
+      branchId: BRANCH_ID,
+      name: "mine.pdf",
+      blob: new Blob(["y"], { type: "application/pdf" }),
+    });
+    const undo = sharedToRead("their-key");
+
+    try {
+      expect(await updatePebble(pebble.id, { name: "renamed.pdf" })).toBeNull();
+      expect(await softDeletePebble(pebble.id)).toBe(false);
+      expect(await updatePebble(mine.id, { branchId: "their-course" })).toBeNull();
+      await expect(
+        createPebble({
+          branchId: "their-course",
+          name: "sneaky.pdf",
+          blob: new Blob(["z"], { type: "application/pdf" }),
+        }),
+      ).rejects.toThrow(ReadOnlyError);
+    } finally {
+      undo();
+      await database.delete("branches", "their-course");
+    }
   });
 });

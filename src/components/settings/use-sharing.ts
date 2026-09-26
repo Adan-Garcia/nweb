@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ShareRole } from "@shared/sharing-contract";
 
-import { listShares, lookupPublicKey, putKeys, revokeKey, shareKey } from "@/lib/api/account-api";
+import { listShares, lookupPublicKey, revokeKey, shareKey } from "@/lib/api/account-api";
 import type { ApiSession } from "@/lib/api/client";
-import { cipherForKey, type Keyring, wrapForRecipient } from "@/lib/keys/key-graph";
-import { currentKeyGraph, heldKeyring } from "@/lib/keys/object-keys";
-import { planKeyRotation, reshareRotatedKey } from "@/lib/keys/rotate-key";
-import { rotateRowsToKey } from "@/lib/keys/rotate-rows";
+import { wrapForRecipient } from "@/lib/keys/key-graph";
+import { heldKeyring } from "@/lib/keys/object-keys";
+import { rotateSharedKey } from "@/lib/keys/rotate-shared";
 import { listShareable, type Shareable } from "@/lib/keys/shareable";
 import { writeSharePath } from "@/lib/share-path-storage";
 
@@ -118,10 +117,8 @@ export function useSharing(sessionFor: () => ApiSession | null, publicKey: strin
   const revoke = useCallback(
     async (keyId: string, email: string) => {
       const session = sessionFor();
-      const keyring = heldKeyring();
-      const graph = currentKeyGraph();
 
-      if (!session?.token || !keyring || !graph || !publicKey) {
+      if (!session?.token || !heldKeyring() || !publicKey) {
         setError("Not connected to the server, so nothing can be taken back.");
         return false;
       }
@@ -139,7 +136,7 @@ export function useSharing(sessionFor: () => ApiSession | null, publicKey: strin
 
         const remaining = shares.filter((entry) => entry.email !== email);
 
-        await rotate({ session, keyId, keyring, graph, publicKey, remaining });
+        await rotateSharedKey({ session, keyId, publicKey, recipients: remaining });
         await loadShares(keyId);
 
         return true;
@@ -161,64 +158,4 @@ export function useSharing(sessionFor: () => ApiSession | null, publicKey: strin
     revoke,
     refresh,
   };
-}
-
-/**
- * A new key on every edge the old one sat on, the rows moved onto it, and everyone still on
- * the list handed it.
- *
- * The order matters: the server is told about the new key before a single row moves onto
- * it, because a row sealed under a key nothing else knows about is a row no other device
- * can open.
- */
-async function rotate({
-  session,
-  keyId,
-  keyring,
-  graph,
-  publicKey,
-  remaining,
-}: {
-  session: ApiSession;
-  keyId: string;
-  keyring: Keyring;
-  graph: NonNullable<ReturnType<typeof currentKeyGraph>>;
-  publicKey: string;
-  remaining: ShareEntry[];
-}): Promise<void> {
-  const plan = await planKeyRotation({ keyId, graph, keyring, publicKey });
-
-  if (!plan) {
-    return;
-  }
-
-  const recorded = await putKeys(session, plan.upload);
-
-  if (!recorded.ok) {
-    return;
-  }
-
-  const previous = cipherForKey(keyring, keyId);
-
-  if (previous) {
-    await rotateRowsToKey(previous, plan.cipher);
-  }
-
-  keyring.set(plan.cipher.keyId, plan.key);
-
-  const recipients = await Promise.all(
-    remaining.map(async (entry) => {
-      const their = await lookupPublicKey(session, entry.email);
-
-      return their.ok ? { ...entry, publicKey: their.value.publicKey } : null;
-    }),
-  );
-
-  const reachable = recipients.filter((entry): entry is NonNullable<typeof entry> =>
-    Boolean(entry),
-  );
-
-  for (const reshare of await reshareRotatedKey(plan, reachable)) {
-    await shareKey(session, reshare);
-  }
 }

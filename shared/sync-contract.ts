@@ -81,6 +81,21 @@ export const syncResponseSchema = z.object({
 export type SyncResponse = z.infer<typeof syncResponseSchema>;
 
 /**
+ * Asking for everything under keys just granted to this device's account, from the start.
+ *
+ * A grant does not make rows *newer*, so a recipient whose cursor is past them would step
+ * over them. Rather than re-stamping those rows for everyone who can already read them,
+ * the recipient asks for them once: `after` is a cursor over this backfill alone, and the
+ * answer has the same shape as a sync page.
+ */
+export const backfillRequestSchema = z.object({
+  keyIds: z.array(z.string().min(1)).min(1).max(200),
+  after: z.number().int().nonnegative(),
+});
+
+export type BackfillRequest = z.infer<typeof backfillRequestSchema>;
+
+/**
  * Media is synced on its own, because it is the one thing here that is not small. A blob
  * goes up as raw bytes under its own id — which is a content hash, so the same picture in
  * two notes is one upload — and the row that references it travels as an ordinary row.

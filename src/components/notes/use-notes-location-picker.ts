@@ -13,6 +13,7 @@ import {
 } from "@/components/notes/location-hierarchy";
 import type { NotesDirectoryEntry, NotesDocumentMode, NotesMode } from "@/components/notes/types";
 import { createBranch, createFlight, createNest, createWing } from "@/lib/entity-storage";
+import { ReadOnlyError } from "@/lib/keys/access";
 import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 export type NoteDraftPlacement = {
@@ -54,6 +55,16 @@ export function useNotesLocationPicker({
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   const [segmentModalState, setSegmentModalState] = useState<SegmentModalState | null>(null);
   const [segmentDraftValue, setSegmentDraftValue] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
+
+  /** Something shared to read cannot take a new note or level; say so instead of failing. */
+  const refusedAsReadOnly = (error: unknown) => {
+    if (!(error instanceof ReadOnlyError)) {
+      throw error;
+    }
+
+    setNotice(error.message);
+  };
 
   // Whenever the active note changes, the draft path restarts from it.
   if (syncedSelection !== activeSelection) {
@@ -91,6 +102,7 @@ export function useNotesLocationPicker({
     }
 
     setIsCreatingNote(true);
+    setNotice(null);
 
     try {
       await createNoteAt(
@@ -101,6 +113,9 @@ export function useNotesLocationPicker({
         },
         newNoteMode,
       );
+      setIsCreateModalOpen(false);
+    } catch (error) {
+      refusedAsReadOnly(error);
       setIsCreateModalOpen(false);
     } finally {
       setIsCreatingNote(false);
@@ -150,7 +165,14 @@ export function useNotesLocationPicker({
       return;
     }
 
-    const created = await createSegmentEntity(segment, name, draftSelection);
+    setNotice(null);
+
+    const created = await createSegmentEntity(segment, name, draftSelection).catch(
+      (error: unknown) => {
+        refusedAsReadOnly(error);
+        return null;
+      },
+    );
 
     if (!created) {
       return;
@@ -168,6 +190,8 @@ export function useNotesLocationPicker({
     segmentLabels: labels,
     selectedLocationSummary,
     selectSegmentValue,
+    /** Why the last thing asked for could not be created, when it was refused. */
+    notice,
     createNote: {
       isOpen: isCreateModalOpen,
       setIsOpen: setIsCreateModalOpen,

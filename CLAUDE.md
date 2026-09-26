@@ -216,6 +216,7 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 *   **`brotli-wasm`** is there because no browser exposes Brotli through `CompressionStream`. Its ESM entry loads the `.wasm` by fetching a URL relative to the module, which Vite rewrites but Node cannot resolve for a `file:` URL — so `vite.config.ts` aliases the package to its own Node build **for tests only**. Keep that alias if the package is upgraded. The WASM is behind a dynamic `import()` in `lib/text-compression.ts`, so it is fetched on the first save and never on a path that does not compress.
 *   After **any** dependency change run `npm run format:check`, `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`, and `npm audit`; also confirm `npm ls @excalidraw/excalidraw pdfjs-dist nanoid lodash-es` still shows the pinned versions.
 *   Playwright downloads its own browser to `~/.cache/ms-playwright` (`npx playwright install chromium`); the browser revision is tied to the `@playwright/test` version, so re-run that command after upgrading it.
+*   `ws` is there for the live channel's server side and nothing else: `@hono/node-server` does the WebSocket upgrade but needs a server implementation to hand it to. The browser uses its own `WebSocket`; tests replace the global with an inert one (`src/test/setup.ts`), so no test opens a real socket except `server/src/live.test.ts`, which does so on purpose.
 *   `hash-wasm` is there for Argon2id and nothing else: it carries its WASM inline, so unlike `brotli-wasm` it needs no Vite alias and no fetch at runtime.
 *   Prefer what is already installed (`date-fns`, `zod`, `lucide-react`, `@dnd-kit`, `zustand`, `hash-wasm`) over adding a new package. A new dependency needs a stated reason and explicit approval.
 *   Commit `package-lock.json` with `package.json`. Do not use `--force` or `--legacy-peer-deps`.
@@ -248,8 +249,8 @@ A change is done only when:
 
 ## 13. Known Gaps & Backlog (audited 2026-09-21)
 
-Pre-existing; not blockers for unrelated work (§0). `FEATURES-GAP.md` is the full list and
-the reasoning; this is the short form for someone editing the code. Everything buildable
+Pre-existing; not blockers for unrelated work (§0). `BACKEND.md` ("What is still missing")
+has the server-side list and the reasoning; this is the short form for someone editing the code. Everything buildable
 without a server has shipped, so what is left here is inherent or waiting on the backend.
 
 1.  **Tombstone collection only runs when the workspace is opened.**
@@ -260,16 +261,15 @@ without a server has shipped, so what is left here is inherent or waiting on the
 2.  **Route warm-up is best-effort.** `lib/route-warmup.ts` imports the unvisited page
     chunks on idle so the service worker caches them, workspace routes first. A first
     visit closed before it goes idle still leaves routes that will not open offline.
-3.  **A merge restore is last-write-wins and nothing more.** Sync now merges two edits of
-    one row against the version both started from (`lib/sync/reconcile.ts`), by paragraph,
-    shape or field; restoring a backup file still keeps the later `updatedAt` whole. Within
-    one paragraph, sync is last-write-wins too.
-4.  **A key is only ever rotated on a revoke.** `lib/keys/object-keys.ts` gives every
-    shareable object a key of its own and `rotate-key.ts` replaces one when somebody is
-    removed, but nothing rotates on a schedule: a key shared and re-shared for years is the
-    same key.
-5.  **Read-only stops at notes.** A note shared to read opens read-only and its storage
-    refuses the write (`lib/keys/access.ts`); tasks, files and entity names in a shared
-    course are not blocked in the UI yet. Sync never pushes a reader's row and replaces it
-    the next time the row changes on the server, so such an edit is lost rather than spread.
+3.  **A merge restore is last-write-wins and nothing more.** Sync merges two edits of one
+    row against the version both started from (`lib/sync/reconcile.ts`) — by paragraph,
+    then by word, by shape, or by field; restoring a backup file still keeps the later
+    `updatedAt` whole. Two people changing the same words still leave one version.
+4.  **Live updates are one process wide.** `server/src/live.ts` keeps the WebSocket hub in
+    memory, so a second server process needs it on a shared channel (Postgres
+    `LISTEN/NOTIFY`) before its devices hear each other's writes. A missed nudge costs a
+    minute until the periodic sync, never data.
+5.  **A rotated key's old grants stay.** `lib/keys/rotate-shared.ts` rotates a shared key on
+    a revoke and once it is ninety days old, and moves every row onto the new one, but it
+    leaves the grants on the old key in place rather than revoking them.
 

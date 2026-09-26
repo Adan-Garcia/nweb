@@ -169,7 +169,7 @@ export async function provisionObjectKey(
 
   keyring.set(object.keyId, object.key);
   graph = {
-    keys: [...graph.keys, { id: object.keyId, kind, rotatedFrom: null }],
+    keys: [...graph.keys, { id: object.keyId, kind, rotatedFrom: null, createdAt: Date.now() }],
     wraps: [...graph.wraps, ...wraps],
     grants: graph.grants,
   };
@@ -181,6 +181,32 @@ export async function provisionObjectKey(
   onChange?.(graph);
 
   return cipher;
+}
+
+/**
+ * Takes a key that has just replaced another into the ring and the graph this device keeps.
+ *
+ * Without it the rows moved onto the new key would be unreadable here until the next sync
+ * round fetched the graph back, and the next thing minted under the rotated object would
+ * find no key to hang under.
+ */
+export function adoptRotatedKey(rotated: {
+  keyId: string;
+  key: CryptoKey;
+  upload: Pick<KeyGraph, "keys" | "wraps" | "grants">;
+}): void {
+  if (!keyring || !graph) {
+    return;
+  }
+
+  keyring.set(rotated.keyId, rotated.key);
+  registerCipher(createAesGcmCipher(rotated.key, rotated.keyId));
+  graph = {
+    keys: [...graph.keys, ...rotated.upload.keys],
+    wraps: [...graph.wraps, ...rotated.upload.wraps],
+    grants: [...graph.grants, ...rotated.upload.grants],
+  };
+  onChange?.(graph);
 }
 
 /**

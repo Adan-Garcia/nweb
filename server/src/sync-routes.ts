@@ -1,4 +1,5 @@
 import {
+  backfillRequestSchema,
   MEDIA_MAX_BYTES,
   mediaMetaSchema,
   pushSubscriptionSchema,
@@ -9,13 +10,13 @@ import { Hono } from "hono";
 import { callerFor, fail, noContent, type RouteDeps } from "./http";
 import { getMedia, listMedia, putMedia } from "./media";
 import { forgetSubscription, saveSubscription } from "./reminders";
-import { sync } from "./sync";
+import { backfill, sync } from "./sync";
 
 /**
  * Rows in, rows out, and the blobs that are too big to travel with them. Everything here is
  * opaque: the server orders it by `updatedAt` and counts it, and reads none of it.
  */
-export function syncRoutes({ sql, vapidPublicKey }: RouteDeps) {
+export function syncRoutes({ sql, vapidPublicKey, live }: RouteDeps) {
   const routes = new Hono();
 
   // No session: a VAPID public key is what a browser encrypts a subscription *to*, and it
@@ -36,7 +37,33 @@ export function syncRoutes({ sql, vapidPublicKey }: RouteDeps) {
       return fail("invalid_request");
     }
 
-    return Response.json(await sync(sql, caller.user.id, parsed.data));
+    const response = await sync(sql, caller.user.id, parsed.data);
+
+    // After the write, so a device that hears the nudge and syncs straight away finds it.
+    if (parsed.data.rows.length) {
+      await live.nudge(sql, {
+        keyIds: [...new Set(parsed.data.rows.map((row) => row.keyId).filter(Boolean))],
+        userIds: [caller.user.id],
+      });
+    }
+
+    return Response.json(response);
+  });
+
+  routes.post("/v1/sync/backfill", async (context) => {
+    const caller = await callerFor(sql, context.req.header("authorization"));
+
+    if (!caller) {
+      return fail("unauthorized");
+    }
+
+    const parsed = backfillRequestSchema.safeParse(await context.req.json().catch(() => null));
+
+    if (!parsed.success) {
+      return fail("invalid_request");
+    }
+
+    return Response.json(await backfill(sql, caller.user.id, parsed.data));
   });
 
   routes.get("/v1/media", async (context) => {

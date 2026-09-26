@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { NotesDirectoryEntry } from "@/components/notes/types";
 import { createBranch, createFlight, createNest, createWing } from "@/lib/entity-storage";
+import { ReadOnlyError } from "@/lib/keys/access";
 import { getNotesDb } from "@/lib/notes-db";
 import { loadWorkspaceSnapshot } from "@/lib/workspace-storage";
 import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
@@ -193,6 +194,20 @@ describe("NotesLocationBar", () => {
       { branchId: seeded.branchId, nestIds: [seeded.nestId], feather: "Brand new" },
       "spatial",
     );
+  });
+
+  it("says why when a note cannot be added to something shared to read", async () => {
+    const user = userEvent.setup();
+
+    await setup({ createNoteAt: vi.fn(() => Promise.reject(new ReadOnlyError())) });
+
+    await user.click(screen.getByRole("button", { name: "Notes A" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Add Note..." }));
+    await user.type(await screen.findByPlaceholderText("Enter note"), "Sneaky");
+    await user.click(screen.getByRole("button", { name: "Add Note" }));
+    await user.click(await screen.findByRole("button", { name: "Create and Open Note" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/shared with you to read/);
   });
 
   it("adds a branch as a real record, and moves the path onto it", async () => {

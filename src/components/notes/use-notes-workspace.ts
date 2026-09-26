@@ -9,6 +9,7 @@ import type { NotesDirectoryEntry, NotesDocumentMode, NotesMode } from "@/compon
 import { useDocumentSwitchQueue } from "@/components/notes/use-document-switch-queue";
 import { useLinearAutosave } from "@/components/notes/use-linear-autosave";
 import { useLinearNoteState } from "@/components/notes/use-linear-note-state";
+import { useLiveNoteRefresh } from "@/components/notes/use-live-note-refresh";
 import { useNotesBootstrap } from "@/components/notes/use-notes-bootstrap";
 import { useNotesDelete } from "@/components/notes/use-notes-delete";
 import { useNotesFlush } from "@/components/notes/use-notes-flush";
@@ -251,6 +252,13 @@ export function useNotesWorkspace() {
   });
 
   useNotesBootstrap({ hydrateDocument, applyInitialEntries, markStorageReady });
+  useLiveNoteRefresh({
+    refs,
+    activeCreatedMode,
+    hydrateDocument,
+    refreshDirectoryEntries,
+    refreshSnapshot,
+  });
 
   return {
     mode,

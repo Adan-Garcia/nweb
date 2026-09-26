@@ -1,9 +1,24 @@
+import type { KeyGraph } from "@shared/sharing-contract";
+
 import { putKeys } from "../api/account-api";
 import { getApiSession } from "../api/session-store";
-import { currentKeyGraph, keysNeedUpload, markKeysUploaded } from "../keys/object-keys";
+import {
+  currentKeyGraph,
+  keysNeedUpload,
+  markKeysUploaded,
+  servedKeyGraph,
+} from "../keys/object-keys";
 import { refreshKeyGraph } from "../keys/refresh-graph";
+import { rotateAgedKeys } from "../keys/rotate-shared";
 import { refreshSharePaths } from "../share-path-storage";
-import { EMPTY_SYNC_STATE, type SyncState, syncUntilSettled } from "./run-sync";
+import { type LiveChannelOptions, openLiveChannel } from "./live-channel";
+import {
+  backfillGrants,
+  type ChangedRow,
+  EMPTY_SYNC_STATE,
+  type SyncState,
+  syncUntilSettled,
+} from "./run-sync";
 import { syncMedia } from "./sync-media";
 
 /**
@@ -19,13 +34,22 @@ import { syncMedia } from "./sync-media";
  */
 export type SyncReport = { pushed: number; applied: number; media: number; at: number };
 
+export type SyncListener = (changed: ChangedRow[]) => void;
+
 let state: SyncState = EMPTY_SYNC_STATE;
 let inFlight: Promise<SyncReport | null> | null = null;
+let nudgedDuringRound = false;
+const listeners = new Set<SyncListener>();
 
 /** Test seam, and what signing out uses: the next round starts from the beginning. */
 export function resetSyncState(): void {
   state = EMPTY_SYNC_STATE;
   inFlight = null;
+  nudgedDuringRound = false;
+}
+
+function grantIds(graphs: (KeyGraph | null)[]): Set<string> {
+  return new Set(graphs.flatMap((graph) => graph?.grants ?? []).map((grant) => grant.keyId));
 }
 
 /**
@@ -68,10 +92,18 @@ async function round(): Promise<SyncReport | null> {
   // name travels in the same round as everything else.
   await refreshSharePaths();
 
-  // A grant re-stamps the rows it exposes, so they come back above the cursor on their own.
-  // Nothing has to be re-read from the beginning.
+  // Grants this device has not seen before are the shares made since it last looked. Their
+  // rows are older than the cursor, so they are asked for by key rather than by `seq`.
+  const known = grantIds([currentKeyGraph(), servedKeyGraph()]);
+
   await refreshKeyGraph(session);
 
+  const fresh = [...grantIds([servedKeyGraph()])].filter((keyId) => !known.has(keyId));
+
+  // Before the rows go, so what a rotation moves travels in this same round.
+  await rotateAgedKeys(session);
+
+  const backfilled = fresh.length ? await backfillGrants(session, fresh) : [];
   const result = await syncUntilSettled(session, state);
 
   if (!result) {
@@ -81,8 +113,16 @@ async function round(): Promise<SyncReport | null> {
   state = result.state;
 
   // Rows first, then the blobs they point at, so nothing arrives referencing a file that
-  // is not there yet.
+  // is not there yet — and only then is anybody told, so a note refreshed on the strength
+  // of it finds its pictures.
   const media = await syncMedia(session);
+  const changed = [...(backfilled ?? []), ...result.outcome.changed];
+
+  if (changed.length) {
+    for (const listener of listeners) {
+      listener(changed);
+    }
+  }
 
   return {
     pushed: result.outcome.pushed,
@@ -106,15 +146,53 @@ export function runSyncRound(): Promise<SyncReport | null> {
   return inFlight;
 }
 
+/**
+ * Runs a round because something changed elsewhere, and runs one more if it arrived while a
+ * round was already going: that round may have pulled before the change was written, and
+ * joining it would report "up to date" without it.
+ */
+async function roundForNudge(onRound?: (report: SyncReport | null) => void): Promise<void> {
+  if (inFlight) {
+    nudgedDuringRound = true;
+    return;
+  }
+
+  do {
+    nudgedDuringRound = false;
+
+    const report = await runSyncRound();
+
+    onRound?.(report);
+  } while (nudgedDuringRound);
+}
+
+/**
+ * Hears which rows a round changed on this device. An open note uses it to show another
+ * person's edit without being reopened. Returns the function that stops listening.
+ */
+export function subscribeToSyncChanges(listener: SyncListener): () => void {
+  listeners.add(listener);
+
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
 export type BackgroundSyncOptions = {
   everyMs?: number;
   onRound?: (report: SyncReport | null) => void;
+  /**
+   * How to open the live channel's socket, or false for none. Defaults to the browser's own
+   * WebSocket; a test passes a fake, or turns it off.
+   */
+  liveSocket?: LiveChannelOptions["createSocket"] | false;
 };
 
 export type BackgroundSync = { stop: () => void };
 
 /**
- * Syncs on a timer, when the tab comes back to the front, and when the network returns.
+ * Syncs on a timer, when the tab comes back to the front, when the network returns, and the
+ * moment the server says something this account can read has changed.
  *
  * Nothing happens while the tab is hidden. A background tab that keeps polling is a battery
  * cost the user cannot see and did not ask for, and the moment it becomes visible again is
@@ -124,6 +202,7 @@ export type BackgroundSync = { stop: () => void };
 export function startBackgroundSync({
   everyMs = 60_000,
   onRound,
+  liveSocket,
 }: BackgroundSyncOptions = {}): BackgroundSync {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
@@ -157,6 +236,21 @@ export function startBackgroundSync({
   document.addEventListener("visibilitychange", onWake);
   window.addEventListener("online", onWake);
 
+  // A nudge while hidden is dropped rather than queued: coming back to the front runs a
+  // round anyway, which covers it.
+  const live =
+    liveSocket === false
+      ? null
+      : openLiveChannel({
+          session: getApiSession,
+          onNudge: () => {
+            if (!stopped && isVisible()) {
+              void roundForNudge(onRound);
+            }
+          },
+          ...(liveSocket ? { createSocket: liveSocket } : {}),
+        });
+
   return {
     stop() {
       stopped = true;
@@ -168,6 +262,7 @@ export function startBackgroundSync({
 
       document.removeEventListener("visibilitychange", onWake);
       window.removeEventListener("online", onWake);
+      live?.stop();
     },
   };
 }

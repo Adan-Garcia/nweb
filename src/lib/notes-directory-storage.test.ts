@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { BRANCH_ID, NEST_ID } from "@/test/workspace-fixtures";
 
+import { ReadOnlyError } from "./keys/access";
 import { forgetKeyring, holdKeyring } from "./keys/object-keys";
 import { getNotesDb } from "./notes-db";
 import {
@@ -212,6 +213,35 @@ describe("stable ids and tombstones", () => {
       });
     } finally {
       forgetKeyring();
+    }
+  });
+
+  it("takes no new note inside something shared to read, and moves none into it", async () => {
+    const database = await getNotesDb();
+    const mine = await createNotesDirectoryEntry({ branchId: BRANCH_ID, feather: "Mine" });
+
+    await database.put("branches", {
+      id: "their-course",
+      flightId: "f",
+      name: "Theirs",
+      color: "emerald",
+      createdAt: 1,
+      updatedAt: 1,
+      deletedAt: null,
+      keyId: "their-key",
+    });
+    readOnly("their-key");
+
+    try {
+      await expect(
+        createNotesDirectoryEntry({ branchId: "their-course", feather: "Sneaky" }),
+      ).rejects.toThrow(ReadOnlyError);
+      expect(
+        await setNotesDirectoryEntryPlacement(mine.id, { branchId: "their-course" }),
+      ).toBeNull();
+    } finally {
+      forgetKeyring();
+      await database.delete("branches", "their-course");
     }
   });
 });

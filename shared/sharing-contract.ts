@@ -31,6 +31,12 @@ export const keyRecordSchema = z.object({
   kind: z.enum(KEY_KINDS),
   /** Set when this key replaced another, so a rotation leaves a trail rather than a gap. */
   rotatedFrom: z.string().nullable(),
+  /**
+   * When the server first recorded this key, in milliseconds. What a scheduled rotation
+   * measures age by. The server's clock and not the client's, and ignored when a client
+   * sends it; absent on a key the server has not been told about yet.
+   */
+  createdAt: z.number().int().nonnegative().optional(),
 });
 
 export type KeyRecord = z.infer<typeof keyRecordSchema>;

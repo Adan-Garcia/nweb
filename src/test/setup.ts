@@ -1,5 +1,5 @@
 import { cleanup } from "@testing-library/react";
-import { afterAll, afterEach, beforeAll } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 
 import { server } from "./server";
 
@@ -19,6 +19,21 @@ beforeAll(() =>
     },
   }),
 );
+
+/**
+ * No test opens a real socket. The live channel reaches for the global `WebSocket` by
+ * default, so it is replaced with one that connects to nothing and never speaks. Stubbed
+ * before each test rather than once, because a suite may unstub its own globals.
+ */
+class InertWebSocket {
+  send() {}
+  close() {}
+  addEventListener() {}
+}
+
+beforeEach(() => {
+  vi.stubGlobal("WebSocket", InertWebSocket);
+});
 
 afterEach(() => {
   cleanup();
