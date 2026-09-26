@@ -2,8 +2,9 @@ import { type Schedule, type SyncRow, type SyncStore } from "@shared/sync-contra
 import { z } from "zod";
 
 import { base64ToBytes, bytesToBase64 } from "../base64";
-import { type Cipher, decryptWith, getActiveCipher } from "../cipher";
+import { type Cipher, decryptWith } from "../cipher";
 import { branchSchema, flightSchema, nestSchema, wingSchema } from "../entity-model";
+import { cipherForObject } from "../keys/object-keys";
 import { pebbleSchema } from "../pebble-model";
 import { twigSchema } from "../twig-model";
 
@@ -66,6 +67,8 @@ export type StoredRow = {
   id: string;
   updatedAt: number;
   deletedAt?: number | null;
+  /** Which key sealed this row locally, and therefore which one it travels under. */
+  keyId?: string;
   [field: string]: unknown;
 };
 
@@ -122,10 +125,18 @@ function decodeRow(store: SyncStore, row: Record<string, unknown>): Record<strin
   };
 }
 
+/**
+ * A row, sealed for the wire under **its own** key rather than the workspace's.
+ *
+ * That is what makes the `keyId` the server files it under the object's, which is what the
+ * row store scopes delivery by. Sealing everything with the active cipher would stamp every
+ * row with the wing's key: a recipient granted one course would be served nothing, because
+ * nothing they can derive would match.
+ */
 export async function toSyncRow(
   store: SyncStore,
   row: StoredRow,
-  cipher: Cipher = getActiveCipher(),
+  cipher: Cipher = cipherForObject(row.keyId),
 ): Promise<SyncRow> {
   const json = new TextEncoder().encode(JSON.stringify(encodeRow(store, row)));
 
@@ -151,7 +162,7 @@ export async function toSyncRow(
  */
 export async function fromSyncRow(
   row: SyncRow,
-  cipher: Cipher = getActiveCipher(),
+  cipher?: Cipher,
 ): Promise<Record<string, unknown> | null> {
   try {
     const opened = await decryptWith(base64ToBytes(row.payload), row, cipher);

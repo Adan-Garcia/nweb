@@ -259,6 +259,9 @@ to make sharing possible need one too.
 
 ### What is still missing
 
+*   **`walkFrom` reads the whole `key_wraps` table.** Every sync round calls it twice, and
+    each media read once more. Correct and linear in the number of wraps in the database,
+    which is fine for one deployment and is the first thing to make recursive in SQL.
 *   **Nothing rotates on a schedule.** Revoking rotates the key it was asked about, and
     only that one. A key shared and re-shared for years is the same key.
 *   **A note shared on its own has no path to it.** A shared course is reachable: the row

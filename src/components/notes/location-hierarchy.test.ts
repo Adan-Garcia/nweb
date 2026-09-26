@@ -245,6 +245,29 @@ describe("navigating to a course somebody shared", () => {
     expect(labels).toMatchObject({ wing: "No wing", flight: "No flight", branch: "No branch" });
   });
 
+  it("does not put a shared course inside a wing of your own that has no terms", () => {
+    const snapshot = makeSnapshot({
+      flights: [],
+      branches: [makeBranch({ id: "theirs", name: "Theirs", flightId: "a-term-not-here" })],
+    });
+    const selection = { ...EMPTY_SELECTION, wingId: WING_ID };
+
+    // A new wing has no term yet, which is not the same as a course having no term you can
+    // read. Conflating them files somebody else's course under yours.
+    expect(segmentOptions(snapshot, [], selection).branch).toEqual([]);
+  });
+
+  it("does not cascade into one either", () => {
+    const snapshot = makeSnapshot({
+      flights: [],
+      branches: [makeBranch({ id: "theirs", name: "Theirs", flightId: "a-term-not-here" })],
+    });
+
+    const next = resolveCascade(snapshot, [], EMPTY_SELECTION, "wing", WING_ID);
+
+    expect(next).toMatchObject({ wingId: WING_ID, flightId: null, branchId: null });
+  });
+
   it("finds the note under it, which is the point of reaching it at all", () => {
     const selection = { ...EMPTY_SELECTION, branchId: BRANCH_ID, nestId: NEST_ID };
     const options = segmentOptions(sharedSnapshot(), [makeEntry()], selection);

@@ -16,17 +16,45 @@ import { normalizeEmail, type Sql } from "./db";
  * to the right person: what it must never do is hand someone a wrap whose parent they
  * cannot reach, because that is the only thing standing between "the bytes exist" and "the
  * bytes are readable".
+ *
+ * Which makes what goes *in* here load-bearing. The graph decides which rows the store
+ * serves and which a caller may overwrite, and key ids are not secret — every current and
+ * former share recipient holds several. So a client may only record edges and grants it
+ * already had the standing to make: see `putKeys`, where each of those checks corresponds
+ * to an attack that works without it.
  */
 export async function putKeys(sql: Sql, userId: string, request: PutKeysRequest): Promise<void> {
+  // What the caller already holds, before this request adds anything. `reachable` is what
+  // they may read; `writable` is what they may hang things under or grant at full role.
+  const reachable = new Set(await reachableKeyIds(sql, userId));
+  const writable = new Set(await reachableKeyIds(sql, userId, "writer"));
+  const minted = new Set<string>();
+
   for (const key of request.keys) {
-    await sql.query(
+    // `do nothing` on conflict means an id somebody else already owns is left alone — and
+    // `returning` is how we know that, so claiming a stranger's key id grants nothing.
+    const { rows } = await sql.query<{ id: string }>(
       `insert into keys (id, owner_id, kind, rotated_from) values ($1, $2, $3, $4)
-       on conflict (id) do nothing`,
+       on conflict (id) do nothing returning id`,
       [key.id, userId, key.kind, key.rotatedFrom],
     );
+
+    if (rows.length) {
+      minted.add(key.id);
+    }
   }
 
+  const mayHang = (keyId: string) => minted.has(keyId) || writable.has(keyId);
+
   for (const wrap of request.wraps) {
+    // Both ends, because an edge is a claim about both. Without the parent check anyone
+    // could hang a victim's key under their own and have the row store serve it to them;
+    // without the child check they could overwrite an edge between two keys of somebody
+    // else's and break that person's graph.
+    if (!mayHang(wrap.parentKeyId) || !mayHang(wrap.childKeyId)) {
+      continue;
+    }
+
     await sql.query(
       `insert into key_wraps (parent_key_id, child_key_id, wrapped) values ($1, $2, $3)
        on conflict (parent_key_id, child_key_id) do update set wrapped = excluded.wrapped`,
@@ -35,11 +63,20 @@ export async function putKeys(sql: Sql, userId: string, request: PutKeysRequest)
   }
 
   for (const grant of request.grants) {
+    if (!minted.has(grant.keyId) && !reachable.has(grant.keyId)) {
+      continue;
+    }
+
+    // A reader re-posting their own grant as a writer would otherwise promote themselves,
+    // and the row store would then let them overwrite the owner's rows. Role is taken from
+    // what they already have, never from what they ask for.
+    const role = mayHang(grant.keyId) ? grant.role : "reader";
+
     await sql.query(
       `insert into grants (key_id, user_id, role, wrapped) values ($1, $2, $3, $4)
        on conflict (key_id, user_id) do update set
          role = excluded.role, wrapped = excluded.wrapped`,
-      [grant.keyId, userId, grant.role, grant.wrapped],
+      [grant.keyId, userId, role, grant.wrapped],
     );
   }
 }

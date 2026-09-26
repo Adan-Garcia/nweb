@@ -7,7 +7,6 @@ import {
 } from "@shared/sync-contract";
 
 import { apiRequest, type ApiSession } from "../api/client";
-import { getActiveCipher } from "../cipher";
 import { getNotesDb } from "../notes-db";
 import { fromSyncRow, type StoredRow, toSyncRow } from "./wire";
 
@@ -83,14 +82,15 @@ export async function runSync(
   session: ApiSession,
   state: SyncState,
 ): Promise<{ outcome: SyncOutcome; state: SyncState } | null> {
-  const cipher = getActiveCipher();
   const pending = await pendingRows(state);
   const batch = pending.slice(0, SYNC_PAGE_SIZE);
 
   const response = await apiRequest(session, "/v1/sync", {
     body: {
       since: state.cursor,
-      rows: await Promise.all(batch.map(({ store, row }) => toSyncRow(store, row, cipher))),
+      // No cipher: each row travels under the key that sealed it, which is how a shared
+      // course reaches the person it was shared with.
+      rows: await Promise.all(batch.map(({ store, row }) => toSyncRow(store, row))),
     },
     schema: syncResponseSchema,
   });

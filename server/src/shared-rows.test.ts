@@ -284,3 +284,168 @@ describe("changing something shared with you", () => {
     expect(rows).toEqual([{ payload: "owners-newer-edit" }]);
   });
 });
+
+/**
+ * The key graph decides which rows the store serves and which a caller may overwrite, and
+ * key ids are not secret — every current and former share recipient holds several. So each
+ * of these is an attack that works if `putKeys` takes a client at its word.
+ */
+describe("recording keys you had no standing to record", () => {
+  const rowsOf = async (token: string) => (await syncAs(token)).rows.map((each) => each.id);
+
+  it("cannot grant yourself a key somebody else owns", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const attacker = await signUp("attacker@example.com");
+
+    await post(attacker, "/v1/keys", {
+      keys: [],
+      wraps: [],
+      grants: [{ keyId: "branch-key", role: "writer", wrapped: "forged" }],
+    });
+
+    expect(await rowsOf(attacker)).toEqual([]);
+  });
+
+  it("cannot promote yourself from reader to writer", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const friend = await signUp("friend@example.com");
+
+    await post(owner, "/v1/keys/share", {
+      keyId: "branch-key",
+      email: "friend@example.com",
+      role: "reader",
+      wrapped: "branch-for-friend",
+    });
+
+    // Re-posting their own grant, asking for the pen this time.
+    await post(friend, "/v1/keys", {
+      keys: [],
+      wraps: [],
+      grants: [{ keyId: "branch-key", role: "writer", wrapped: "branch-for-friend" }],
+    });
+
+    await syncAs(friend, [
+      row({ id: "branch-1", keyId: "branch-key", updatedAt: 9_000, payload: "their-edit" }),
+    ]);
+
+    const { rows } = await database.query<{ payload: string }>(
+      "select payload from rows where store = 'branches' and id = 'branch-1'",
+    );
+
+    expect(rows).toEqual([{ payload: "sealed-bytes" }]);
+  });
+
+  it("cannot hang somebody else's key under one of your own", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const attacker = await signUp("attacker@example.com");
+
+    await post(attacker, "/v1/keys", {
+      keys: [{ id: "attacker-wing", kind: "wing", rotatedFrom: null }],
+      wraps: [],
+      grants: [{ keyId: "attacker-wing", role: "writer", wrapped: "mine" }],
+    });
+
+    // An edge from their own root to the victim's course would make it reachable, and the
+    // row store serves whatever is reachable.
+    await post(attacker, "/v1/keys", {
+      keys: [],
+      wraps: [{ parentKeyId: "attacker-wing", childKeyId: "branch-key", wrapped: "forged" }],
+      grants: [],
+    });
+
+    expect(await rowsOf(attacker)).toEqual([]);
+  });
+
+  it("cannot overwrite an edge between two keys that are not yours", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const attacker = await signUp("attacker@example.com");
+
+    await post(attacker, "/v1/keys", {
+      keys: [],
+      wraps: [{ parentKeyId: "branch-key", childKeyId: "note-key", wrapped: "vandalised" }],
+      grants: [],
+    });
+
+    const { rows } = await database.query<{ wrapped: string }>(
+      "select wrapped from key_wraps where parent_key_id = 'branch-key' and child_key_id = 'note-key'",
+    );
+
+    expect(rows).toEqual([{ wrapped: "note-under-branch" }]);
+  });
+
+  it("cannot take over a key id somebody already owns", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const attacker = await signUp("attacker@example.com");
+
+    await post(attacker, "/v1/keys", {
+      keys: [{ id: "branch-key", kind: "branch", rotatedFrom: null }],
+      wraps: [],
+      grants: [{ keyId: "branch-key", role: "writer", wrapped: "forged" }],
+    });
+
+    const { rows } = await database.query<{ email: string }>(
+      `select users.email from keys join users on users.id = keys.owner_id
+       where keys.id = 'branch-key'`,
+    );
+
+    expect(rows).toEqual([{ email: "owner@example.com" }]);
+    expect(await rowsOf(attacker)).toEqual([]);
+  });
+});
+
+describe("recording keys you did make", () => {
+  it("takes a whole workspace, and serves its rows back", async () => {
+    const owner = await signUp("owner@example.com");
+
+    // Exactly the shape adoption and `pushKeys` send: a root granted to its owner, then
+    // everything minted under it.
+    await seedCourse(owner);
+
+    expect((await syncAs(owner)).rows.map((each) => each.id).sort()).toEqual([
+      "branch-1",
+      "branch-2",
+      "note-1",
+    ]);
+  });
+
+  it("takes the same graph again, which is what every sync round sends", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+
+    // Re-sent wholesale each round: keys already there are no longer "minted", so this only
+    // passes because reaching them as a writer is also enough.
+    const response = await post(owner, "/v1/keys", {
+      keys: [{ id: "branch-key", kind: "branch", rotatedFrom: null }],
+      wraps: [{ parentKeyId: "wing-key", childKeyId: "branch-key", wrapped: "re-sent" }],
+      grants: [],
+    });
+
+    expect(response.status).toBe(204);
+
+    const { rows } = await database.query<{ wrapped: string }>(
+      "select wrapped from key_wraps where child_key_id = 'branch-key'",
+    );
+
+    expect(rows).toEqual([{ wrapped: "re-sent" }]);
+  });
+
+  it("takes a rotation: a new key on the old key's edge, granted to its maker", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+
+    await post(owner, "/v1/keys", {
+      keys: [{ id: "branch-key-2", kind: "branch", rotatedFrom: "branch-key" }],
+      wraps: [{ parentKeyId: "wing-key", childKeyId: "branch-key-2", wrapped: "new-under-wing" }],
+      grants: [{ keyId: "branch-key-2", role: "writer", wrapped: "new-for-owner" }],
+    });
+
+    await syncAs(owner, [row({ id: "branch-1", keyId: "branch-key-2", updatedAt: 5_000 })]);
+
+    expect((await syncAs(owner)).rows.some((each) => each.keyId === "branch-key-2")).toBe(true);
+  });
+});

@@ -53,21 +53,32 @@ export function flightsForWing(snapshot: WorkspaceSnapshot, wingId: string | nul
   return snapshot.flights.filter((flight) => flight.wingId === wingId).sort(compareFlights);
 }
 
-/**
- * The courses in a term — or, with no term chosen, the ones shared with you.
- *
- * Both the dropdown and the cascade read courses through here, so handling the null case
- * once is what makes a shared course selectable, and everything under it reachable, without
- * either of them knowing that sharing exists.
- */
 export function branchesForFlight(snapshot: WorkspaceSnapshot, flightId: string | null) {
-  if (flightId === null) {
-    return sharedBranches(snapshot);
-  }
-
   return snapshot.branches
     .filter((branch) => branch.flightId === flightId)
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * The courses a selection should offer.
+ *
+ * "No term" means two different things and they must not be conflated: a wing of your own
+ * that has no terms yet, and the "Shared with you" entry, which stands under no wing at
+ * all. Only the second lists shared courses — keying on the term alone would file somebody
+ * else's course inside a new wing of yours.
+ *
+ * Both the dropdown and the cascade come through here, so the distinction is made once.
+ */
+export function branchesForSelection(
+  snapshot: WorkspaceSnapshot,
+  wingId: string | null,
+  flightId: string | null,
+) {
+  if (wingId === null && flightId === null) {
+    return sharedBranches(snapshot);
+  }
+
+  return branchesForFlight(snapshot, flightId);
 }
 
 export function nestsForBranch(snapshot: WorkspaceSnapshot, branchId: string | null) {

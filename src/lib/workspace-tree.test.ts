@@ -15,6 +15,7 @@ import {
 
 import {
   branchesForFlight,
+  branchesForSelection,
   branchPath,
   displayLocation,
   emptyWorkspaceSnapshot,
@@ -115,13 +116,25 @@ describe("sharedBranches", () => {
     expect(sharedBranches(snapshot).map((branch) => branch.name)).toEqual(["Art", "Zoology"]);
   });
 
-  it("is where the course dropdown looks when no term is chosen", () => {
+  it("is where the course dropdown looks under Shared with you", () => {
     const snapshot = makeSnapshot({
       branches: [makeBranch({ id: "b1", name: "Shared", flightId: "a-term-not-here" })],
     });
 
     // Not a gap a shared course falls through: precisely the place it belongs.
-    expect(branchesForFlight(snapshot, null).map((branch) => branch.name)).toEqual(["Shared"]);
+    expect(branchesForSelection(snapshot, null, null).map((branch) => branch.name)).toEqual([
+      "Shared",
+    ]);
+  });
+
+  it("is not where a wing of your own with no terms looks", () => {
+    const snapshot = makeSnapshot({
+      branches: [makeBranch({ id: "b1", name: "Shared", flightId: "a-term-not-here" })],
+    });
+
+    // "No term yet" and "no term you can read" are different facts, and filing one under
+    // the other puts somebody else's course inside your new wing.
+    expect(branchesForSelection(snapshot, WING_ID, null)).toEqual([]);
   });
 });
 

@@ -1,6 +1,6 @@
 import type { NotesDirectoryEntry } from "@/components/notes/types";
 import {
-  branchesForFlight,
+  branchesForSelection,
   branchPath,
   entriesForNest,
   findNest,
@@ -94,7 +94,7 @@ export function segmentOptions(
       ...(shared.length ? [{ id: null, name: SHARED_SEGMENT_LABEL }] : []),
     ],
     flight: flightsForWing(snapshot, selection.wingId).map(toOption),
-    branch: branchesForFlight(snapshot, selection.flightId).map(toOption),
+    branch: branchesForSelection(snapshot, selection.wingId, selection.flightId).map(toOption),
     nest: [
       ...nestsForBranch(snapshot, selection.branchId).map(toOption),
       { id: null, name: UNFILED_NEST_LABEL },
@@ -160,7 +160,7 @@ export function resolveCascade(
   }
 
   if (depth <= LOCATION_SEGMENTS.indexOf("flight")) {
-    next.branchId = branchesForFlight(snapshot, next.flightId)[0]?.id ?? null;
+    next.branchId = branchesForSelection(snapshot, next.wingId, next.flightId)[0]?.id ?? null;
   }
 
   if (depth <= LOCATION_SEGMENTS.indexOf("branch")) {
