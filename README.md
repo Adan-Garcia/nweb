@@ -40,7 +40,7 @@ npm run dev        # http://localhost:5173
 | `npm run build:server` / `npm run start:server` | Bundle and run the sync server. Needs `DATABASE_URL` and `SERVER_SECRET`. |
 | `docker compose up --build` | The server and Postgres together. Needs `POSTGRES_PASSWORD` and `SERVER_SECRET` in a git-ignored `.env`. |
 
-The app talks to a server only once one is chosen: `VITE_API_URL` sets the default (for example `VITE_API_URL=http://localhost:8787 npm run dev`), and Settings → Sync server, or the sign-up form, can point a device at any other. With none, nothing is ever sent. [`docs/backend.md`](./docs/backend.md) ("Running it") has the details.
+The app talks to a server only once one is chosen: `VITE_API_URL` sets the default (for example `VITE_API_URL=http://localhost:8787 npm run dev`), and Settings → Sync server, or the sign-up form, can point a device at any other. With none, nothing is ever sent. [`docs/backend.md`](./docs/backend.md) ("Running it") has the details, and [`docs/deploy.md`](./docs/deploy.md) puts the app and the server on the internet through a Cloudflare Tunnel — on one origin, or with the app on your own site.
 
 Before opening a change, run `npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build`, and `npm run test:e2e` if you touched the notes canvas, PDF import, appearance or a page flow. To make `git blame` skip the one-off formatting commit, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 

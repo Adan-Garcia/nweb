@@ -55,7 +55,10 @@ describe("serving the app beside the API", () => {
   });
 
   it("answers a missing asset with a 404, not the document", async () => {
-    expect((await app.request("/assets/missing.js")).status).toBe(404);
+    const missing = await app.request("/assets/missing.js");
+
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("cache-control")).toBe("no-store");
   });
 
   it("leaves the API to the API", async () => {

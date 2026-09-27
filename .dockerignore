@@ -4,8 +4,9 @@ dist
 dist-server
 coverage
 e2e
-src
-public
+playwright-report
+test-results
+.codegraph
 .env
 .env.*
 *.log

@@ -97,7 +97,10 @@ fall back to a default for a secret. `[REQUIRED]`
 | --- | --- |
 | `DATABASE_URL` | Postgres. |
 | `SERVER_SECRET` | Decoy KDF parameters derive from it, so it must outlive a restart or the decoys change and become the tell they exist to avoid. |
-| `ALLOWED_ORIGINS` | Comma-separated, for CORS. |
+| `ALLOWED_ORIGINS` | Comma-separated, for CORS. Only needed when the app is served from another origin. |
+| `CLIENT_IP_HEADER` | The header a proxy puts the caller's address in (`cf-connecting-ip` behind a Cloudflare Tunnel). Enables the per-address limit. Trust it only when nothing but the proxy can reach the server. |
+| `REGISTRATION_EMAILS` | Comma-separated. Only these may register; unset is anyone. |
+| `STATIC_DIR` | The built app, served beside the API (`static-app.ts`). The Docker image sets it. |
 
 ## 6. Running it
 

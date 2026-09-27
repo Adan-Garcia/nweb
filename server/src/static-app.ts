@@ -40,8 +40,14 @@ export function staticAppRoutes(directory: string) {
     return files(context, next);
   });
   routes.get("*", async (context, next) => {
+    if (isApi(context)) {
+      return next();
+    }
+
     // A missing asset is a 404, not the document: a script tag handed HTML fails confusingly.
-    if (isApi(context) || context.req.path.startsWith("/assets/")) {
+    // And a 404 cached forever by a CDN in front would outlive the deploy that fixes it.
+    if (context.req.path.startsWith("/assets/")) {
+      context.header("cache-control", "no-store");
       return next();
     }
 
