@@ -12,6 +12,7 @@ import { Plus } from "lucide-react";
 import { BoardColumn } from "@/components/board/board-column";
 import { useBoard } from "@/components/board/use-board";
 import { useBoardDeepLink } from "@/components/board/use-board-deep-link";
+import { DeleteTwigDialog } from "@/components/calendar/delete-twig-dialog";
 import { EventOverlay } from "@/components/calendar/event-overlay";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
@@ -69,9 +70,7 @@ export function BoardPage() {
                 snapshot={board.snapshot}
                 column={column}
                 onEdit={editor.openEdit}
-                onDelete={(twig) => {
-                  void board.removeTwig(twig);
-                }}
+                onDelete={board.deletion.request}
               />
             ))}
           </div>
@@ -81,6 +80,7 @@ export function BoardPage() {
       <EventOverlay
         isOpen={editor.isOpen}
         editingTwigId={editor.editingTwigId}
+        isEditingSeries={editor.isEditingSeries}
         register={editor.form.register}
         handleSubmit={editor.form.handleSubmit}
         errors={editor.form.formState.errors}
@@ -89,6 +89,13 @@ export function BoardPage() {
           void editor.submit(values);
         }}
         onClose={editor.close}
+      />
+      <DeleteTwigDialog
+        twig={board.deletion.pending}
+        onCancel={board.deletion.cancel}
+        onConfirm={(scope) => {
+          void board.deletion.confirm(scope);
+        }}
       />
     </>
   );

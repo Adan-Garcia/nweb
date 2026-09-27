@@ -99,10 +99,12 @@ describe("CalendarPage", () => {
       dueDate: date,
       dueTime: "9:00 AM",
     });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     renderPage();
 
     await user.click(await screen.findByRole("button", { name: "Delete Old quiz" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete" }),
+    );
 
     await waitFor(() => expect(screen.queryByText("Old quiz")).not.toBeInTheDocument());
   });

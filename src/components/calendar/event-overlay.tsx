@@ -3,6 +3,7 @@ import type { FieldErrors, UseFormHandleSubmit, UseFormRegister } from "react-ho
 import type { TwigFormValues } from "@/components/calendar/calendar-shared";
 import { EventKindStatusFields } from "@/components/calendar/event-kind-status-fields";
 import { EventRepeatFields } from "@/components/calendar/event-repeat-fields";
+import { EventScopeField } from "@/components/calendar/event-scope-field";
 import {
   EventSelectField,
   EventTextField,
@@ -15,6 +16,8 @@ import { Field, FieldGroup } from "@/components/ui/field";
 type EventOverlayProps = {
   isOpen: boolean;
   editingTwigId: string | null;
+  /** The task being edited is one occurrence of a series, so the edit asks how far it goes. */
+  isEditingSeries?: boolean;
   register: UseFormRegister<TwigFormValues>;
   handleSubmit: UseFormHandleSubmit<TwigFormValues>;
   errors: FieldErrors<TwigFormValues>;
@@ -26,6 +29,7 @@ type EventOverlayProps = {
 export function EventOverlay({
   isOpen,
   editingTwigId,
+  isEditingSeries = false,
   register,
   handleSubmit,
   errors,
@@ -103,9 +107,11 @@ export function EventOverlay({
               </EventSelectField>
 
               <EventKindStatusFields register={register} errors={errors} />
-              {editingTwigId === null ? (
+              {isEditingSeries ? (
+                <EventScopeField register={register} errors={errors} />
+              ) : (
                 <EventRepeatFields register={register} errors={errors} />
-              ) : null}
+              )}
 
               <Field orientation="horizontal" className="justify-end gap-2">
                 <Button type="button" variant="outline" onClick={onClose}>

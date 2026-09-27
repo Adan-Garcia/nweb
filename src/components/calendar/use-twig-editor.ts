@@ -25,7 +25,7 @@ export type BranchOption = {
 
 type UseTwigEditorOptions = {
   snapshot: WorkspaceSnapshot;
-  saveTwig: (values: TwigFormValues, editingTwigId: string | null) => Promise<unknown>;
+  saveTwig: (values: TwigFormValues, editingTwig: Twig | null) => Promise<unknown>;
   /** Runs after a successful save, with the date that was saved. */
   onSaved?: (dateKey: string) => void;
 };
@@ -36,7 +36,7 @@ type UseTwigEditorOptions = {
  */
 export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOptions) {
   const [isOpen, setIsOpen] = useState(false);
-  const [editingTwigId, setEditingTwigId] = useState<string | null>(null);
+  const [editingTwig, setEditingTwig] = useState<Twig | null>(null);
 
   /** Every branch in the workspace, labelled with the flight it belongs to. */
   const branchOptions = useMemo<BranchOption[]>(
@@ -71,16 +71,17 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
       status: "incomplete",
       repeat: "none",
       repeatUntil: "",
+      scope: "one",
     },
   });
 
   const close = () => {
     setIsOpen(false);
-    setEditingTwigId(null);
+    setEditingTwig(null);
   };
 
   const openAdd = (defaultDate?: string | null) => {
-    setEditingTwigId(null);
+    setEditingTwig(null);
     form.reset({
       title: "",
       date: defaultDate ?? formatDateKey(new Date()),
@@ -90,6 +91,7 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
       status: "incomplete",
       repeat: "none",
       repeatUntil: "",
+      scope: "one",
     });
     setIsOpen(true);
   };
@@ -100,7 +102,7 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
       return;
     }
 
-    setEditingTwigId(twigToEdit.id);
+    setEditingTwig(twigToEdit);
     form.reset({
       title: twigToEdit.title,
       date: twigToEdit.dueDate ?? formatDateKey(new Date()),
@@ -110,12 +112,13 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
       status: twigToEdit.status,
       repeat: "none",
       repeatUntil: "",
+      scope: "one",
     });
     setIsOpen(true);
   };
 
   const submit = async (values: TwigFormValues) => {
-    await saveTwig(values, editingTwigId);
+    await saveTwig(values, editingTwig);
     onSaved?.(values.date);
     close();
   };
@@ -128,7 +131,7 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsOpen(false);
-        setEditingTwigId(null);
+        setEditingTwig(null);
       }
     };
 
@@ -138,5 +141,16 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
     };
   }, [isOpen]);
 
-  return { isOpen, editingTwigId, form, branchOptions, openAdd, openEdit, submit, close };
+  return {
+    isOpen,
+    editingTwigId: editingTwig?.id ?? null,
+    /** Whether the task being edited is one occurrence of a series, which changes the form. */
+    isEditingSeries: Boolean(editingTwig?.seriesId),
+    form,
+    branchOptions,
+    openAdd,
+    openEdit,
+    submit,
+    close,
+  };
 }

@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 
 import { CalendarEventListCard } from "@/components/calendar/calendar-event-list-card";
 import { CalendarGridCard } from "@/components/calendar/calendar-grid-card";
+import { DeleteTwigDialog } from "@/components/calendar/delete-twig-dialog";
 import { EventOverlay } from "@/components/calendar/event-overlay";
 import { useCalendarPage } from "@/components/calendar/use-calendar-page";
 import { PageContainer } from "@/components/layout/page-container";
@@ -81,9 +82,7 @@ export function CalendarPage() {
               eventClasses={calendar.eventClasses}
               filteredEvents={calendar.filteredEvents}
               onOpenEditEvent={editor.openEdit}
-              onDeleteEvent={(event) => {
-                void calendar.deleteEvent(event);
-              }}
+              onDeleteEvent={calendar.deletion.request}
               onSetEventStatus={(twigId, nextStatus) => {
                 void calendar.setEventStatus(twigId, nextStatus);
               }}
@@ -112,6 +111,7 @@ export function CalendarPage() {
       <EventOverlay
         isOpen={editor.isOpen}
         editingTwigId={editor.editingTwigId}
+        isEditingSeries={editor.isEditingSeries}
         register={editor.form.register}
         handleSubmit={editor.form.handleSubmit}
         errors={editor.form.formState.errors}
@@ -120,6 +120,13 @@ export function CalendarPage() {
           void editor.submit(values);
         }}
         onClose={editor.close}
+      />
+      <DeleteTwigDialog
+        twig={calendar.deletion.pending}
+        onCancel={calendar.deletion.cancel}
+        onConfirm={(scope) => {
+          void calendar.deletion.confirm(scope);
+        }}
       />
     </>
   );

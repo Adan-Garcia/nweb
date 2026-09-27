@@ -11,12 +11,14 @@ import { EventOverlay } from "./event-overlay";
 function Harness({
   isOpen = true,
   editingTwigId = null,
+  isEditingSeries = false,
   onSubmit,
   onClose,
   defaults = {},
 }: {
   isOpen?: boolean;
   editingTwigId?: string | null;
+  isEditingSeries?: boolean;
   onSubmit: (values: TwigFormValues) => void;
   onClose: () => void;
   defaults?: Partial<TwigFormValues>;
@@ -36,6 +38,7 @@ function Harness({
       status: "incomplete",
       repeat: "none",
       repeatUntil: "",
+      scope: "one",
       ...defaults,
     },
   });
@@ -44,6 +47,7 @@ function Harness({
     <EventOverlay
       isOpen={isOpen}
       editingTwigId={editingTwigId}
+      isEditingSeries={isEditingSeries}
       register={register}
       handleSubmit={handleSubmit}
       errors={errors}
@@ -127,6 +131,7 @@ describe("EventOverlay", () => {
       status: "inprogress",
       repeat: "none",
       repeatUntil: "",
+      scope: "one",
     });
   });
 
@@ -153,10 +158,32 @@ describe("EventOverlay", () => {
     expect(screen.queryByLabelText("Repeats until")).not.toBeInTheDocument();
   });
 
-  it("does not offer to repeat a task being edited", () => {
+  it("offers to make a task being edited repeat, when it does not yet", () => {
     setup({ editingTwigId: "twig-1" });
 
+    expect(screen.getByLabelText("Repeats")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Apply changes to")).not.toBeInTheDocument();
+  });
+
+  it("asks how far an edit to a repeating task reaches, and submits that", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = setup({
+      editingTwigId: "twig-1",
+      isEditingSeries: true,
+      defaults: { title: "Weekly quiz" },
+    });
+
+    // An occurrence is already in a series, so it is not offered a second one.
     expect(screen.queryByLabelText("Repeats")).not.toBeInTheDocument();
+
+    await user.selectOptions(
+      screen.getByLabelText("Apply changes to"),
+      "This and following events",
+    );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ title: "Weekly quiz", scope: "following" });
   });
 
   it("explains what is wrong and does not submit an invalid form", async () => {

@@ -5,7 +5,14 @@ import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
 import { isLockedError } from "@/lib/crypto/cipher";
 import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
 import type { Twig, TwigStatus } from "@/lib/twigs/twig-model";
-import { createTwigSeries, softDeleteTwigSeries } from "@/lib/twigs/twig-series";
+import {
+  createTwigSeries,
+  dayShiftBetween,
+  repeatTwig,
+  type SeriesScope,
+  softDeleteTwigSeries,
+  updateTwigSeries,
+} from "@/lib/twigs/twig-series";
 import { listTwigs, softDeleteTwig, updateTwig } from "@/lib/twigs/twig-storage";
 
 /**
@@ -67,9 +74,12 @@ export function useCalendarTwigs() {
     [refreshTwigs],
   );
 
-  /** Updates the twig `editingTwigId`, or creates one when it is null. */
+  /**
+   * Updates `editingTwig` — and as much of its series as the form's scope asks for — or
+   * creates a new task when it is null.
+   */
   const saveTwig = useCallback(
-    async (values: TwigFormValues, editingTwigId: string | null) => {
+    async (values: TwigFormValues, editingTwig: Twig | null) => {
       const changes = {
         title: values.title.trim(),
         dueDate: values.date,
@@ -79,15 +89,30 @@ export function useCalendarTwigs() {
         status: values.status,
       };
 
-      if (editingTwigId !== null) {
-        await updateTwig(editingTwigId, changes);
-      } else {
+      if (editingTwig === null) {
         // A task that does not repeat is a series of one.
         await createTwigSeries(
           { ...changes, dueDate: values.date },
           values.repeat,
           values.repeatUntil,
         );
+      } else if (editingTwig.seriesId && values.scope !== "one") {
+        const { title, dueTime, branchId, kind } = changes;
+
+        await updateTwigSeries(
+          editingTwig.seriesId,
+          values.scope === "following" ? editingTwig.dueDate : null,
+          { title, dueTime, branchId, kind },
+          dayShiftBetween(editingTwig.dueDate, values.date),
+        );
+        // Done or not is each occurrence's own, so only the one being edited takes it.
+        await updateTwig(editingTwig.id, { status: changes.status });
+      } else {
+        const updated = await updateTwig(editingTwig.id, changes);
+
+        if (updated && !editingTwig.seriesId) {
+          await repeatTwig(updated, values.repeat, values.repeatUntil);
+        }
       }
 
       await refreshTwigs();
@@ -105,19 +130,16 @@ export function useCalendarTwigs() {
     [refreshTwigs],
   );
 
+  /** Deletes a task, or as much of its series as `scope` reaches. Asking first is the UI's. */
   const deleteTwig = useCallback(
-    async (twigToDelete: Twig) => {
-      // A repeating task asks about the whole series first; declining that still offers to
-      // delete the one occurrence, which is the more common wish.
-      if (
-        twigToDelete.seriesId &&
-        window.confirm(`Delete every occurrence of "${twigToDelete.title}"?`)
-      ) {
-        await softDeleteTwigSeries(twigToDelete.seriesId);
-      } else if (window.confirm(`Delete "${twigToDelete.title}"?`)) {
-        await softDeleteTwig(twigToDelete.id);
+    async (twigToDelete: Twig, scope: SeriesScope = "one") => {
+      if (twigToDelete.seriesId && scope !== "one") {
+        await softDeleteTwigSeries(
+          twigToDelete.seriesId,
+          scope === "following" ? twigToDelete.dueDate : null,
+        );
       } else {
-        return;
+        await softDeleteTwig(twigToDelete.id);
       }
 
       await refreshTwigs();

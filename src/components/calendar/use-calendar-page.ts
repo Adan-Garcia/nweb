@@ -16,6 +16,7 @@ import {
   startOfMonth,
 } from "@/components/calendar/calendar-views";
 import { useCalendarTwigs } from "@/components/calendar/use-calendar-twigs";
+import { useTwigDeletion } from "@/components/calendar/use-twig-deletion";
 import { useTwigEditor } from "@/components/calendar/use-twig-editor";
 import { resolveCalendarDrop } from "@/lib/twigs/calendar-drop";
 
@@ -23,6 +24,7 @@ import { resolveCalendarDrop } from "@/lib/twigs/calendar-drop";
 export function useCalendarPage() {
   const { twigs, isLoading, snapshot, setTwigStatus, saveTwig, deleteTwig, rescheduleTwig } =
     useCalendarTwigs();
+  const deletion = useTwigDeletion(deleteTwig);
 
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(today));
@@ -147,7 +149,7 @@ export function useCalendarPage() {
     filteredEvents,
     setEventStatus: setTwigStatus,
     handleDayDrop,
-    deleteEvent: deleteTwig,
+    deletion,
     goPrevious: () => shiftView(-1),
     goNext: () => shiftView(1),
     goToToday,

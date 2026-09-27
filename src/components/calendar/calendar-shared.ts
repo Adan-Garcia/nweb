@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { BranchColor } from "@/lib/hierarchy/entity-model";
 import { findBranch, type WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 import { type Twig, TWIG_KINDS, TWIG_STATUSES } from "@/lib/twigs/twig-model";
-import { seriesDates, TWIG_REPEATS } from "@/lib/twigs/twig-series";
+import { SERIES_SCOPES, seriesDates, TWIG_REPEATS } from "@/lib/twigs/twig-series";
 
 /** The dot beside a task takes its colour from the branch the task belongs to. */
 const BRANCH_COLOR_CLASSES: Record<BranchColor, string> = {
@@ -41,9 +41,11 @@ export const twigFormSchema = z
     branchId: z.string().min(1, "Pick a branch"),
     kind: z.enum(TWIG_KINDS),
     status: z.enum(TWIG_STATUSES),
-    /** Only offered when adding: a new task may repeat, an existing one stays one task. */
+    /** Offered when adding, and when editing a task that does not repeat yet. */
     repeat: z.enum(TWIG_REPEATS),
     repeatUntil: z.string(),
+    /** Only offered when editing an occurrence of a series: how much of it the edit reaches. */
+    scope: z.enum(SERIES_SCOPES),
   })
   .superRefine((values, context) => {
     if (values.repeat === "none") {

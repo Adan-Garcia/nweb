@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getNotesDb } from "@/lib/db/notes-db";
 import { createBranch, createFlight, createWing } from "@/lib/hierarchy/entity-storage";
+import { createTwigSeries } from "@/lib/twigs/twig-series";
 import { createTwig, listTwigs } from "@/lib/twigs/twig-storage";
 
 import { BoardPage } from "./board";
@@ -128,18 +129,40 @@ describe("BoardPage", () => {
   it("deletes a card only after it is confirmed", async () => {
     const user = userEvent.setup();
     await createTwig({ branchId, title: "Doomed" });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
 
     renderPage();
     await user.click(await screen.findByRole("button", { name: "Delete Doomed" }));
 
-    expect(confirm).toHaveBeenCalledWith('Delete "Doomed"?');
+    const dialog = await screen.findByRole("dialog", { name: "Delete event" });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(columnTitles("Todo")).toEqual(["Doomed"]);
 
-    confirm.mockReturnValue(true);
     await user.click(screen.getByRole("button", { name: "Delete Doomed" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete" }),
+    );
 
     await waitFor(() => expect(columnTitles("Todo")).toEqual([]));
+  });
+
+  it("deletes one occurrence of a repeating task and keeps the rest", async () => {
+    const user = userEvent.setup();
+    await createTwigSeries(
+      { branchId, title: "Reading", dueDate: "2026-05-04" },
+      "daily",
+      "2026-05-06",
+    );
+
+    renderPage();
+    const [first] = await screen.findAllByRole("button", { name: "Delete Reading" });
+    await user.click(first);
+
+    const dialog = await screen.findByRole("dialog", { name: "Delete repeating event" });
+    await user.click(within(dialog).getByRole("button", { name: "This event" }));
+
+    await waitFor(() => expect(columnTitles("Todo")).toEqual(["Reading", "Reading"]));
   });
 
   it("opens the editor for the task a link names, as the command palette sends it", async () => {

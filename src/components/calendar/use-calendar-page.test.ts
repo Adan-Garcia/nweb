@@ -174,6 +174,7 @@ describe("useCalendarPage", () => {
       status: "inprogress",
       repeat: "none",
       repeatUntil: "",
+      scope: "one",
     });
   });
 
@@ -192,6 +193,7 @@ describe("useCalendarPage", () => {
         status: "incomplete",
         repeat: "none",
         repeatUntil: "",
+        scope: "one",
       });
     });
 
@@ -252,6 +254,7 @@ describe("useCalendarPage", () => {
         status: existing.status,
         repeat: "none",
         repeatUntil: "",
+        scope: "one",
       });
     });
 

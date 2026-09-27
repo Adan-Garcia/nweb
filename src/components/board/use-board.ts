@@ -2,9 +2,9 @@ import { useCallback, useMemo, useState } from "react";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 
 import { useCalendarTwigs } from "@/components/calendar/use-calendar-twigs";
+import { useTwigDeletion } from "@/components/calendar/use-twig-deletion";
 import { useTwigEditor } from "@/components/calendar/use-twig-editor";
 import { applyBoardDrop, buildBoardColumns, resolveBoardDrop } from "@/lib/twigs/board";
-import type { Twig } from "@/lib/twigs/twig-model";
 import { moveTwig } from "@/lib/twigs/twig-storage";
 
 /**
@@ -63,12 +63,7 @@ export function useBoard() {
     setActiveId(null);
   }, []);
 
-  const removeTwig = useCallback(
-    async (twig: Twig) => {
-      await deleteTwig(twig);
-    },
-    [deleteTwig],
-  );
+  const deletion = useTwigDeletion(deleteTwig);
 
   return {
     columns,
@@ -79,6 +74,6 @@ export function useBoard() {
     handleDragStart,
     handleDragEnd,
     handleDragCancel,
-    removeTwig,
+    deletion,
   };
 }

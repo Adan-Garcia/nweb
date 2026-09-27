@@ -1,9 +1,9 @@
 import { getNotesDb } from "../db/notes-db";
 import { occurrenceDates } from "../feeds/ics-recurrence";
-import { addDays } from "../feeds/ics-time";
+import { addDays, daysBetween } from "../feeds/ics-time";
 import { isReadOnlyKey } from "../keys/access";
 import type { Twig } from "./twig-model";
-import { createTwig, type TwigDraft } from "./twig-storage";
+import { createTwig, type TwigDraft, updateTwig } from "./twig-storage";
 
 /**
  * Tasks that repeat: a weekly problem set, a daily reading.
@@ -80,12 +80,43 @@ export async function createTwigSeries(
   return created;
 }
 
-/** Tombstones every task of a series this device may change. Returns how many. */
-export async function softDeleteTwigSeries(seriesId: string): Promise<number> {
+/**
+ * How much of a series an edit or a delete reaches: the one occurrence, it and every later
+ * one, or all of them. "Later" is by due date, which is what a person means by "following".
+ */
+export const SERIES_SCOPES = ["one", "following", "all"] as const;
+
+export type SeriesScope = (typeof SERIES_SCOPES)[number];
+
+export const SERIES_SCOPE_LABELS: Record<SeriesScope, string> = {
+  one: "This event",
+  following: "This and following events",
+  all: "All events",
+};
+
+/** The live, writable occurrences of a series, from `fromDate` on when one is given. */
+async function seriesRows(seriesId: string, fromDate: string | null) {
   const database = await getNotesDb();
-  const gone = (await database.getAll("twigs")).filter(
-    (row) => row.seriesId === seriesId && !row.deletedAt && !isReadOnlyKey(row.keyId),
+  const rows = (await database.getAll("twigs")).filter(
+    (row) =>
+      row.seriesId === seriesId &&
+      !row.deletedAt &&
+      !isReadOnlyKey(row.keyId) &&
+      (fromDate === null || (row.dueDate !== null && row.dueDate >= fromDate)),
   );
+
+  return { database, rows };
+}
+
+/**
+ * Tombstones the tasks of a series this device may change — every one, or those due on or
+ * after `fromDate`. Returns how many.
+ */
+export async function softDeleteTwigSeries(
+  seriesId: string,
+  fromDate: string | null = null,
+): Promise<number> {
+  const { database, rows: gone } = await seriesRows(seriesId, fromDate);
   const now = Date.now();
   const transaction = database.transaction("twigs", "readwrite");
 
@@ -95,4 +126,75 @@ export async function softDeleteTwigSeries(seriesId: string): Promise<number> {
   await transaction.done;
 
   return gone.length;
+}
+
+/** What an edit to a whole series carries over. Status stays each occurrence's own. */
+export type SeriesChanges = Pick<Twig, "title" | "dueTime" | "branchId" | "kind">;
+
+/**
+ * Applies one edit to the occurrences of a series — every one, or those due on or after
+ * `fromDate` — and moves each by the days the edited occurrence moved, so "the weekly quiz
+ * is on Thursdays now" shifts the lot rather than piling them onto one date.
+ */
+export async function updateTwigSeries(
+  seriesId: string,
+  fromDate: string | null,
+  changes: SeriesChanges,
+  dayShift: number,
+): Promise<number> {
+  const { rows } = await seriesRows(seriesId, fromDate);
+  let updated = 0;
+
+  for (const row of rows) {
+    const dueDate = row.dueDate === null ? null : addDays(row.dueDate, dayShift);
+
+    if (await updateTwig(row.id, { ...changes, dueDate })) {
+      updated += 1;
+    }
+  }
+
+  return updated;
+}
+
+/**
+ * Turns a task that did not repeat into the first occurrence of a series: it keeps its id,
+ * status and board place, and the dates after it are written as new tasks beside it.
+ */
+export async function repeatTwig(twig: Twig, repeat: TwigRepeat, until: string): Promise<Twig[]> {
+  const start = twig.dueDate;
+
+  if (repeat === "none" || start === null) {
+    return [];
+  }
+
+  const seriesId = crypto.randomUUID();
+  // The task keeps its own date even when the rule would skip it (a Saturday, weekdays).
+  const later = seriesDates(start, repeat, until).filter((date) => date > start);
+
+  if (!(await updateTwig(twig.id, { seriesId }))) {
+    return [];
+  }
+
+  const created: Twig[] = [];
+
+  for (const dueDate of later) {
+    created.push(
+      await createTwig({
+        branchId: twig.branchId,
+        title: twig.title,
+        kind: twig.kind,
+        dueTime: twig.dueTime,
+        nestIds: twig.nestIds,
+        dueDate,
+        seriesId,
+      }),
+    );
+  }
+
+  return created;
+}
+
+/** How many days an occurrence moved, or none when either end has no date. */
+export function dayShiftBetween(from: string | null, to: string | null): number {
+  return from === null || to === null ? 0 : daysBetween(from, to);
 }

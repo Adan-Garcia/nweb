@@ -74,6 +74,7 @@ describe("twigFormSchema", () => {
     status: "inprogress",
     repeat: "none",
     repeatUntil: "",
+    scope: "one",
   };
 
   it("accepts a valid form", () => {
