@@ -84,6 +84,7 @@ export function makeTwig(overrides: Partial<Twig> = {}): Twig {
     status: "incomplete",
     boardOrder: 0,
     featherId: null,
+    feedId: null,
     createdAt: 1,
     updatedAt: 1,
     deletedAt: null,

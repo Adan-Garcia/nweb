@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getActiveCipher, resetActiveCipher } from "../crypto/cipher";
 import { getNotesDb } from "../db/notes-db";
+import { defaultFeedSettings } from "../feeds/feed-model";
+import { getFeed, saveFeed } from "../feeds/feed-storage";
 import { createBranch, listBranches } from "../hierarchy/entity-storage";
 import {
   saveLinearDocumentPayload,
@@ -122,8 +124,34 @@ describe("progress", () => {
         (await database.count("branches")) +
         (await database.count("nests")) +
         (await database.count("twigs")) +
-        (await database.count("pebbles")),
+        (await database.count("pebbles")) +
+        (await database.count("feeds")),
     );
+  });
+});
+
+describe("calendar feeds", () => {
+  it("seals a feed's address with the lock, moves it on a change, and opens it after", async () => {
+    const feed = await saveFeed({
+      ...defaultFeedSettings(),
+      url: "https://example.edu/private-token",
+    });
+    const storedSettings = async () => (await (await getNotesDb()).get("feeds", feed.id))?.settings;
+
+    await createWorkspaceLock(FIRST);
+    const sealedOnce = await storedSettings();
+
+    expect(sealedOnce).not.toContain("private-token");
+
+    await changeWorkspacePassphrase(FIRST, SECOND);
+
+    expect(await storedSettings()).not.toBe(sealedOnce);
+    expect((await getFeed(feed.id))?.settings.url).toBe("https://example.edu/private-token");
+
+    await removeWorkspaceLock(SECOND);
+
+    expect(await storedSettings()).toContain("private-token");
+    await (await getNotesDb()).clear("feeds");
   });
 });
 

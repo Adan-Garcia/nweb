@@ -2,6 +2,7 @@ import { type DBSchema, type IDBPDatabase, openDB } from "idb";
 
 import type { AccountRecord } from "../account/account-record";
 import type { LocalAccount } from "../account/local-account";
+import type { FeedRecord } from "../feeds/feed-model";
 import type { Branch, Flight, Nest, Wing } from "../hierarchy/entity-model";
 import type { Pebble } from "../hierarchy/pebble-model";
 import type { SharePathRecord } from "../hierarchy/share-path-model";
@@ -76,8 +77,13 @@ const NOTES_DB_NAME = "cuervo-notes";
  * passphrase the lock record already holds. A local account is now required to open the
  * workspace; a server account stays optional. Rewrites no rows: a database without one is
  * asked to set one up, keeping the passphrase it already has.
+ *
+ * 14 added `feeds`: the calendars this device subscribes to, their settings sealed as one
+ * string (`lib/feeds/feed-storage.ts`), and gave a twig a `feedId` saying which feed made
+ * it. Rewrites no rows: a twig without the field was typed in by hand, which is what every
+ * twig written before this one was, and `listTwigs` reads the absence as null.
  */
-export const NOTES_DB_VERSION = 13;
+export const NOTES_DB_VERSION = 14;
 
 export interface NotesDbSchema extends DBSchema {
   "notes-documents": {
@@ -144,6 +150,10 @@ export interface NotesDbSchema extends DBSchema {
     key: string;
     value: LocalAccount;
   };
+  feeds: {
+    key: string;
+    value: FeedRecord;
+  };
 }
 
 const STORE_NAMES = [
@@ -163,6 +173,7 @@ const STORE_NAMES = [
   "share-paths",
   "preferences",
   "local-account",
+  "feeds",
 ] as const;
 
 let dbPromise: Promise<IDBPDatabase<NotesDbSchema>> | null = null;

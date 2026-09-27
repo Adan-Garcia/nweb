@@ -45,6 +45,16 @@ describe("CalendarPage", () => {
     expect(await screen.findByText("No active events match your filters.")).toBeInTheDocument();
   });
 
+  it("links to the calendar feeds, to subscribe to a school calendar", async () => {
+    renderPage();
+
+    expect(screen.getByRole("link", { name: "Subscribe" })).toHaveAttribute(
+      "href",
+      "/settings#feeds",
+    );
+    await findEnabledAddButton();
+  });
+
   it("keeps Add shut until the branches are there to file a task under", async () => {
     renderPage();
 

@@ -219,6 +219,7 @@ function buildTwigs({
     status: event.status,
     boardOrder: index * BOARD_ORDER_STEP,
     featherId: null,
+    feedId: null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

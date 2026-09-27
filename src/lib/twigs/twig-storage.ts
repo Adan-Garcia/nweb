@@ -52,7 +52,10 @@ export async function listTwigs(): Promise<Twig[]> {
     "title",
   );
 
-  return live.map(withParsedTime).sort(compareTwigsByBoardOrder);
+  // A row from before feeds (version 14) has no `feedId`, which means typed in by hand.
+  return live
+    .map((twig) => withParsedTime({ ...twig, feedId: twig.feedId ?? null }))
+    .sort(compareTwigsByBoardOrder);
 }
 
 /** New tasks land at the end of their column, clear of everything already ordered. */
@@ -71,7 +74,7 @@ async function nextBoardOrder(status: TwigStatus) {
  * Every container this row belongs to: its course, and each tag it carries. Its key is
  * wrapped under all of them, so sharing either one reaches it.
  */
-async function containerKeyIds(branchId: string, nestIds: string[]): Promise<string[]> {
+export async function containerKeyIds(branchId: string, nestIds: string[]): Promise<string[]> {
   const database = await getNotesDb();
   const branchKey = (await database.get("branches", branchId))?.keyId;
   const nestKeys = await Promise.all(
@@ -99,6 +102,7 @@ export async function createTwig(draft: TwigDraft): Promise<Twig> {
     status,
     boardOrder: await nextBoardOrder(status),
     featherId: draft.featherId ?? null,
+    feedId: null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

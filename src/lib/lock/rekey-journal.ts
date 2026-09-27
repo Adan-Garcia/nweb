@@ -29,6 +29,7 @@ export const REKEY_STORES = [
   "nests",
   "twigs",
   "pebbles",
+  "feeds",
 ] as const;
 
 export type RekeyStore = (typeof REKEY_STORES)[number];

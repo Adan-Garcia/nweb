@@ -1,5 +1,6 @@
 import {
   Bell,
+  CalendarSync,
   Database,
   FolderTree,
   type LucideIcon,
@@ -17,6 +18,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "account", label: "Account", icon: UserRound },
   { id: "sync", label: "Sync server", icon: Server },
   { id: "workspace", label: "Workspace", icon: FolderTree },
+  { id: "feeds", label: "Calendar feeds", icon: CalendarSync },
   { id: "backup", label: "Backup", icon: Database },
   { id: "sharing", label: "Sharing", icon: Share2 },
   { id: "reminders", label: "Reminders", icon: Bell },

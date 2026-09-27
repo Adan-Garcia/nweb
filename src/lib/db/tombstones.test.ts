@@ -42,6 +42,7 @@ async function seedTwig(id: string, deletedAt: number | null) {
     status: "incomplete",
     boardOrder: 0,
     featherId: null,
+    feedId: null,
     createdAt: 1,
     updatedAt: 1,
     deletedAt,

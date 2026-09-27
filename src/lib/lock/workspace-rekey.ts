@@ -233,6 +233,15 @@ export async function rewriteStoredContent({
       pair,
       cursor,
       (row) => database.put("pebbles", row),
+    )) +
+    // A feed's settings are its address and its rules, sealed as one string.
+    (await rewriteNames(
+      "feeds",
+      keyed(await database.getAll("feeds")),
+      "settings",
+      pair,
+      cursor,
+      (row) => database.put("feeds", row),
     ));
 
   return { documents, media, names };

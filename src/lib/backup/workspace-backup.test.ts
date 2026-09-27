@@ -97,6 +97,7 @@ const TWIG = {
   status: "incomplete" as const,
   boardOrder: 0,
   featherId: null,
+  feedId: null,
   ...STAMP,
 };
 
