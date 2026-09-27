@@ -60,7 +60,7 @@ export function LockCard({
           <BackupPassphraseField
             id="lock-passphrase"
             label="Choose a passphrase"
-            hint="Everything already stored is encrypted with it now. There is no account and no server, so nothing can reset it: forget it and the notes are gone."
+            hint="Everything already stored is encrypted with it now. Nothing can reset it, not even a server: forget it and the notes are gone."
             submitLabel="Encrypt this workspace"
             isDisabled={isWorking}
             onSubmit={(passphrase) => {

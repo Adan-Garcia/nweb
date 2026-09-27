@@ -28,14 +28,14 @@ describe("App routing", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading...");
     expect(
-      await screen.findByRole("heading", { level: 1, name: /Pricing that scales/ }),
+      await screen.findByRole("heading", { level: 1, name: /Free during the beta/ }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it.each([
     ["/privacy", /Your study data stays yours/],
-    ["/documentation", /Build with the same structure/],
+    ["/documentation", /How Cuervo Planner is organised/],
     ["/auth/onboarding", /Getting Started/],
   ])("routes %s to its page", async (path, heading) => {
     renderAt(path);

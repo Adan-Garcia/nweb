@@ -43,7 +43,9 @@ describe("LockCard", () => {
     await user.click(screen.getByRole("button", { name: "Set a passphrase" }));
 
     expect(
-      screen.getByText(/nothing can reset it: forget it and the notes are gone/i),
+      screen.getByText(
+        /nothing can reset it, not even a server: forget it and the notes are gone/i,
+      ),
     ).toBeVisible();
 
     await user.type(screen.getByLabelText("Choose a passphrase"), "correct horse");

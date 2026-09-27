@@ -9,12 +9,12 @@ export function SignupPage() {
       formAriaLabel="Sign up form"
       eyebrow="Join the beta"
       title="Plan your classes, notes, and deadlines in one place."
-      description="Accounts are still being built, so this form does not create one yet. The planner is already usable without it: your coursework is stored locally on your device, and the core planner will stay free and open source."
+      description="This form is a preview and does not create an account. To make one, open the planner and go to Settings, then Account & sync. You can start without one: your coursework is stored on this device, and the planner stays free and open source."
       benefits={[
         {
           icon: <ShieldCheck className="size-4" />,
           title: "Local-first",
-          copy: "Your notes and deadlines are stored on your device.",
+          copy: "Your notes and deadlines are stored on your device, and synced only if you choose.",
         },
         {
           icon: <LockKeyhole className="size-4" />,

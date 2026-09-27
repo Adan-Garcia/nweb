@@ -128,10 +128,12 @@ describe("PrivacyPage", () => {
     expect(container.textContent).toMatch(/not encrypted/i);
     // And plain about the limit of the lock, now that there is one.
     expect(container.textContent).toMatch(/note titles, course names, task titles/i);
-    expect(container.textContent).toMatch(/due dates and times are deliberately left readable/i);
+    expect(container.textContent).toMatch(/due dates, times and whether a task is done/i);
     expect(container.textContent).toMatch(/cannot be recovered/i);
-    // Still nothing about the things that would need a server.
-    expect(container.textContent).not.toMatch(/key exchange|row-level|zero-knowledge/i);
+    // An account is optional, and the server's view is stated, not waved away.
+    expect(container.textContent).toMatch(/an account is optional/i);
+    expect(container.textContent).toMatch(/can see their shape/i);
+    expect(container.textContent).not.toMatch(/zero-knowledge|knows nothing/i);
   });
 
   it("explains local-first storage in three plain steps", () => {
@@ -152,16 +154,17 @@ describe("PrivacyPage", () => {
 describe("DocumentationPage", () => {
   it("describes each level of the Wing/Flight/Branch/Nest hierarchy", () => {
     render(<DocumentationPage />);
-    for (const name of ["Wing", "Flight", "Branch", "Nest", "Twig & Feather"]) {
+    for (const name of ["Wing", "Flight", "Branch", "Nest", "Twig & Feather", "Pebble"]) {
       expect(screen.getByText(name)).toBeInTheDocument();
     }
   });
 
-  it("lays out the roadmap in three areas", () => {
+  it("says what works today and what is still to come", () => {
     render(<DocumentationPage />);
-    for (const area of ["Core Application", "Real-time Sync", "Encryption and Sharing"]) {
+    for (const area of ["Planning", "Notes", "Privacy and sync", "Still to come"]) {
       expect(screen.getByText(area)).toBeInTheDocument();
     }
-    expect(screen.getAllByRole("list")).toHaveLength(3);
+    expect(screen.getAllByRole("list")).toHaveLength(4);
+    expect(screen.getByText("Known gaps, in no particular order.")).toBeInTheDocument();
   });
 });

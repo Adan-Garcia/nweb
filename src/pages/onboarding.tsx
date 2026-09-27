@@ -49,7 +49,7 @@ export function OnboardingPage() {
           <a href="/documentation" className="text-primary hover:underline">
             documentation page
           </a>{" "}
-          lists what is built and what is planned.
+          lists what works today and what is still to come.
         </p>
       </div>
     </main>

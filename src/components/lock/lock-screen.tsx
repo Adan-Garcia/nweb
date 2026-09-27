@@ -74,8 +74,8 @@ export function LockScreen({ error, isWorking, onUnlock }: LockScreenProps) {
             </Button>
 
             <p className="text-caption text-muted-foreground">
-              There is no account and no server, so nothing can reset this. Without the passphrase
-              the notes cannot be recovered.
+              Nothing can reset it — not us, and not a server, which never has it. Without the
+              passphrase the notes cannot be recovered.
             </p>
           </form>
         </CardContent>

@@ -8,18 +8,18 @@ export function SignInPage() {
     <AuthShell
       formAriaLabel="Sign in form"
       eyebrow="Beta preview"
-      title="Accounts are not live yet."
-      description="Sign-in is still being built, so this form does not sign you in anywhere. The planner already works without an account: your notes and deadlines are saved in this browser."
+      title="Sign in from inside the planner."
+      description="This page is a preview and does not sign you in. Accounts live in the planner itself: open Settings, then Account & sync, to sign in on this device or create an account. You do not need one to start — your notes and deadlines are saved in this browser."
       benefits={[
         {
           icon: <ShieldCheck className="size-4" />,
           title: "Private by default",
-          copy: "Nothing you write leaves this browser.",
+          copy: "Without an account, nothing you write leaves this browser.",
         },
         {
           icon: <LockKeyhole className="size-4" />,
           title: "No account needed",
-          copy: "The notes, calendar, and dashboard all work right now.",
+          copy: "Notes, calendar, board and dashboard all work without one.",
         },
       ]}
       form={<LoginForm className="m-0 w-[min(100%,480px)]" />}

@@ -1,7 +1,7 @@
 import { BookOpen } from "lucide-react";
 
 import { BulletListCard } from "@/components/marketing/bullet-list-card";
-import { HIERARCHY_LEVELS, ROADMAP_AREAS } from "@/components/marketing/documentation-content";
+import { FEATURE_AREAS, HIERARCHY_LEVELS } from "@/components/marketing/documentation-content";
 import { HierarchyLevelCard } from "@/components/marketing/hierarchy-level-card";
 import { MarketingEyebrow } from "@/components/marketing/marketing-eyebrow";
 import { MarketingPage } from "@/components/marketing/marketing-page";
@@ -12,10 +12,11 @@ export function DocumentationPage() {
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-10 text-left">
           <MarketingEyebrow icon={BookOpen}>Product Documentation</MarketingEyebrow>
-          <h1 className="mb-3 text-display">Build with the same structure as your study flow</h1>
+          <h1 className="mb-3 text-display">How Cuervo Planner is organised, and what it does</h1>
           <p className="max-w-3xl text-lg text-muted-foreground">
-            This guide mirrors the planner model shown in the app and combines your current
-            implementation roadmap so new contributors can onboard quickly.
+            Everything you keep is filed the way a school year is: a workspace, its terms, their
+            courses, and the tags, tasks, notes and files inside each course. Below that is what
+            works today and what is still to come.
           </p>
         </div>
 
@@ -25,13 +26,13 @@ export function DocumentationPage() {
           ))}
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-3">
-          {ROADMAP_AREAS.map((section) => (
+        <div className="grid gap-5 md:grid-cols-2">
+          {FEATURE_AREAS.map((section) => (
             <BulletListCard
               key={section.area}
               title={section.area}
               icon={section.icon}
-              description="Prioritized from your current Todo roadmap."
+              description={section.description}
               items={section.items}
             />
           ))}

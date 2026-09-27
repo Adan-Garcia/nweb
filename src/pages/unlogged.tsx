@@ -9,11 +9,11 @@ export function UnloggedPage() {
           <p className="text-caption font-medium tracking-wider text-muted-foreground uppercase">
             Early Access
           </p>
-          <h1 className="text-display">Planning, Notes, and Sharing; One place</h1>
+          <h1 className="text-display">Planning, notes and sharing, in one place</h1>
           <p className="text-body text-muted-foreground">
-            Everything you write is stored locally in this browser and never leaves it. Accounts and
-            sharing are still being built, so the planner works without one. For more information,
-            see our{" "}
+            Everything you write is stored in this browser, and works offline. An account is
+            optional: it syncs your devices and lets you share a course, and the server only ever
+            holds what it cannot read. For more information, see our{" "}
             <a
               href="/privacy"
               className="font-medium text-primary underline-offset-4 hover:underline"
@@ -29,13 +29,19 @@ export function UnloggedPage() {
       <div className="grid w-full max-w-sm gap-3">
         <h2 className="text-title">Get started</h2>
         <p className="text-body text-muted-foreground">
-          Create an account to sync between devices, or open the planner and start now.
+          Open the planner and start now, no account needed. To sync or share later, create an
+          account from Settings → Account & sync.
         </p>
-        <Button size="lg" type="button" onClick={() => (window.location.href = "/auth/signup")}>
-          Signup Now
-        </Button>
-        <Button size="lg" variant="outline" nativeButton={false} render={<a href="/dashboard" />}>
+        <Button size="lg" nativeButton={false} render={<a href="/dashboard" />}>
           Open the planner
+        </Button>
+        <Button
+          size="lg"
+          variant="outline"
+          type="button"
+          onClick={() => (window.location.href = "/auth/signup")}
+        >
+          Signup Now
         </Button>
         <p className="mt-2 flex flex-wrap items-center gap-2 text-body text-muted-foreground">
           Already have an account?

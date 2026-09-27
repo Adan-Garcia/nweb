@@ -61,7 +61,7 @@ export function BackupCard({
           <BackupPassphraseField
             id="export-passphrase"
             label="Passphrase for this backup"
-            hint="The file is encrypted with AES-GCM under this passphrase. There is no account and no server, so nothing can reset it: forget the passphrase and the file is gone."
+            hint="The file is encrypted with AES-GCM under this passphrase. Nothing can reset it: forget the passphrase and the file cannot be opened."
             submitLabel="Download encrypted backup"
             isDisabled={isWorking}
             onSubmit={(passphrase) => {

@@ -76,8 +76,8 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
               />
               <FieldError errors={[errors.email]} />
               <FieldDescription>
-                We&apos;ll use this to contact you in case of any updates or important information
-                such as account recovery. We will not share your email with anyone else.
+                Your email is how you sign in on another device. It is not shared with anyone, and
+                it cannot recover a forgotten passphrase.
               </FieldDescription>
             </Field>
             <Field data-invalid={!!errors.password}>

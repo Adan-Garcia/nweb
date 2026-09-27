@@ -64,7 +64,7 @@ describe("OnboardingPage", () => {
     await user.click(screen.getByRole("button", { name: /Next/ }));
 
     const [done, current] = screen.getAllByRole("button", {
-      name: /Welcome to Cuervo Planner|Create Your First Wing/,
+      name: /Welcome to Cuervo Planner|Add Your Courses/,
     });
     expect(done.querySelector("svg")).not.toBeNull();
     expect(current).toHaveTextContent("2");

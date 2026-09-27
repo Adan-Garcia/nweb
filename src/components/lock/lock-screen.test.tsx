@@ -35,7 +35,7 @@ describe("LockScreen", () => {
     setup();
 
     expect(screen.getByRole("heading", { name: /locked/i })).toBeInTheDocument();
-    expect(screen.getByText(/nothing can reset this/i)).toBeVisible();
+    expect(screen.getByText(/nothing can reset it/i)).toBeVisible();
   });
 
   it("submits the passphrase, and will not submit an empty one", async () => {

@@ -13,16 +13,13 @@ export function PricingPage() {
         <div className="mb-10 max-w-3xl">
           <MarketingEyebrow icon={Sparkles}>Simple and transparent</MarketingEyebrow>
           <h1 className="mb-3 text-display">
-            Pricing that scales from solo study to team collaboration
+            Free during the beta, and free to self-host for good
           </h1>
           <p className="text-lg text-muted-foreground">
-            The current launch includes a free beta. Dependent on user feedback and demand, we may
-            introduce paid plans in the future to support the project and provide access to faster
-            servers and priority support, but the core planner and all features will remain free and
-            open source on GitHub. if the service becomes popular enough the paid plans will help
-            support the continuation of the free offering, but if not the product will continue to
-            be free and open source with no feature restrictions for self-hosting and local-first
-            use.
+            Every feature is free during the beta, which runs through 2027. Paid plans may follow if
+            there is demand for them. They would pay for hosting — faster servers, more storage,
+            quicker support — and never unlock a feature: the planner stays free and open source,
+            with nothing held back from self-hosting or local-only use.
           </p>
         </div>
 
@@ -37,19 +34,18 @@ export function PricingPage() {
           title="How your data is handled today"
           className="mt-10 text-left"
         >
-          Cuervo Planner currently runs entirely in your browser: there is no server, so nothing you
-          write is uploaded, and nothing is encrypted at rest. Encryption, sync, and shared
-          workspaces are on the roadmap, and the paid tiers below stay unavailable until they exist.
+          Without an account, Cuervo Planner runs entirely in your browser and uploads nothing. Set
+          a passphrase and it is encrypted on this device. Create an account and your notes are
+          encrypted before they are synced, so the server stores what it cannot read. The paid plans
+          are not available yet.
         </MarketingCallout>
         <MarketingCallout
           icon={ShieldCheck}
           title="Forever open source"
           className="mt-10 text-left"
         >
-          The core planner and all features will remain free and open source on GitHub, with paid
-          plans supporting the project and providing access to faster servers and priority support.
-          But the product will always support self-hosting and local-first use for students who
-          prefer to keep their data private with no feature restrictions.
+          The app and its sync server are MIT licensed on GitHub, and a Docker setup runs both. Host
+          your own and you get every feature, with your data on a machine you control.
         </MarketingCallout>
       </section>
     </MarketingPage>

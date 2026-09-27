@@ -16,51 +16,48 @@ type Benefit = {
   icon: LucideIcon;
   title: string;
   copy: string;
-  comingSoon?: boolean;
 };
 
 const BENEFITS: Benefit[] = [
   {
     icon: ShieldCheck,
     title: "Private by default",
-    copy: "Everything you write stays in your browser. There is no server to send it to.",
+    copy: "Without an account, everything you write stays in this browser and nothing is uploaded.",
   },
   {
     icon: Code,
     title: "Open Source",
-    copy: "MIT licensed and free to read, fork, or self-host.",
+    copy: "MIT licensed and free to read, fork, or self-host, server included.",
   },
   {
     icon: FileDown,
     title: "Free Beta",
-    copy: "Free beta access till 2027.",
+    copy: "Every feature is free during the beta, through 2027.",
   },
   {
     icon: Laptop,
-    title: "Works in any browser",
-    copy: "Open Cuervo Planner on any modern browser. Installing it as an app is on the way.",
+    title: "Install it like an app",
+    copy: "Runs in any modern browser, and installs to your home screen or dock from there.",
   },
   {
     icon: CloudOff,
     title: "Offline first",
-    copy: "Once the page has loaded, the planner keeps working with no connection.",
+    copy: "Once it has loaded, the planner keeps working with no connection, account or not.",
   },
   {
     icon: LockKeyhole,
     title: "Lock it on this device",
-    copy: "Set a passphrase and your notes, drawings and files are encrypted in this browser. Titles stay readable.",
+    copy: "Set a passphrase and your notes, drawings, files and their titles are encrypted in this browser. Due dates stay readable so reminders can work.",
   },
   {
     icon: RefreshCw,
-    title: "Fast syncing",
-    copy: "Keep the same notes and deadlines on every device you use.",
-    comingSoon: true,
+    title: "Sync across devices",
+    copy: "Create an optional account to keep notes and deadlines in step on every device. The server stores them encrypted and cannot read them.",
   },
   {
     icon: Users,
-    title: "Easy sharing",
-    copy: "Share your notes and homework with friends, family, or classmates.",
-    comingSoon: true,
+    title: "Share a course",
+    copy: "Give a classmate read or edit access to one course, unit or note, and nothing else.",
   },
 ];
 
@@ -69,11 +66,10 @@ export function LandingBenefits() {
     <BenefitCards
       label="Features and benefits of using Cuervo Planner"
       className="lg:grid-cols-3 xl:grid-cols-4"
-      benefits={BENEFITS.map(({ icon: Icon, title, copy, comingSoon }) => ({
+      benefits={BENEFITS.map(({ icon: Icon, title, copy }) => ({
         icon: <Icon className="size-4" />,
         title,
         copy,
-        comingSoon,
       }))}
     />
   );
