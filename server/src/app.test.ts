@@ -504,6 +504,16 @@ describe("rate limiting", () => {
   });
 });
 
+describe("every response", () => {
+  it("says it is not to be framed, sniffed or fetched over http", async () => {
+    const response = await post("/v1/auth/prelogin", { email: "nobody@example.com" });
+
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("x-frame-options")).toBe("DENY");
+    expect(response.headers.get("strict-transport-security")).toMatch(/max-age=/);
+  });
+});
+
 describe("requests too large to be real", () => {
   const sized = (path: string, bytes: number, method = "POST", token?: string) =>
     app.request(path, {

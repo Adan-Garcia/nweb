@@ -3,6 +3,7 @@ import { MEDIA_MAX_BYTES } from "@shared/sync-contract";
 import { Hono, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
+import { secureHeaders } from "hono/secure-headers";
 
 import { authRoutes } from "./auth-routes";
 import type { Sql } from "./db";
@@ -82,6 +83,9 @@ export function createApp({
   const app = new Hono();
 
   app.use("/v1/*", cors({ origin: allowedOrigins, credentials: false }));
+  // Nothing here is a page, so nothing may frame it or sniff a type into it: a file served
+  // back is opaque bytes, and must stay that way whatever it contains.
+  app.use("*", secureHeaders({ xFrameOptions: "DENY", crossOriginResourcePolicy: "cross-origin" }));
   app.use("/v1/*", limitBody);
 
   app.route("/", authRoutes(deps));
