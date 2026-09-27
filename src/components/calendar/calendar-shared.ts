@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { BranchColor } from "@/lib/hierarchy/entity-model";
 import { findBranch, type WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 import { type Twig, TWIG_KINDS, TWIG_STATUSES } from "@/lib/twigs/twig-model";
+import { TWIG_REPEATS } from "@/lib/twigs/twig-series";
 
 /** The dot beside a task takes its colour from the branch the task belongs to. */
 const BRANCH_COLOR_CLASSES: Record<BranchColor, string> = {
@@ -27,19 +28,36 @@ export const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export const statusOrder: Twig["status"][] = [...TWIG_STATUSES];
 
-export const twigFormSchema = z.object({
-  title: z.string().trim().min(1, "Title is required"),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD format")
-    .refine((value) => !Number.isNaN(new Date(`${value}T00:00:00`).getTime()), {
-      message: "Enter a valid date",
-    }),
-  time: z.string().trim().min(1, "Time is required"),
-  branchId: z.string().min(1, "Pick a branch"),
-  kind: z.enum(TWIG_KINDS),
-  status: z.enum(TWIG_STATUSES),
-});
+export const twigFormSchema = z
+  .object({
+    title: z.string().trim().min(1, "Title is required"),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD format")
+      .refine((value) => !Number.isNaN(new Date(`${value}T00:00:00`).getTime()), {
+        message: "Enter a valid date",
+      }),
+    time: z.string().trim().min(1, "Time is required"),
+    branchId: z.string().min(1, "Pick a branch"),
+    kind: z.enum(TWIG_KINDS),
+    status: z.enum(TWIG_STATUSES),
+    /** Only offered when adding: a new task may repeat, an existing one stays one task. */
+    repeat: z.enum(TWIG_REPEATS),
+    repeatUntil: z.string(),
+  })
+  .superRefine((values, context) => {
+    if (values.repeat === "none") {
+      return;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(values.repeatUntil) || values.repeatUntil <= values.date) {
+      context.addIssue({
+        code: "custom",
+        path: ["repeatUntil"],
+        message: "Pick the last date, after the first one",
+      });
+    }
+  });
 
 export type TwigFormValues = z.infer<typeof twigFormSchema>;
 

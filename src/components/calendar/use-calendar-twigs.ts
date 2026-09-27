@@ -5,7 +5,8 @@ import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
 import { isLockedError } from "@/lib/crypto/cipher";
 import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
 import type { Twig, TwigStatus } from "@/lib/twigs/twig-model";
-import { createTwig, listTwigs, softDeleteTwig, updateTwig } from "@/lib/twigs/twig-storage";
+import { createTwigSeries, softDeleteTwigSeries } from "@/lib/twigs/twig-series";
+import { listTwigs, softDeleteTwig, updateTwig } from "@/lib/twigs/twig-storage";
 
 /**
  * The tasks the calendar draws, and the operations on them. Twigs live in IndexedDB
@@ -81,7 +82,12 @@ export function useCalendarTwigs() {
       if (editingTwigId !== null) {
         await updateTwig(editingTwigId, changes);
       } else {
-        await createTwig({ ...changes, title: changes.title });
+        // A task that does not repeat is a series of one.
+        await createTwigSeries(
+          { ...changes, dueDate: values.date },
+          values.repeat,
+          values.repeatUntil,
+        );
       }
 
       await refreshTwigs();
@@ -101,11 +107,19 @@ export function useCalendarTwigs() {
 
   const deleteTwig = useCallback(
     async (twigToDelete: Twig) => {
-      if (!window.confirm(`Delete "${twigToDelete.title}"?`)) {
+      // A repeating task asks about the whole series first; declining that still offers to
+      // delete the one occurrence, which is the more common wish.
+      if (
+        twigToDelete.seriesId &&
+        window.confirm(`Delete every occurrence of "${twigToDelete.title}"?`)
+      ) {
+        await softDeleteTwigSeries(twigToDelete.seriesId);
+      } else if (window.confirm(`Delete "${twigToDelete.title}"?`)) {
+        await softDeleteTwig(twigToDelete.id);
+      } else {
         return;
       }
 
-      await softDeleteTwig(twigToDelete.id);
       await refreshTwigs();
     },
     [refreshTwigs],

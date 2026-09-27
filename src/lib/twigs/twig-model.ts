@@ -62,6 +62,11 @@ export const twigSchema = entityBaseSchema.extend({
    * stay the user's.
    */
   feedId: z.string().nullable().default(null),
+  /**
+   * Shared by every occurrence of a repeating task (`twig-series.ts`), or null for one that
+   * does not repeat. Each occurrence is a twig of its own; this is only what ties them.
+   */
+  seriesId: z.string().nullable().default(null),
 });
 
 export type Twig = z.infer<typeof twigSchema>;

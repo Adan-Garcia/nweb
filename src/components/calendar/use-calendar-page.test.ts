@@ -172,6 +172,8 @@ describe("useCalendarPage", () => {
       branchId: physicsId,
       kind: "project",
       status: "inprogress",
+      repeat: "none",
+      repeatUntil: "",
     });
   });
 
@@ -188,6 +190,8 @@ describe("useCalendarPage", () => {
         branchId: physicsId,
         kind: "essay",
         status: "incomplete",
+        repeat: "none",
+        repeatUntil: "",
       });
     });
 
@@ -246,6 +250,8 @@ describe("useCalendarPage", () => {
         branchId: existing.branchId,
         kind: existing.kind,
         status: existing.status,
+        repeat: "none",
+        repeatUntil: "",
       });
     });
 

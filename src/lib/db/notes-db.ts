@@ -80,8 +80,9 @@ const NOTES_DB_NAME = "cuervo-notes";
  *
  * 14 added `feeds`: the calendars this device subscribes to, their settings sealed as one
  * string (`lib/feeds/feed-storage.ts`), and gave a twig a `feedId` saying which feed made
- * it. Rewrites no rows: a twig without the field was typed in by hand, which is what every
- * twig written before this one was, and `listTwigs` reads the absence as null.
+ * it and a `seriesId` tying together the occurrences of a repeating task. Rewrites no rows:
+ * a twig without them was typed in by hand, once, which is what every twig written before
+ * this one was, and `listTwigs` reads the absence as null.
  */
 export const NOTES_DB_VERSION = 14;
 

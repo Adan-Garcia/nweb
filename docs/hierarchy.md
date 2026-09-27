@@ -56,6 +56,15 @@ What is deliberately left readable is when things happen: a twig's `dueDate`, `d
 `status`, and every timestamp. A server holding nothing but these rows can schedule a
 reminder and still not know what it is for.
 
+## Repeating tasks
+
+A task can repeat — every day, every weekday, every week or two, or every month — until a
+date its creator picks (`src/lib/twigs/twig-series.ts`). A series is written out as one twig
+per date, sharing a `seriesId`, rather than stored as a rule: each occurrence then has its
+own status, board position and reminder, and syncs, shares and backs up like any twig. A
+series is capped at about thirteen months and two hundred tasks. Deleting one occurrence
+offers to delete the whole series.
+
 ## Calendar feeds
 
 A twig can also come from a calendar someone subscribes to — a Brightspace, Canvas, Google

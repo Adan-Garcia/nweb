@@ -220,6 +220,7 @@ function buildTwigs({
     boardOrder: index * BOARD_ORDER_STEP,
     featherId: null,
     feedId: null,
+    seriesId: null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

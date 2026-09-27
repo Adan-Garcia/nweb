@@ -131,6 +131,7 @@ export async function applyFeedItems({
       boardOrder: nextOrder(status),
       featherId: null,
       feedId,
+      seriesId: null,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,

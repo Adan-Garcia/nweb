@@ -34,6 +34,8 @@ function Harness({
       branchId: "branch-1",
       kind: "homework",
       status: "incomplete",
+      repeat: "none",
+      repeatUntil: "",
       ...defaults,
     },
   });
@@ -94,6 +96,12 @@ describe("EventOverlay", () => {
       "Incomplete",
       "In Progress",
       "Complete",
+      "Does not repeat",
+      "Every day",
+      "Every weekday",
+      "Every week",
+      "Every 2 weeks",
+      "Every month",
     ]);
     expect(screen.getByLabelText("Date")).toHaveValue("2026-04-16");
     expect(screen.getByLabelText("Time")).toHaveValue("9:00 AM");
@@ -117,7 +125,38 @@ describe("EventOverlay", () => {
       branchId: "branch-2",
       kind: "exam",
       status: "inprogress",
+      repeat: "none",
+      repeatUntil: "",
     });
+  });
+
+  it("asks when a repeating task ends, and submits that", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = setup();
+
+    expect(screen.queryByLabelText("Repeats until")).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Title"), "Problem set");
+    await user.selectOptions(screen.getByLabelText("Repeats"), "weekly");
+    await user.click(screen.getByRole("button", { name: "Create event" }));
+    expect(await screen.findByText("Pick the last date, after the first one")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Repeats until"), "2026-05-14");
+    await user.click(screen.getByRole("button", { name: "Create event" }));
+
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({
+      repeat: "weekly",
+      repeatUntil: "2026-05-14",
+    });
+
+    await user.selectOptions(screen.getByLabelText("Repeats"), "none");
+    expect(screen.queryByLabelText("Repeats until")).not.toBeInTheDocument();
+  });
+
+  it("does not offer to repeat a task being edited", () => {
+    setup({ editingTwigId: "twig-1" });
+
+    expect(screen.queryByLabelText("Repeats")).not.toBeInTheDocument();
   });
 
   it("explains what is wrong and does not submit an invalid form", async () => {

@@ -98,6 +98,7 @@ const TWIG = {
   boardOrder: 0,
   featherId: null,
   feedId: null,
+  seriesId: null,
   ...STAMP,
 };
 

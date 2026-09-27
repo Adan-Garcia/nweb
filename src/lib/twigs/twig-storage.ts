@@ -22,6 +22,8 @@ export type TwigDraft = {
   status?: TwigStatus;
   nestIds?: string[];
   featherId?: string | null;
+  /** Set on each occurrence of a repeating task; see `twig-series.ts`. */
+  seriesId?: string | null;
 };
 
 /**
@@ -52,9 +54,11 @@ export async function listTwigs(): Promise<Twig[]> {
     "title",
   );
 
-  // A row from before feeds (version 14) has no `feedId`, which means typed in by hand.
+  // A row from before version 14 has no `feedId` or `seriesId`: typed in by hand, once.
   return live
-    .map((twig) => withParsedTime({ ...twig, feedId: twig.feedId ?? null }))
+    .map((twig) =>
+      withParsedTime({ ...twig, feedId: twig.feedId ?? null, seriesId: twig.seriesId ?? null }),
+    )
     .sort(compareTwigsByBoardOrder);
 }
 
@@ -103,6 +107,7 @@ export async function createTwig(draft: TwigDraft): Promise<Twig> {
     boardOrder: await nextBoardOrder(status),
     featherId: draft.featherId ?? null,
     feedId: null,
+    seriesId: draft.seriesId ?? null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
