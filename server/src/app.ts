@@ -6,6 +6,7 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 
 import { authRoutes } from "./auth-routes";
+import { clientIpFor } from "./client-ip";
 import type { Sql } from "./db";
 import { fail, type RouteDeps } from "./http";
 import { createLiveHub, type LiveHub } from "./live";
@@ -45,6 +46,12 @@ export type AppOptions = {
   limiter?: RateLimiter;
   /** Published at `/v1/push/key`. Null when this deployment sends no reminders. */
   vapidPublicKey?: string | null;
+  /** The header a proxy puts the caller's address in (`CLIENT_IP_HEADER`). */
+  clientIpHeader?: string | null;
+  /** Limits by caller address; one is made when none is passed. */
+  addressLimiter?: RateLimiter;
+  /** Who may register (`REGISTRATION_EMAILS`); absent or null is anyone. */
+  registrationEmails?: string[] | null;
   /** Who is connected for live nudges. One is made when none is passed. */
   live?: LiveHub;
   /**
@@ -70,7 +77,14 @@ export function createApp({
   vapidPublicKey,
   live,
   upgrade,
+  clientIpHeader = null,
+  addressLimiter,
+  registrationEmails = null,
 }: AppOptions) {
+  // Thirty a minute from one address, across every guess-taking route: generous for a
+  // household behind one router, useless for working through a list.
+  const addresses = addressLimiter ?? createRateLimiter({ limit: 30, windowMs: 60_000 });
+
   // Five attempts a minute per address. Enough that nobody notices a typo, far too few to
   // work through a list.
   const deps: RouteDeps = {
@@ -79,6 +93,12 @@ export function createApp({
     attempts: limiter ?? createRateLimiter({ limit: 5, windowMs: 60_000 }),
     vapidPublicKey: vapidPublicKey ?? null,
     live: live ?? createLiveHub(),
+    isAddressLimited: (context) => {
+      const address = clientIpFor(context, clientIpHeader);
+
+      return address !== null && addresses.isLimited(`address:${address}`);
+    },
+    registrationEmails,
   };
   const app = new Hono();
 

@@ -47,6 +47,8 @@ async function main(): Promise<void> {
     allowedOrigins: config.allowedOrigins,
     vapidPublicKey: config.vapid?.publicKey ?? null,
     upgrade: upgradeWebSocket,
+    clientIpHeader: config.clientIpHeader,
+    registrationEmails: config.registrationEmails,
   });
 
   // `noServer`: the adapter hands it upgrades from the HTTP server it already runs, so the

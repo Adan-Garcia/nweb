@@ -293,6 +293,30 @@ describe("changing a passphrase", () => {
   });
 });
 
+describe("a server that only takes the accounts it was told to", () => {
+  it("registers a listed address, whatever its case, and refuses any other", async () => {
+    app = createApp({
+      sql: database,
+      serverSecret: SERVER_SECRET,
+      allowedOrigins: [],
+      registrationEmails: ["student@example.com"],
+    });
+
+    expect(
+      (await post("/v1/auth/register", { ...ENROLMENT, email: "Student@Example.com" })).status,
+    ).toBe(201);
+
+    const refused = await post("/v1/auth/register", {
+      ...ENROLMENT,
+      email: "stranger@example.com",
+    });
+
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({ error: "registration_closed" });
+    expect((await database.query("select * from users")).rows).toHaveLength(1);
+  });
+});
+
 describe("what an account may be made with", () => {
   it("refuses key material another device would be weakened, or stalled, by", async () => {
     // Every device that signs in derives its proof with these, then sends the proof here.
@@ -465,6 +489,29 @@ describe("rate limiting", () => {
     expect(
       (await post("/v1/auth/register", { ...ENROLMENT, email: "Student@example.com" })).status,
     ).toBe(429);
+  });
+
+  it("stops one address working through many accounts, behind a tunnel", async () => {
+    app = createApp({
+      sql: database,
+      serverSecret: SERVER_SECRET,
+      allowedOrigins: [],
+      clientIpHeader: "cf-connecting-ip",
+      addressLimiter: createRateLimiter({ limit: 2, windowMs: 60_000 }),
+    });
+
+    const ask = (email: string, address: string) =>
+      app.request("/v1/auth/prelogin", {
+        method: "POST",
+        headers: { "content-type": "application/json", "cf-connecting-ip": address },
+        body: JSON.stringify({ email }),
+      });
+
+    expect((await ask("one@example.com", "203.0.113.7")).status).toBe(200);
+    expect((await ask("two@example.com", "203.0.113.7")).status).toBe(200);
+    expect((await ask("three@example.com", "203.0.113.7")).status).toBe(429);
+    // Somebody else, from somewhere else, is not held up by it.
+    expect((await ask("three@example.com", "198.51.100.4")).status).toBe(200);
   });
 
   it("stops a stolen session from guessing its way to a delete", async () => {

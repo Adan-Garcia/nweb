@@ -129,6 +129,7 @@ export const apiErrorSchema = z.object({
     "unauthorized",
     "too_large",
     "rate_limited",
+    "registration_closed",
   ]),
   message: z.string(),
 });

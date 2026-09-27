@@ -31,7 +31,14 @@ export type ConnectFailure =
   | "unreachable"
   | "no-workspace"
   /** It asked for key-derivation parameters too weak to send it a proof made with. */
-  | "untrusted-server";
+  | "untrusted-server"
+  /** It only takes accounts for addresses its owner listed, and this is not one. */
+  | "registration-closed";
+
+const REGISTER_REFUSALS: Partial<Record<string, ConnectFailure>> = {
+  email_taken: "email-taken",
+  registration_closed: "registration-closed",
+};
 
 export type ConnectOutcome = { ok: true } | { ok: false; reason: ConnectFailure };
 
@@ -68,7 +75,7 @@ export async function enrolServerAccount(options: {
       );
 
       if (!registered.ok) {
-        refusal = registered.error === "email_taken" ? "email-taken" : "unreachable";
+        refusal = REGISTER_REFUSALS[registered.error] ?? "unreachable";
         return false;
       }
 
