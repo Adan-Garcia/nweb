@@ -3,7 +3,7 @@ import { getSceneVersion } from "@excalidraw/excalidraw";
 import type { ExcalidrawInitialDataState } from "@excalidraw/excalidraw/types";
 
 import { defaultLinearContent } from "@/components/notes/constants";
-import { parseStoredScene, restoreSceneFiles } from "@/components/notes/excalidraw-adapter";
+import { parseStoredScene, restoreSceneFiles } from "@/components/notes/spatial/excalidraw-adapter";
 import type { NotesDocumentMode, NotesSpatialInitialData } from "@/components/notes/types";
 import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
 import { revokeObjectUrls } from "@/lib/media/blob-utils";

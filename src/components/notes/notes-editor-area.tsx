@@ -1,5 +1,5 @@
-import { LinearNotesEditor } from "@/components/notes/linear-notes-editor";
-import { SpatialNotesEditor } from "@/components/notes/spatial-notes-editor";
+import { LinearNotesEditor } from "@/components/notes/linear/linear-notes-editor";
+import { SpatialNotesEditor } from "@/components/notes/spatial/spatial-notes-editor";
 import type { useNotesWorkspace } from "@/components/notes/use-notes-workspace";
 
 type EditorWorkspace = Pick<

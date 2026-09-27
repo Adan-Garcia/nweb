@@ -4,7 +4,7 @@ import { AuthBrand } from "@/components/auth/auth-brand";
 import { OnboardingStepCard } from "@/components/onboarding/onboarding-step-card";
 import { OnboardingStepList } from "@/components/onboarding/onboarding-step-list";
 import { ONBOARDING_STEPS } from "@/components/onboarding/onboarding-steps";
-import { ThemeMenu } from "@/components/theme-menu";
+import { ThemeMenu } from "@/components/theme/theme-menu";
 
 export function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0);

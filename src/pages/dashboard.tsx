@@ -3,8 +3,8 @@ import { useState } from "react";
 import { dashboardGreeting } from "@/components/dashboard/dashboard-greeting";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { useDashboardData } from "@/components/dashboard/use-dashboard-data";
-import { PageContainer } from "@/components/page-container";
-import { PageHeader } from "@/components/page-header";
+import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/layout/page-header";
 import { useAppearance } from "@/hooks/use-appearance";
 import { cn } from "@/lib/utils";
 

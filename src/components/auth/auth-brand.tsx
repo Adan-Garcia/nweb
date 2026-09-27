@@ -1,4 +1,4 @@
-import { BrandIcon } from "@/components/brand-icon";
+import { BrandIcon } from "@/components/layout/brand-icon";
 
 /** The Cuervo Planner mark and name, linking to the auth start page. */
 export function AuthBrand() {

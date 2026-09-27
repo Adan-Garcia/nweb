@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { AuthBrand } from "@/components/auth/auth-brand";
-import { ThemeMenu } from "@/components/theme-menu";
+import { ThemeMenu } from "@/components/theme/theme-menu";
 
 type AuthLayoutProps = {
   /** The story: eyebrow, heading, copy. Beside the form on a wide screen, above it on a phone. */

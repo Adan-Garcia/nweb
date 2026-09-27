@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 
-import { ACCENT_LABELS } from "@/components/appearance-options";
+import { ACCENT_LABELS } from "@/components/theme/appearance-options";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { type Accent, ACCENTS } from "@/lib/preferences/preferences-model";
 

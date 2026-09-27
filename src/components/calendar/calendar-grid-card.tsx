@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { CalendarDayCell } from "@/components/calendar/calendar-day-cell";
 import { type DatedTwig, formatDateKey, weekDays } from "@/components/calendar/calendar-shared";
-import { SegmentedControl } from "@/components/segmented-control";
+import { SegmentedControl } from "@/components/layout/segmented-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";

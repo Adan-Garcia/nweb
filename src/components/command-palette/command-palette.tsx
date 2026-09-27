@@ -1,6 +1,7 @@
 import { FileText, Lock, Palette, Plus, Settings, SquareCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import { NAVIGATION_ITEMS } from "@/components/shell/workspace-nav";
 import {
   Command,
   CommandDialog,
@@ -11,7 +12,6 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { NAVIGATION_ITEMS } from "@/components/workspace-nav";
 import { useCommandPaletteStore } from "@/stores/use-command-palette-store";
 
 import { PaletteAppearanceGroup } from "./palette-appearance-group";

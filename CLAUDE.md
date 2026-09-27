@@ -210,7 +210,7 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 *   **Type scale.** Headings and body text use `text-display`, `text-title`, `text-heading`, `text-body` and `text-caption` (declared in `@theme`), not ad-hoc sizes. `cn()` is taught these names (`lib/utils.ts`), so they survive a merge with a text colour; a new size added to `@theme` is added there too. Base element rules live in `@layer base`, so utilities win without `!`.
 *   **Page layout.** Every workspace page is `PageContainer` + `PageHeader` (title, description, optional eyebrow and actions) and renders inside `WorkspaceLayout`, the layout route in `App.tsx` that keeps the shell mounted between pages. An empty list uses `EmptyState`; a small set of views uses `SegmentedControl`. Transient confirmations go through `lib/toast.ts`; anything someone must act on stays on the page.
 *   **The entry chunk stays lean.** The landing page is eager, so anything it renders is in the entry chunk. The theme menu and the marketing mobile menu load their dropdown on demand (a disabled look-alike button stands in until then), and the toaster, the sync client and the preferences' IndexedDB layer are dynamic imports. Check `npm run build`'s `index-*.js` size after touching `App`, the landing page or the stores.
-*   **Icons:** `lucide-react` for UI icons; brand marks go through `components/brand-icon.tsx`.
+*   **Icons:** `lucide-react` for UI icons; brand marks go through `components/layout/brand-icon.tsx`.
 *   **Forms:** React Hook Form + Zod + the `Field` primitives; do not hand-roll form state.
 *   **Dates:** use `date-fns`. Do not add a second date library.
 
@@ -224,7 +224,7 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 *   Playwright downloads its own browser to `~/.cache/ms-playwright` (`npx playwright install chromium`); the browser revision is tied to the `@playwright/test` version, so re-run that command after upgrading it.
 *   `ws` is there for the live channel's server side and nothing else: `@hono/node-server` does the WebSocket upgrade but needs a server implementation to hand it to. The browser uses its own `WebSocket`; tests replace the global with an inert one (`src/test/setup.ts`), so no test opens a real socket except `server/src/live.test.ts`, which does so on purpose.
 *   `hash-wasm` is there for Argon2id and nothing else: it carries its WASM inline, so unlike `brotli-wasm` it needs no Vite alias and no fetch at runtime.
-*   `cmdk` is there for the command palette (`components/ui/command.tsx`) and `sonner` for toasts (`components/toaster.tsx`, `lib/toast.ts`). Neither goes in the entry chunk.
+*   `cmdk` is there for the command palette (`components/ui/command.tsx`) and `sonner` for toasts (`components/shell/toaster.tsx`, `lib/toast.ts`). Neither goes in the entry chunk.
 *   Prefer what is already installed (`date-fns`, `zod`, `lucide-react`, `@dnd-kit`, `zustand`, `hash-wasm`, `cmdk`, `sonner`) over adding a new package. A new dependency needs a stated reason and explicit approval.
 *   Commit `package-lock.json` with `package.json`. Do not use `--force` or `--legacy-peer-deps`.
 

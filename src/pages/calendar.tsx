@@ -12,8 +12,8 @@ import { CalendarEventListCard } from "@/components/calendar/calendar-event-list
 import { CalendarGridCard } from "@/components/calendar/calendar-grid-card";
 import { EventOverlay } from "@/components/calendar/event-overlay";
 import { useCalendarPage } from "@/components/calendar/use-calendar-page";
-import { PageContainer } from "@/components/page-container";
-import { PageHeader } from "@/components/page-header";
+import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 
 export function CalendarPage() {

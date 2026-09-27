@@ -1,6 +1,6 @@
 import { Circle } from "lucide-react";
 
-import { ACCENT_LABELS, THEME_OPTIONS } from "@/components/appearance-options";
+import { ACCENT_LABELS, THEME_OPTIONS } from "@/components/theme/appearance-options";
 import { CommandGroup, CommandItem } from "@/components/ui/command";
 import { useAppearance } from "@/hooks/use-appearance";
 import { ACCENTS } from "@/lib/preferences/preferences-model";

@@ -1,7 +1,7 @@
 import { LockKeyhole, ShieldCheck } from "lucide-react";
 
-import { AuthShell } from "@/components/auth-shell";
-import { SignupForm } from "@/components/signup-form";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { SignupForm } from "@/components/auth/signup-form";
 
 export function SignupPage() {
   return (

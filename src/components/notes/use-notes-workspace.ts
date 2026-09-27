@@ -1,23 +1,23 @@
 import { useCallback, useState } from "react";
 
+import { useLinearAutosave } from "@/components/notes/linear/use-linear-autosave";
+import { useLinearNoteState } from "@/components/notes/linear/use-linear-note-state";
 import {
   EMPTY_SELECTION,
   selectionForEntry,
   type WorkspaceSelection,
-} from "@/components/notes/location-hierarchy";
+} from "@/components/notes/location/location-hierarchy";
+import type { NoteDraftPlacement } from "@/components/notes/location/use-notes-location-picker";
+import { useNotesImageIngest } from "@/components/notes/spatial/use-notes-image-ingest";
+import { useSpatialAutosave } from "@/components/notes/spatial/use-spatial-autosave";
 import type { NotesDirectoryEntry, NotesDocumentMode, NotesMode } from "@/components/notes/types";
 import { useDocumentSwitchQueue } from "@/components/notes/use-document-switch-queue";
-import { useLinearAutosave } from "@/components/notes/use-linear-autosave";
-import { useLinearNoteState } from "@/components/notes/use-linear-note-state";
 import { useLiveNoteRefresh } from "@/components/notes/use-live-note-refresh";
 import { useNotesBootstrap } from "@/components/notes/use-notes-bootstrap";
 import { useNotesDelete } from "@/components/notes/use-notes-delete";
 import { useNotesFlush } from "@/components/notes/use-notes-flush";
 import { useNotesHydration } from "@/components/notes/use-notes-hydration";
-import { useNotesImageIngest } from "@/components/notes/use-notes-image-ingest";
-import type { NoteDraftPlacement } from "@/components/notes/use-notes-location-picker";
 import { useNotesSession } from "@/components/notes/use-notes-session";
-import { useSpatialAutosave } from "@/components/notes/use-spatial-autosave";
 import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
 import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
 import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";

@@ -1,9 +1,9 @@
 import { lazy, Suspense } from "react";
 import { Menu } from "lucide-react";
 
-import { BrandIcon } from "@/components/brand-icon";
+import { BrandIcon } from "@/components/layout/brand-icon";
 import { MARKETING_LINKS } from "@/components/marketing/marketing-nav";
-import { ThemeMenu } from "@/components/theme-menu";
+import { ThemeMenu } from "@/components/theme/theme-menu";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

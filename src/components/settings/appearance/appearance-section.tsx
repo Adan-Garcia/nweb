@@ -1,18 +1,18 @@
 import { Eye, EyeOff } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { AccentPicker } from "@/components/settings/appearance/accent-picker";
+import { ChoiceGroup } from "@/components/settings/appearance/choice-group";
+import { OrderList } from "@/components/settings/appearance/order-list";
+import { orderNavItems } from "@/components/shell/workspace-nav";
 import {
   DASHBOARD_CARD_LABELS,
   DENSITY_LABELS,
   FONT_SIZE_LABELS,
   SIDEBAR_LABELS,
   THEME_OPTIONS,
-} from "@/components/appearance-options";
-import { AccentPicker } from "@/components/settings/appearance/accent-picker";
-import { ChoiceGroup } from "@/components/settings/appearance/choice-group";
-import { OrderList } from "@/components/settings/appearance/order-list";
+} from "@/components/theme/appearance-options";
 import { Button } from "@/components/ui/button";
-import { orderNavItems } from "@/components/workspace-nav";
 import { useAppearance } from "@/hooks/use-appearance";
 import { DENSITIES, FONT_SIZES, SIDEBAR_MODES } from "@/lib/preferences/preferences-model";
 

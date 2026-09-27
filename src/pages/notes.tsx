@@ -1,14 +1,14 @@
+import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/layout/page-header";
+import { NotesLocationBar } from "@/components/notes/location/notes-location-bar";
+import { useNotesLocationPicker } from "@/components/notes/location/use-notes-location-picker";
+import { useNotesNavigation } from "@/components/notes/location/use-notes-navigation";
 import { getAutoSaveLabel } from "@/components/notes/notes-autosave-label";
 import { NotesEditorArea } from "@/components/notes/notes-editor-area";
-import { NotesFileViewer } from "@/components/notes/notes-file-viewer";
-import { NotesLocationBar } from "@/components/notes/notes-location-bar";
+import { NotesFileViewer } from "@/components/notes/tree/notes-file-viewer";
 import { useNoteAccess } from "@/components/notes/use-note-access";
 import { useNoteDeepLink } from "@/components/notes/use-note-deep-link";
-import { useNotesLocationPicker } from "@/components/notes/use-notes-location-picker";
-import { useNotesNavigation } from "@/components/notes/use-notes-navigation";
 import { useNotesWorkspace } from "@/components/notes/use-notes-workspace";
-import { PageContainer } from "@/components/page-container";
-import { PageHeader } from "@/components/page-header";
 import { useAppearance } from "@/hooks/use-appearance";
 import { cn } from "@/lib/utils";
 

@@ -1,7 +1,7 @@
 import { type ComponentType, lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-import { RouteFallback } from "@/components/route-fallback";
+import { RouteFallback } from "@/components/layout/route-fallback";
 import { useApplyAppearance } from "@/hooks/use-apply-appearance";
 import { type RouteLoader, warmRoutes } from "@/lib/route-warmup";
 import { IndexPage } from "@/pages/index";
@@ -44,11 +44,15 @@ const CalendarPage = lazyPage(() => import("@/pages/calendar"), "CalendarPage", 
 const BoardPage = lazyPage(() => import("@/pages/board"), "BoardPage", { isWorkspace: true });
 const NotesPage = lazyPage(() => import("@/pages/notes"), "NotesPage", { isWorkspace: true });
 // Toasts only ever follow something someone did, so the toaster can arrive after the page.
-const Toaster = lazyPage(() => import("@/components/toaster"), "Toaster");
+const Toaster = lazyPage(() => import("@/components/shell/toaster"), "Toaster");
 // The shell every workspace page renders inside; see `workspace-layout.tsx`.
-const WorkspaceLayout = lazyPage(() => import("@/components/workspace-layout"), "WorkspaceLayout", {
-  isWorkspace: true,
-});
+const WorkspaceLayout = lazyPage(
+  () => import("@/components/shell/workspace-layout"),
+  "WorkspaceLayout",
+  {
+    isWorkspace: true,
+  },
+);
 const SettingsPage = lazyPage(() => import("@/pages/settings"), "SettingsPage", {
   isWorkspace: true,
 });

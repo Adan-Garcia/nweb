@@ -4,7 +4,7 @@ import { CalendarEventFilters } from "@/components/calendar/calendar-event-filte
 import { CalendarEventListItem } from "@/components/calendar/calendar-event-list-item";
 import { type DatedTwig, formatHumanDate } from "@/components/calendar/calendar-shared";
 import type { CalendarViewMode, EventTab } from "@/components/calendar/calendar-views";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyState } from "@/components/layout/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 import type { TwigStatus } from "@/lib/twigs/twig-model";

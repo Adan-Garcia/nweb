@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Toaster } from "@/components/toaster";
+import { Toaster } from "@/components/shell/toaster";
 import { resetActiveCipher } from "@/lib/crypto/cipher";
 import { getNotesDb } from "@/lib/db/notes-db";
 import { unlockWorkspace } from "@/lib/lock/workspace-lock";

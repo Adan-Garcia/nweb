@@ -13,8 +13,8 @@ import { BoardColumn } from "@/components/board/board-column";
 import { useBoard } from "@/components/board/use-board";
 import { useBoardDeepLink } from "@/components/board/use-board-deep-link";
 import { EventOverlay } from "@/components/calendar/event-overlay";
-import { PageContainer } from "@/components/page-container";
-import { PageHeader } from "@/components/page-header";
+import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 
 export function BoardPage() {
