@@ -170,6 +170,20 @@ describe("sweepReminders", () => {
     ]);
   });
 
+  it("never delivers to an endpoint stored before endpoints were checked, and drops it", async () => {
+    await subscribe("https://push.example/phone");
+    await database.query(
+      `insert into push_subscriptions (user_id, endpoint, p256dh, auth)
+       select user_id, 'http://169.254.169.254/latest', p256dh, auth from push_subscriptions`,
+    );
+    await seedTask("twig-1");
+    const { sent, deliver } = collect();
+
+    expect(await sweepReminders(database, deliver, DUE_AT)).toEqual({ sent: 1, dropped: 1 });
+    expect(sent.map((item) => item.endpoint)).toEqual(["https://push.example/phone"]);
+    expect((await database.query("select * from push_subscriptions")).rows).toHaveLength(1);
+  });
+
   it("says nothing twice about the same moment", async () => {
     await subscribe();
     await seedTask("twig-1");
@@ -240,6 +254,34 @@ describe("the subscription routes", () => {
     await subscribe();
 
     expect((await database.query("select * from push_subscriptions")).rows).toHaveLength(1);
+  });
+
+  it("refuse an endpoint that is not a public push service", async () => {
+    // The sweep POSTs to whatever is stored here, from inside the server's network. An
+    // address that points back into it would make every reminder a request forged for
+    // somebody else.
+    for (const endpoint of [
+      "http://push.example/abc",
+      "https://169.254.169.254/latest/meta-data",
+      "https://10.0.0.5/push",
+      "https://[::1]/push",
+      "https://localhost/push",
+      "https://db.internal/push",
+      "https://printer.local/push",
+      "https://intranet/push",
+      "https://user:pass@push.example/abc",
+      `https://push.example/${"a".repeat(3000)}`,
+    ]) {
+      const response = await app.request("/v1/push/subscribe", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        body: JSON.stringify({ endpoint, keys: { p256dh: "p", auth: "a" } }),
+      });
+
+      expect({ endpoint, status: response.status }).toEqual({ endpoint, status: 400 });
+    }
+
+    expect((await database.query("select * from push_subscriptions")).rows).toHaveLength(0);
   });
 
   it("refuse what is not a subscription, and anyone without a session", async () => {
