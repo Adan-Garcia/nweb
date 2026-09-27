@@ -47,3 +47,40 @@ export const ARGON2ID_DEFAULTS = {
   iterations: 3,
   parallelism: 1,
 } as const;
+
+/**
+ * The costs an account's key material may be derived at, both ways.
+ *
+ * The floor is the point. A device signing in derives its proof with whatever parameters
+ * the server hands back, and then sends that proof to the server. A server that answered
+ * with one PBKDF2 iteration would get back something it could brute-force the passphrase
+ * from in an afternoon — and the passphrase also opens the device. Every real account was
+ * made with `ARGON2ID_DEFAULTS`, so a floor below them refuses no honest server. The floor
+ * is OWASP's minimum for Argon2id, low enough that tuning the defaults will not trip it.
+ *
+ * The ceiling stops the opposite: parameters that would take a browser tab down.
+ */
+export const ACCOUNT_KDF_BOUNDS = {
+  argon2id: {
+    memorySize: { min: 19_456, max: 1_048_576 },
+    iterations: { min: 2, max: 10 },
+    parallelism: { min: 1, max: 16 },
+  },
+  pbkdf2: { iterations: { min: 600_000, max: 10_000_000 } },
+  saltMaxLength: 128,
+} as const;
+
+const { argon2id: ARGON2, pbkdf2: PBKDF2 } = ACCOUNT_KDF_BOUNDS;
+
+export const accountKdfSchema = z.discriminatedUnion("name", [
+  pbkdf2ParamsSchema.extend({
+    iterations: z.number().int().min(PBKDF2.iterations.min).max(PBKDF2.iterations.max),
+    salt: z.string().min(1).max(ACCOUNT_KDF_BOUNDS.saltMaxLength),
+  }),
+  argon2idParamsSchema.extend({
+    memorySize: z.number().int().min(ARGON2.memorySize.min).max(ARGON2.memorySize.max),
+    iterations: z.number().int().min(ARGON2.iterations.min).max(ARGON2.iterations.max),
+    parallelism: z.number().int().min(ARGON2.parallelism.min).max(ARGON2.parallelism.max),
+    salt: z.string().min(1).max(ACCOUNT_KDF_BOUNDS.saltMaxLength),
+  }),
+]);

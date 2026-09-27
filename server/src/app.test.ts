@@ -293,6 +293,49 @@ describe("changing a passphrase", () => {
   });
 });
 
+describe("what an account may be made with", () => {
+  it("refuses key material another device would be weakened, or stalled, by", async () => {
+    // Every device that signs in derives its proof with these, then sends the proof here.
+    // Parameters this cheap would make that proof a quick route back to the passphrase.
+    for (const kdf of [
+      { ...ENROLMENT.kdf, memorySize: 8 },
+      { ...ENROLMENT.kdf, iterations: 1 },
+      { ...ENROLMENT.kdf, memorySize: 4_194_304 },
+      { name: "PBKDF2", hash: "SHA-256", iterations: 1, salt: "c2FsdA" },
+    ]) {
+      const response = await post("/v1/auth/register", { ...ENROLMENT, kdf });
+
+      expect({ kdf, status: response.status }).toEqual({ kdf, status: 400 });
+    }
+  });
+
+  it("refuses a field far larger than any real one", async () => {
+    const response = await post("/v1/auth/register", {
+      ...ENROLMENT,
+      authKey: "a".repeat(100_000),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("refuses a weakened passphrase change", async () => {
+    const { token } = await registerAndSignIn();
+
+    const response = await post(
+      "/v1/auth/passphrase",
+      {
+        currentAuthKey: ENROLMENT.authKey,
+        nextAuthKey: "bmV4dC1hdXRoLWtleQ",
+        kdf: { ...ENROLMENT.kdf, memorySize: 8, iterations: 1 },
+        sealedAccountKey: ENROLMENT.sealedAccountKey,
+      },
+      token,
+    );
+
+    expect(response.status).toBe(400);
+  });
+});
+
 describe("deleting an account", () => {
   const remove = (body: unknown, token?: string) =>
     app.request("/v1/auth/account", {

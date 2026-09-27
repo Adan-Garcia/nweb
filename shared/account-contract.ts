@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { kdfParamsSchema } from "./kdf-params";
+import { accountKdfSchema, kdfParamsSchema } from "./kdf-params";
 
 /**
  * What an account looks like on the wire.
@@ -13,10 +13,15 @@ import { kdfParamsSchema } from "./kdf-params";
  * The server's job with all of it is to hand the same bytes back to a device that proves
  * it knows the passphrase. It cannot open them, and does not need to.
  */
-const base64 = z.string().min(1);
+/**
+ * Capped as well as required. Nothing here is large — a proof is 44 characters, a sealed
+ * RSA key under two thousand — and an uncapped field is an invitation to make the server
+ * Argon2-hash, or store, a megabyte on every request.
+ */
+const base64 = z.string().min(1).max(4096);
 
 /** Base64, and long enough that a truncated one is rejected rather than stored. */
-const sealed = z.string().min(16);
+const sealed = z.string().min(16).max(8192);
 
 export const AUTH_KEY_BYTES = 32;
 
@@ -29,7 +34,7 @@ export const registerRequestSchema = z.object({
    */
   authKey: base64,
   /** So a second device can derive the same thing from the same passphrase. */
-  kdf: kdfParamsSchema,
+  kdf: accountKdfSchema,
   /** The account key, sealed under a key derived beside `authKey` and never sent. */
   sealedAccountKey: sealed,
   /** This user's public key, which is how anyone shares anything with them. */
@@ -99,7 +104,7 @@ export type SessionResponse = z.infer<typeof sessionResponseSchema>;
 export const changePassphraseRequestSchema = z.object({
   currentAuthKey: base64,
   nextAuthKey: base64,
-  kdf: kdfParamsSchema,
+  kdf: accountKdfSchema,
   sealedAccountKey: sealed,
 });
 

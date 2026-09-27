@@ -44,6 +44,8 @@ const SIGNIN_ERRORS: Record<ConnectFailure, string> = {
   "email-taken": "That address already has an account on this server.",
   unreachable: "The server could not be reached. Nothing on this device was changed.",
   "no-workspace": "That account has no workspace on this server yet.",
+  "untrusted-server":
+    "That server asked for weaker protection than this app allows, so your passphrase was not used with it. Check the address.",
 };
 
 async function readSigninDevice(): Promise<SigninDevice> {

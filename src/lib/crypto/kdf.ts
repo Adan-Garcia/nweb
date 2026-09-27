@@ -1,4 +1,4 @@
-import { ARGON2ID_DEFAULTS, type KdfParams } from "@shared/kdf-params";
+import { accountKdfSchema, ARGON2ID_DEFAULTS, type KdfParams } from "@shared/kdf-params";
 import { argon2id } from "hash-wasm";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
@@ -11,6 +11,37 @@ import { base64ToBytes, bytesToBase64 } from "./base64";
 
 const SALT_BYTES = 16;
 const KEY_BITS = 256;
+
+/** Thrown instead of deriving from parameters a server should never have handed over. */
+export class UntrustedKdfError extends Error {
+  constructor() {
+    super("The server asked for key-derivation parameters outside what this app accepts.");
+    this.name = "UntrustedKdfError";
+  }
+}
+
+/**
+ * Refuses parameters an account's key material may not be derived with.
+ *
+ * Signing in derives a proof from parameters the server supplies and then sends the proof
+ * to that server. A server — malicious, or one somebody is sitting in front of — that
+ * answered with a trivial cost or a salt it reuses would get back a proof it could turn
+ * into the passphrase offline, and the passphrase also opens this device. So the bounds
+ * are checked here, before anything is derived, and not trusted to the server.
+ */
+export function assertAccountKdf(params: KdfParams): void {
+  let saltBytes = 0;
+
+  try {
+    saltBytes = base64ToBytes(params.salt).byteLength;
+  } catch {
+    // Not base64 at all: counted as no salt.
+  }
+
+  if (!accountKdfSchema.safeParse(params).success || saltBytes < SALT_BYTES) {
+    throw new UntrustedKdfError();
+  }
+}
 
 /** What new key material is derived with. Old material keeps whatever it recorded. */
 export function createKdfParams(

@@ -3,6 +3,7 @@ import type { SessionResponse } from "@shared/account-contract";
 import { fetchKeyGraph, openSession, prelogin, putKeys, registerAccount } from "../api/account-api";
 import { setApiSession } from "../api/session-store";
 import { createAesGcmCipher, getActiveCipher, setActiveCipher } from "../crypto/cipher";
+import { UntrustedKdfError } from "../crypto/kdf";
 import { openKeyGraph } from "../keys/key-graph";
 import { rotateRowsToKey } from "../keys/rotate-rows";
 import { lockCipherFor, resetLockRecord } from "../lock/lock-record";
@@ -28,7 +29,9 @@ export type ConnectFailure =
   | "wrong-credentials"
   | "email-taken"
   | "unreachable"
-  | "no-workspace";
+  | "no-workspace"
+  /** It asked for key-derivation parameters too weak to send it a proof made with. */
+  | "untrusted-server";
 
 export type ConnectOutcome = { ok: true } | { ok: false; reason: ConnectFailure };
 
@@ -124,7 +127,19 @@ async function signInSession(
     return "unreachable";
   }
 
-  const authKey = await deriveAuthKey(passphrase, parameters.value.kdf);
+  let authKey: string;
+
+  try {
+    authKey = await deriveAuthKey(passphrase, parameters.value.kdf);
+  } catch (error) {
+    // Nothing was sent: the proof is never made from parameters like these.
+    if (error instanceof UntrustedKdfError) {
+      return "untrusted-server";
+    }
+
+    throw error;
+  }
+
   const session = await openSession({ baseUrl }, email, authKey);
 
   if (!session.ok) {
