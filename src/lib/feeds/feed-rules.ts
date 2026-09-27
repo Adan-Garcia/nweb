@@ -1,6 +1,6 @@
 import type { TwigKind } from "../twigs/twig-model";
 import type { FeedRule, FeedRuleField, FeedSettings } from "./feed-model";
-import type { Occurrence } from "./ics-recurrence";
+import type { Occurrence } from "./ics-occurrences";
 import { toDueAt } from "./ics-time";
 
 /**

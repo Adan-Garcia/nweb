@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { FeedRule } from "./feed-model";
 import { applyFeedRules, expandTemplate, patternError, UNTITLED_EVENT } from "./feed-rules";
+import type { Occurrence } from "./ics-occurrences";
 import type { IcsEvent } from "./ics-parse";
-import type { Occurrence } from "./ics-recurrence";
 
 const ZONE = "America/New_York";
 

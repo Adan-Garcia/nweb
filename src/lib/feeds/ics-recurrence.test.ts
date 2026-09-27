@@ -1,26 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { IcsEvent } from "./ics-parse";
-import { expandEvents, MAX_OCCURRENCES, occurrenceDates, parseRule } from "./ics-recurrence";
+import { MAX_OCCURRENCES, occurrenceDates, parseRule } from "./ics-recurrence";
 
 const HORIZON = "2030-01-01";
-
-function makeEvent(overrides: Partial<IcsEvent> = {}): IcsEvent {
-  return {
-    uid: "series",
-    summary: "Lecture",
-    description: "",
-    location: "",
-    categories: [],
-    start: { kind: "zoned", date: "2021-02-09", minutes: 745, timeZone: "America/New_York" },
-    end: { kind: "zoned", date: "2021-02-09", minutes: 835, timeZone: "America/New_York" },
-    rrule: null,
-    exdates: [],
-    recurrenceId: null,
-    cancelled: false,
-    ...overrides,
-  };
-}
 
 describe("parseRule", () => {
   it("reads the parts it knows and falls back on the rest", () => {
@@ -59,6 +41,34 @@ describe("occurrenceDates", () => {
       "2026-10-05",
       "2026-10-07",
     ]);
+  });
+
+  it("reads UNTIL on the event's own clock, not as a bare UTC date", () => {
+    const newYork = { startMinutes: 9 * 60, timeZone: "America/New_York" };
+
+    // Google's "ends at local midnight on Oct 1": 03:59:59 UTC on Oct 2 is still Oct 1 here.
+    expect(
+      occurrenceDates("2026-09-29", "FREQ=DAILY;UNTIL=20261002T035959Z", HORIZON, newYork),
+    ).toEqual(["2026-09-29", "2026-09-30", "2026-10-01"]);
+    // An end earlier in the day than the event leaves that last day out.
+    expect(
+      occurrenceDates("2026-09-29", "FREQ=DAILY;UNTIL=20261001T120000Z", HORIZON, newYork),
+    ).toEqual(["2026-09-29", "2026-09-30"]);
+  });
+
+  it("compares a UTC start with UTC, and a date start by date alone", () => {
+    expect(
+      occurrenceDates("2026-09-29", "FREQ=DAILY;UNTIL=20261001T080000Z", HORIZON, {
+        startMinutes: 9 * 60,
+        timeZone: "UTC",
+      }),
+    ).toEqual(["2026-09-29", "2026-09-30"]);
+    expect(occurrenceDates("2026-09-29", "FREQ=DAILY;UNTIL=20261001T000000Z", HORIZON)).toEqual([
+      "2026-09-29",
+      "2026-09-30",
+      "2026-10-01",
+    ]);
+    expect(occurrenceDates("2026-09-29", "FREQ=DAILY;UNTIL=20261001", HORIZON)).toHaveLength(3);
   });
 
   it("uses the start's own weekday when none is given, and honours an interval", () => {
@@ -134,71 +144,5 @@ describe("occurrenceDates", () => {
   it("gives just the start for a rule it cannot read, and stops at the cap", () => {
     expect(occurrenceDates("2026-01-01", "FREQ=SECONDLY", HORIZON)).toEqual(["2026-01-01"]);
     expect(occurrenceDates("2000-01-01", "FREQ=DAILY", "2099-01-01")).toHaveLength(MAX_OCCURRENCES);
-  });
-});
-
-describe("expandEvents", () => {
-  it("gives a one-off event one occurrence, keyed by its UID, and drops a cancelled one", () => {
-    const event = makeEvent();
-
-    expect(expandEvents([event, makeEvent({ uid: "gone", cancelled: true })], HORIZON)).toEqual([
-      { key: "series", event, start: event.start, end: event.end },
-    ]);
-  });
-
-  it("expands a series, skipping EXDATEs and putting overrides in place", () => {
-    const series = makeEvent({
-      rrule: "FREQ=WEEKLY;COUNT=4",
-      exdates: ["2021-02-16"],
-    });
-    const moved = makeEvent({
-      summary: "Moved lecture",
-      recurrenceId: "2021-02-23",
-      start: { kind: "zoned", date: "2021-02-24", minutes: 600, timeZone: "America/New_York" },
-      end: null,
-    });
-    const cancelled = makeEvent({ recurrenceId: "2021-03-02", cancelled: true });
-
-    const occurrences = expandEvents([series, moved, cancelled], HORIZON);
-
-    expect(occurrences.map((occurrence) => occurrence.key)).toEqual([
-      "series#2021-02-09",
-      "series#2021-02-23",
-    ]);
-    expect(occurrences[1]).toMatchObject({ event: moved, start: moved.start, end: null });
-  });
-
-  it("shifts a series' end with its start, and keeps a missing end missing", () => {
-    const [, second] = expandEvents(
-      [
-        makeEvent({ rrule: "FREQ=DAILY;COUNT=2" }),
-        makeEvent({ uid: "open", rrule: "FREQ=DAILY;COUNT=2", end: null }),
-      ],
-      HORIZON,
-    );
-
-    expect(second.start.date).toBe("2021-02-10");
-    expect(second.end?.date).toBe("2021-02-10");
-    expect(
-      expandEvents([makeEvent({ uid: "open", rrule: "FREQ=DAILY;COUNT=2", end: null })], HORIZON)[1]
-        .end,
-    ).toBeNull();
-  });
-
-  it("keeps an override whose series is not in the file, unless it was cancelled", () => {
-    const orphan = makeEvent({ uid: "orphan", recurrenceId: "2021-02-09" });
-
-    expect(
-      expandEvents(
-        [orphan, makeEvent({ uid: "x", recurrenceId: "2021-02-09", cancelled: true })],
-        HORIZON,
-      ),
-    ).toEqual([{ key: "orphan#2021-02-09", event: orphan, start: orphan.start, end: orphan.end }]);
-  });
-
-  it("drops a cancelled series outright", () => {
-    expect(expandEvents([makeEvent({ rrule: "FREQ=DAILY", cancelled: true })], HORIZON)).toEqual(
-      [],
-    );
   });
 });

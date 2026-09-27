@@ -1,27 +1,19 @@
-import type { IcsEvent, IcsTime } from "./ics-parse";
+import type { IcsTime } from "./ics-parse";
 import { parseIcsTime } from "./ics-parse";
-import { addDays, daysBetween, weekdayOf } from "./ics-time";
+import { addDays, utcToZone, weekdayOf } from "./ics-time";
 
 /**
  * Repeating events, expanded into the dates they fall on.
  *
  * Covers what school calendars write — a weekly lecture on some weekdays, a monthly
  * meeting, a daily reminder — with `INTERVAL`, `COUNT`, `UNTIL`, `BYDAY`, `BYMONTHDAY`,
- * `BYMONTH`, `EXDATE` and single-occurrence overrides (`RECURRENCE-ID`). A rule part this
+ * and `BYMONTH`; `ics-occurrences.ts` applies `EXDATE` and overrides. A rule part this
  * does not know is ignored rather than refused, so an unusual rule still yields its first
  * date and its obvious cadence instead of nothing.
  *
  * Dates are expanded on the event's own calendar, and every occurrence keeps its start's
  * wall clock: a lecture at 12:25 stays at 12:25 either side of a clock change.
  */
-export type Occurrence = {
-  /** Stable across refreshes: the UID, plus the date for one occurrence of a series. */
-  key: string;
-  event: IcsEvent;
-  start: IcsTime;
-  end: IcsTime | null;
-};
-
 /** Enough for a four-year degree of weekly lectures; a rule asking for more is broken. */
 export const MAX_OCCURRENCES = 1000;
 const MAX_STEPS = 20_000;
@@ -34,7 +26,7 @@ type Rule = {
   freq: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
   interval: number;
   count: number | null;
-  until: string | null;
+  until: IcsTime | null;
   byDay: ByDay[];
   byMonthDay: number[];
   byMonth: number[];
@@ -84,7 +76,7 @@ export function parseRule(text: string): Rule | null {
     freq,
     interval: Number.isInteger(interval) && interval > 0 ? interval : 1,
     count: count !== null && Number.isInteger(count) && count > 0 ? count : null,
-    until: untilText ? (parseIcsTime(untilText)?.date ?? null) : null,
+    until: untilText ? parseIcsTime(untilText) : null,
     byDay: parseByDay(parts.get("BYDAY") ?? ""),
     byMonthDay: parseNumbers(parts.get("BYMONTHDAY") ?? ""),
     byMonth: parseNumbers(parts.get("BYMONTH") ?? "").filter((month) => month > 0 && month <= 12),
@@ -171,17 +163,49 @@ function periodDates(rule: Rule, start: string, step: number): string[] {
 }
 
 /**
+ * The last date `UNTIL` allows, read in the start's own frame. `UNTIL` is usually a UTC
+ * instant — Google writes "ends at local midnight" as `…T045959Z` — so cutting it to its
+ * UTC date would let a New York event have one more day than the calendar does. It is
+ * moved onto the start's clock, and a date whose occurrence would start after it is out.
+ */
+function lastDateUntil(until: IcsTime, frame: RuleFrame): string {
+  if (until.kind === "date") {
+    return until.date;
+  }
+
+  const clock =
+    until.kind === "utc" && frame.timeZone !== "UTC"
+      ? utcToZone(until.date, until.minutes, frame.timeZone)
+      : until;
+
+  return frame.startMinutes === null || clock.minutes >= frame.startMinutes
+    ? clock.date
+    : addDays(clock.date, -1);
+}
+
+/** Where a rule's start sits: its minutes (null for a date) and the zone of its clock. */
+export type RuleFrame = { startMinutes: number | null; timeZone: string };
+
+export const DATE_FRAME: RuleFrame = { startMinutes: null, timeZone: "UTC" };
+
+/**
  * Every date a rule falls on, from its start up to `horizon` (inclusive). The start itself
  * is always the first occurrence, as RFC 5545 says it is.
  */
-export function occurrenceDates(start: string, ruleText: string, horizon: string): string[] {
+export function occurrenceDates(
+  start: string,
+  ruleText: string,
+  horizon: string,
+  frame: RuleFrame = DATE_FRAME,
+): string[] {
   const rule = parseRule(ruleText);
 
   if (!rule) {
     return [start];
   }
 
-  const last = rule.until && rule.until < horizon ? rule.until : horizon;
+  const until = rule.until ? lastDateUntil(rule.until, frame) : null;
+  const last = until && until < horizon ? until : horizon;
   const dates = [start];
 
   for (let step = 0; step < MAX_STEPS && dates.length < MAX_OCCURRENCES; step += 1) {
@@ -196,75 +220,4 @@ export function occurrenceDates(start: string, ruleText: string, horizon: string
   }
 
   return dates.slice(0, rule.count ?? MAX_OCCURRENCES);
-}
-
-function shift(time: IcsTime, days: number): IcsTime {
-  return { ...time, date: addDays(time.date, days) };
-}
-
-/**
- * One occurrence per date each event falls on, overrides in place of the dates they
- * replace, cancelled occurrences left out.
- */
-export function expandEvents(events: IcsEvent[], horizon: string): Occurrence[] {
-  const overrides = new Map(
-    events
-      .filter((event) => event.recurrenceId !== null)
-      .map((event) => [`${event.uid}#${event.recurrenceId}`, event]),
-  );
-  const masters = new Set(events.filter((event) => event.rrule).map((event) => event.uid));
-  const occurrences: Occurrence[] = [];
-
-  for (const event of events) {
-    if (event.recurrenceId !== null) {
-      // An override of a series this file does not have stands on its own.
-      if (!masters.has(event.uid) && !event.cancelled) {
-        occurrences.push({
-          key: `${event.uid}#${event.recurrenceId}`,
-          event,
-          start: event.start,
-          end: event.end,
-        });
-      }
-
-      continue;
-    }
-
-    if (!event.rrule) {
-      if (!event.cancelled) {
-        occurrences.push({ key: event.uid, event, start: event.start, end: event.end });
-      }
-
-      continue;
-    }
-
-    if (event.cancelled) {
-      continue;
-    }
-
-    for (const date of occurrenceDates(event.start.date, event.rrule, horizon)) {
-      const key = `${event.uid}#${date}`;
-      const override = overrides.get(key);
-
-      if (event.exdates.includes(date) || override?.cancelled) {
-        continue;
-      }
-
-      if (override) {
-        occurrences.push({ key, event: override, start: override.start, end: override.end });
-        continue;
-      }
-
-      const offset = daysBetween(event.start.date, date);
-
-      occurrences.push({
-        key,
-        event,
-        start: shift(event.start, offset),
-        end: event.end ? shift(event.end, offset) : null,
-      });
-    }
-  }
-
-  return occurrences;
 }
