@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentationPage } from "@/pages/documentation";
 import { PricingPage } from "@/pages/pricing";
 import { PrivacyPage } from "@/pages/privacy";
+import { cachedTheme, chooseTheme } from "@/test/theme";
 
 beforeEach(() => {
   window.matchMedia = vi
@@ -35,10 +36,7 @@ describe.each([
     const nav = screen.getByRole("navigation");
     const highlighted = within(nav)
       .getAllByRole("link")
-      .filter(
-        (link) =>
-          link.className.includes("text-primary") && !link.className.includes("hover:text-primary"),
-      );
+      .filter((link) => link.getAttribute("aria-current") === "page");
 
     expect(highlighted).toHaveLength(1);
     expect(highlighted[0]).toHaveAttribute("href", href);
@@ -48,11 +46,9 @@ describe.each([
     const user = userEvent.setup();
     render(<Page />);
 
-    await user.click(screen.getByRole("button", { name: "Switch to dark mode" }));
+    await chooseTheme(user, "Dark");
 
-    expect(document.documentElement).toHaveClass("dark");
-    expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeInTheDocument();
-    expect(window.localStorage.getItem("theme")).toBe("dark");
+    expect(cachedTheme()).toBe("dark");
   });
 
   it("has a single main landmark and page heading", () => {
@@ -128,14 +124,16 @@ describe("PrivacyPage", () => {
   it("says what the lock does and does not cover, without overselling it", () => {
     const { container } = render(<PrivacyPage />);
 
-    // Plain about the default: no passphrase means no encryption.
-    expect(container.textContent).toMatch(/not encrypted/i);
-    // And plain about the limit of the lock, now that there is one.
+    // Plain about when encryption starts: with the account, which every device has.
+    expect(container.textContent).toMatch(/from the moment your account is created/i);
+    // And plain about the limit of the lock.
     expect(container.textContent).toMatch(/note titles, course names, task titles/i);
-    expect(container.textContent).toMatch(/due dates and times are deliberately left readable/i);
+    expect(container.textContent).toMatch(/due dates, times and whether a task is done/i);
     expect(container.textContent).toMatch(/cannot be recovered/i);
-    // Still nothing about the things that would need a server.
-    expect(container.textContent).not.toMatch(/key exchange|row-level|zero-knowledge/i);
+    // A sync account is optional, and the server's view is stated, not waved away.
+    expect(container.textContent).toMatch(/a sync account is optional/i);
+    expect(container.textContent).toMatch(/can see their shape/i);
+    expect(container.textContent).not.toMatch(/zero-knowledge|knows nothing/i);
   });
 
   it("explains local-first storage in three plain steps", () => {
@@ -156,16 +154,17 @@ describe("PrivacyPage", () => {
 describe("DocumentationPage", () => {
   it("describes each level of the Wing/Flight/Branch/Nest hierarchy", () => {
     render(<DocumentationPage />);
-    for (const name of ["Wing", "Flight", "Branch", "Nest", "Twig & Feather"]) {
+    for (const name of ["Wing", "Flight", "Branch", "Nest", "Twig & Feather", "Pebble"]) {
       expect(screen.getByText(name)).toBeInTheDocument();
     }
   });
 
-  it("lays out the roadmap in three areas", () => {
+  it("says what works today and what is still to come", () => {
     render(<DocumentationPage />);
-    for (const area of ["Core Application", "Real-time Sync", "Encryption and Sharing"]) {
+    for (const area of ["Planning", "Notes", "Privacy and sync", "Still to come"]) {
       expect(screen.getByText(area)).toBeInTheDocument();
     }
-    expect(screen.getAllByRole("list")).toHaveLength(3);
+    expect(screen.getAllByRole("list")).toHaveLength(4);
+    expect(screen.getByText("Known gaps, in no particular order.")).toBeInTheDocument();
   });
 });

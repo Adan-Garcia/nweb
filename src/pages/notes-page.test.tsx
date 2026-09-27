@@ -16,6 +16,9 @@ vi.mock("@excalidraw/excalidraw", () => ({
   }),
 }));
 
+import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
+import { createNotesDirectoryEntry } from "@/lib/notes/notes-directory-storage";
+
 import { NotesPage } from "./notes";
 
 // ProseMirror measures text with layout APIs that jsdom leaves out.
@@ -57,17 +60,24 @@ describe("NotesPage", () => {
     expect(screen.getByRole("button", { name: "Untitled note" })).toBeInTheDocument();
   });
 
-  it("is wrapped in the workspace navigation", async () => {
+  it("opens the note a link names, as the command palette sends it", async () => {
+    const { path } = await ensureDefaultWorkspace();
+    const entry = await createNotesDirectoryEntry({
+      branchId: path.branch.id,
+      feather: "Chemistry recap",
+    });
+    // Written after it, so the page would open this one if it ignored the link.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await createNotesDirectoryEntry({ branchId: path.branch.id, feather: "Later note" });
+
     render(
-      <MemoryRouter initialEntries={["/notes"]}>
+      <MemoryRouter initialEntries={[`/notes?note=${entry.id}`]}>
         <NotesPage />
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("link", { name: "Dashboard" })).toHaveAttribute(
-      "href",
-      "/dashboard",
-    );
+    expect(await screen.findByRole("heading", { level: 1, name: "Notes" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Chemistry recap" })).toBeInTheDocument();
   });
 
   it("navigates by the path bar until the tree is asked for", async () => {

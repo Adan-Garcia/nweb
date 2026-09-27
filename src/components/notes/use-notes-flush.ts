@@ -2,8 +2,8 @@ import { useCallback } from "react";
 
 import type { NotesDocumentMode, SpatialSnapshot } from "@/components/notes/types";
 import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
-import { touchNotesDirectoryEntry } from "@/lib/notes-directory-storage";
-import { notesTraceError } from "@/lib/notes-trace";
+import { touchNotesDirectoryEntry } from "@/lib/notes/notes-directory-storage";
+import { notesTraceError } from "@/lib/notes/notes-trace";
 
 type SwitchContext = "openDocumentById" | "createNoteAt";
 

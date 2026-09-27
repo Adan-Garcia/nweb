@@ -1,5 +1,6 @@
 import {
   type AccountKeyMaterial,
+  type ChangePassphraseRequest,
   preloginResponseSchema,
   type SessionResponse,
   sessionResponseSchema,
@@ -17,6 +18,7 @@ import { type PushKey, pushKeySchema } from "@shared/sync-contract";
 import { z } from "zod";
 
 import { apiRequest, type ApiResult, type ApiSession } from "./client";
+import { readServerUrl } from "./server-url";
 
 /**
  * The account endpoints, in the shapes the app uses them in.
@@ -28,14 +30,11 @@ import { apiRequest, type ApiResult, type ApiSession } from "./client";
 const registeredSchema = z.object({ userId: z.uuid() });
 
 /**
- * Where this build talks to. `VITE_` values are public — they are compiled into the bundle
- * and anyone can read them — which is right for a URL and would be wrong for anything else.
- * Absent means this build has no server, which is a supported way to run the app.
+ * Where this device talks to: the server chosen in Settings, or the one the build names
+ * (`VITE_API_URL`), or none. See `server-url.ts`. Null is a supported way to run the app.
  */
 export function apiBaseUrl(env: { VITE_API_URL?: string } = import.meta.env): string | null {
-  const url = env.VITE_API_URL?.trim();
-
-  return url ? url.replace(/\/$/, "") : null;
+  return readServerUrl(env);
 }
 
 export function registerAccount(
@@ -82,6 +81,23 @@ export function endSession(session: ApiSession): Promise<ApiResult<null>> {
 }
 
 /** Records keys, wraps and grants made on this device. The server stores bytes it cannot read. */
+/** A new passphrase over the same account: one re-wrapped key and a new proof. */
+export function changeAccountPassphrase(
+  session: ApiSession,
+  request: ChangePassphraseRequest,
+): Promise<ApiResult<null>> {
+  return apiRequest(session, "/v1/auth/passphrase", { body: request, schema: z.null() });
+}
+
+/** Erases the account on the server, after the passphrase is proved once more. */
+export function deleteServerAccount(session: ApiSession, authKey: string) {
+  return apiRequest(session, "/v1/auth/account", {
+    method: "DELETE",
+    body: { authKey },
+    schema: z.null(),
+  });
+}
+
 export function putKeys(session: ApiSession, request: PutKeysRequest): Promise<ApiResult<null>> {
   return apiRequest(session, "/v1/keys", { body: request, schema: z.null() });
 }

@@ -1,11 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { dayId } from "@/lib/calendar-drop";
-import { createBranch, createFlight, createWing } from "@/lib/entity-storage";
-import { getNotesDb } from "@/lib/notes-db";
-import type { Twig } from "@/lib/twig-model";
-import { createTwig, listTwigs, type TwigDraft } from "@/lib/twig-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { createBranch, createFlight, createWing } from "@/lib/hierarchy/entity-storage";
+import { dayId } from "@/lib/twigs/calendar-drop";
+import type { Twig } from "@/lib/twigs/twig-model";
+import { createTwig, listTwigs, type TwigDraft } from "@/lib/twigs/twig-storage";
 
 import { formatDateKey } from "./calendar-shared";
 import { useCalendarPage } from "./use-calendar-page";

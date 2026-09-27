@@ -33,7 +33,7 @@ export default defineConfig([
       "simple-import-sort": simpleImportSort,
     },
     rules: {
-      // CLAUDE.md section 3: no stray logging (the tracer in lib/notes-trace.ts is exempt below).
+      // CLAUDE.md section 3: no stray logging (the tracer in lib/notes/notes-trace.ts is exempt below).
       "no-console": "error",
       // CLAUDE.md section 3: packages, then `@/`, then relative, then side-effect (CSS) imports.
       // Side-effect imports come last and keep their written order: CSS order is the cascade.
@@ -81,7 +81,7 @@ export default defineConfig([
   },
   {
     // The sanctioned tracer is the one place allowed to log.
-    files: ["src/lib/notes-trace.ts"],
+    files: ["src/lib/notes/notes-trace.ts"],
     rules: {
       "no-console": "off",
     },

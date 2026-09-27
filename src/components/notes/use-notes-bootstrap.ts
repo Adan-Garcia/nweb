@@ -1,16 +1,16 @@
 import { useEffect } from "react";
 
 import type { NotesDirectoryEntry, NotesDocumentMode } from "@/components/notes/types";
-import { revokeObjectUrls } from "@/lib/blob-utils";
+import { ensureDefaultWorkspace, loadWorkspaceSnapshot } from "@/lib/hierarchy/workspace-storage";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import { revokeObjectUrls } from "@/lib/media/blob-utils";
 import {
   createNotesDirectoryEntry,
   listNotesDirectoryEntries,
   upsertNotesDirectoryEntry,
-} from "@/lib/notes-directory-storage";
-import { loadNotesDocument } from "@/lib/notes-document-storage";
-import { DEFAULT_NOTES_DOCUMENT_ID } from "@/lib/notes-model";
-import { ensureDefaultWorkspace, loadWorkspaceSnapshot } from "@/lib/workspace-storage";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
+} from "@/lib/notes/notes-directory-storage";
+import { loadNotesDocument } from "@/lib/notes/notes-document-storage";
+import { DEFAULT_NOTES_DOCUMENT_ID } from "@/lib/notes/notes-model";
 
 type UseNotesBootstrapOptions = {
   hydrateDocument: (documentId: string, targetMode?: NotesDocumentMode) => Promise<void>;

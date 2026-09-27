@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { TwigFormValues } from "@/components/calendar/calendar-shared";
 import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
-import { isLockedError } from "@/lib/cipher";
-import type { Twig, TwigStatus } from "@/lib/twig-model";
-import { createTwig, listTwigs, softDeleteTwig, updateTwig } from "@/lib/twig-storage";
-import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
+import { isLockedError } from "@/lib/crypto/cipher";
+import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
+import type { Twig, TwigStatus } from "@/lib/twigs/twig-model";
+import { createTwig, listTwigs, softDeleteTwig, updateTwig } from "@/lib/twigs/twig-storage";
 
 /**
  * The tasks the calendar draws, and the operations on them. Twigs live in IndexedDB

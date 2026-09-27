@@ -1,11 +1,16 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createAesGcmCipher, registerCipher, resetActiveCipher, setActiveCipher } from "../cipher";
-import { createBranch, createFlight, createWing } from "../entity-storage";
+import {
+  createAesGcmCipher,
+  registerCipher,
+  resetActiveCipher,
+  setActiveCipher,
+} from "../crypto/cipher";
+import { getNotesDb } from "../db/notes-db";
+import { createBranch, createFlight, createWing } from "../hierarchy/entity-storage";
 import { createObjectKey, type Keyring } from "../keys/key-graph";
 import { cipherForObject, forgetKeyring, holdKeyring } from "../keys/object-keys";
-import { getNotesDb } from "../notes-db";
 import { fromSyncRow, toSyncRow } from "./wire";
 
 /**

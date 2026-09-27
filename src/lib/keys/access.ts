@@ -1,6 +1,6 @@
 import type { KeyGraph } from "@shared/sharing-contract";
 
-import { getNotesDb } from "../notes-db";
+import { getNotesDb } from "../db/notes-db";
 import { currentKeyGraph, servedKeyGraph } from "./object-keys";
 
 /**

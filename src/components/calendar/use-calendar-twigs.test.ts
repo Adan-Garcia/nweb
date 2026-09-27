@@ -1,10 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/cipher";
-import { createBranch, createFlight, createWing } from "@/lib/entity-storage";
-import { getNotesDb } from "@/lib/notes-db";
-import { createTwig, listTwigs } from "@/lib/twig-storage";
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/crypto/cipher";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { createBranch, createFlight, createWing } from "@/lib/hierarchy/entity-storage";
+import { createTwig, listTwigs } from "@/lib/twigs/twig-storage";
 
 import type { TwigFormValues } from "./calendar-shared";
 import { useCalendarTwigs } from "./use-calendar-twigs";

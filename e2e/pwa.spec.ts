@@ -1,3 +1,4 @@
+import { reload, visit } from "./account";
 import { expect, test } from "./fixtures";
 
 /**
@@ -43,22 +44,22 @@ test.describe("installing and working offline", () => {
   });
 
   test("starts from the cache with the network cut off", async ({ page, context }) => {
-    await page.goto("/dashboard");
+    await visit(page, "/dashboard");
 
     // The worker only caches what it serves, and it is not controlling the page that
     // registered it. Everything below this line is the user's second visit onwards.
     await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
 
     // Visit both routes under the worker, so their lazily-loaded chunks are cached.
-    await page.goto("/calendar");
+    await visit(page, "/calendar");
     await expect(page.getByRole("heading", { level: 1, name: "Calendar" })).toBeVisible();
-    await page.goto("/dashboard");
+    await visit(page, "/dashboard");
     await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
 
     await context.setOffline(true);
 
     // A full reload with no network: the document and every asset come from the cache.
-    await page.reload();
+    await reload(page);
     await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
 
     // And another route is still reachable from there.

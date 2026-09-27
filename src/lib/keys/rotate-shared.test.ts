@@ -4,11 +4,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { server } from "@/test/server";
 
 import { writeAccountRecord } from "../account/account-record";
-import { bytesToBase64 } from "../base64";
-import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "../cipher";
-import { createBranch, createFlight, createWing, listBranches } from "../entity-storage";
-import { getNotesDb } from "../notes-db";
-import { writeSharePath } from "../share-path-storage";
+import { bytesToBase64 } from "../crypto/base64";
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "../crypto/cipher";
+import { getNotesDb } from "../db/notes-db";
+import { createBranch, createFlight, createWing, listBranches } from "../hierarchy/entity-storage";
+import { writeSharePath } from "../hierarchy/share-path-storage";
 import { createObjectKey } from "./key-graph";
 import {
   currentKeyGraph,

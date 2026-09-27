@@ -3,9 +3,9 @@ import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 
 import { useCalendarTwigs } from "@/components/calendar/use-calendar-twigs";
 import { useTwigEditor } from "@/components/calendar/use-twig-editor";
-import { applyBoardDrop, buildBoardColumns, resolveBoardDrop } from "@/lib/board";
-import type { Twig } from "@/lib/twig-model";
-import { moveTwig } from "@/lib/twig-storage";
+import { applyBoardDrop, buildBoardColumns, resolveBoardDrop } from "@/lib/twigs/board";
+import type { Twig } from "@/lib/twigs/twig-model";
+import { moveTwig } from "@/lib/twigs/twig-storage";
 
 /**
  * The board: one column per status, cards dragged between and within them.

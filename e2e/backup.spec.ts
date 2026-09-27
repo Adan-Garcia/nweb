@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 
+import { visit } from "./account";
 import { expect, test } from "./fixtures";
 import { createNote, openNotes } from "./helpers";
 
@@ -47,7 +48,7 @@ test.describe("exporting and restoring the workspace", () => {
 
     await expect(page.getByText(/^Autosaved at/)).toBeVisible();
 
-    await page.goto("/settings");
+    await visit(page, "/settings");
     const download = await Promise.all([
       page.waitForEvent("download"),
       page.getByRole("button", { name: "Download backup" }).click(),

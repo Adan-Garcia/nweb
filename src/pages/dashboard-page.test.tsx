@@ -2,9 +2,10 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getNotesDb } from "@/lib/notes-db";
-import { createTwig } from "@/lib/twig-storage";
-import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
+import { createTwig } from "@/lib/twigs/twig-storage";
+import { usePreferencesStore } from "@/stores/use-preferences-store";
 
 import { DashboardPage } from "./dashboard";
 
@@ -57,5 +58,33 @@ describe("DashboardPage", () => {
 
     expect((await screen.findAllByText(/Submit essay/)).length).toBeGreaterThan(0);
     expect(screen.getByText(/Submit essay on .* at 5:00 PM/)).toBeInTheDocument();
+  });
+
+  it("shows the cards someone chose, in their order", async () => {
+    usePreferencesStore.getState().update({
+      dashboardCards: [
+        { id: "recent-notes", visible: true },
+        { id: "next-priority", visible: false },
+        { id: "stats", visible: false },
+        { id: "upcoming", visible: true },
+      ],
+    });
+    renderPage();
+
+    expect(await screen.findByText(/No saved notes yet/)).toBeInTheDocument();
+    expect(screen.queryByText("Due Today")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Next priority" })).not.toBeInTheDocument();
+
+    const recent = screen.getByText("Recent Notes");
+    const upcoming = screen.getByText("Upcoming Deadlines");
+    expect(
+      recent.compareDocumentPosition(upcoming) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("greets by the time of day", () => {
+    renderPage();
+
+    expect(screen.getByText(/^Good (morning|afternoon|evening) · /)).toBeInTheDocument();
   });
 });

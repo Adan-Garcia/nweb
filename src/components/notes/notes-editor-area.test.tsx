@@ -3,14 +3,14 @@ import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 // The real editors are heavy (TipTap, Excalidraw); these stand-ins record what they were given.
-vi.mock("@/components/notes/linear-notes-editor", () => ({
+vi.mock("@/components/notes/linear/linear-notes-editor", () => ({
   LinearNotesEditor: ({ value, isReadOnly }: { value: string; isReadOnly?: boolean }) => (
     <div data-testid="linear-editor" data-read-only={String(Boolean(isReadOnly))}>
       {value}
     </div>
   ),
 }));
-vi.mock("@/components/notes/spatial-notes-editor", () => ({
+vi.mock("@/components/notes/spatial/spatial-notes-editor", () => ({
   SpatialNotesEditor: ({ isDark, isReadOnly }: { isDark: boolean; isReadOnly?: boolean }) => (
     <div
       data-testid="spatial-editor"

@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function HierarchyLevelCard({ level }: { level: HierarchyLevel }) {
   return (
-    <Card className="text-left transition-all hover:border-primary/60 hover:shadow-md">
+    <Card className="text-left transition-colors hover:ring-foreground/20">
       <CardHeader>
-        <CardTitle className="text-lg">{level.name}</CardTitle>
+        <CardTitle className="text-heading">{level.name}</CardTitle>
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground">{level.description}</p>

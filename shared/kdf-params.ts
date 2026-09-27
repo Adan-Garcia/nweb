@@ -9,7 +9,7 @@ import { z } from "zod";
  * not use them if it did — they are the public half of the derivation, and the passphrase
  * they go with never leaves the device.
  *
- * Deriving from them is `src/lib/kdf.ts`. Only the shape is shared.
+ * Deriving from them is `src/lib/crypto/kdf.ts`. Only the shape is shared.
  */
 export const pbkdf2ParamsSchema = z.object({
   name: z.literal("PBKDF2"),

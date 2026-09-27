@@ -2,7 +2,8 @@ import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setApiSession } from "@/lib/api/session-store";
-import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/cipher";
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/crypto/cipher";
+import { getNotesDb } from "@/lib/db/notes-db";
 import { holdIdentity } from "@/lib/keys/identity";
 import { createObjectKey, type Keyring } from "@/lib/keys/key-graph";
 import {
@@ -11,7 +12,6 @@ import {
   keysNeedUpload,
   markKeysUploaded,
 } from "@/lib/keys/object-keys";
-import { getNotesDb } from "@/lib/notes-db";
 import { server } from "@/test/server";
 
 import {

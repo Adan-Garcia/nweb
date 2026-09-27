@@ -1,8 +1,8 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { getNotesDb } from "@/lib/db/notes-db";
 import { forgetKeyring, holdKeyring } from "@/lib/keys/object-keys";
-import { getNotesDb } from "@/lib/notes-db";
 
 import { useNoteAccess } from "./use-note-access";
 

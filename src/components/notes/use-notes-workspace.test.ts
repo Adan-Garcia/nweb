@@ -15,9 +15,9 @@ async function loadWorkspace() {
   const { IDBFactory } = await import("fake-indexeddb");
   globalThis.indexedDB = new IDBFactory();
 
-  const documents = await import("@/lib/notes-document-storage");
-  const directory = await import("@/lib/notes-directory-storage");
-  const model = await import("@/lib/notes-model");
+  const documents = await import("@/lib/notes/notes-document-storage");
+  const directory = await import("@/lib/notes/notes-directory-storage");
+  const model = await import("@/lib/notes/notes-model");
   const { useNotesWorkspace } = await import("./use-notes-workspace");
 
   return {

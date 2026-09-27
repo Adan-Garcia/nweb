@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-import { BRANCH_COLORS, type BranchColor } from "@/lib/entity-model";
-import { type Twig, TWIG_KINDS, TWIG_STATUSES } from "@/lib/twig-model";
-import { findBranch, type WorkspaceSnapshot } from "@/lib/workspace-tree";
+import type { BranchColor } from "@/lib/hierarchy/entity-model";
+import { findBranch, type WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import { type Twig, TWIG_KINDS, TWIG_STATUSES } from "@/lib/twigs/twig-model";
 
 /** The dot beside a task takes its colour from the branch the task belongs to. */
-export const BRANCH_COLOR_CLASSES: Record<BranchColor, string> = {
+const BRANCH_COLOR_CLASSES: Record<BranchColor, string> = {
   emerald: "bg-emerald-500",
   rose: "bg-rose-500",
   sky: "bg-sky-500",
@@ -58,7 +58,7 @@ export const STATUS_META: Record<Twig["status"], { label: string; track: string 
   },
 };
 
-export function branchColorClass(color: BranchColor | undefined) {
+function branchColorClass(color: BranchColor | undefined) {
   return color ? BRANCH_COLOR_CLASSES[color] : "bg-slate-400";
 }
 
@@ -71,8 +71,6 @@ export function branchLabelFor(snapshot: WorkspaceSnapshot, branchId: string) {
     colorClass: branchColorClass(branch?.color),
   };
 }
-
-export { BRANCH_COLORS };
 
 export function formatDateKey(date: Date) {
   const year = date.getFullYear();

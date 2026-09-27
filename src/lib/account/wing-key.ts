@@ -1,4 +1,4 @@
-import { base64ToBytes, bytesToBase64 } from "../base64";
+import { base64ToBytes, bytesToBase64 } from "../crypto/base64";
 
 /**
  * The workspace's own root key, sealed under the account key.

@@ -1,11 +1,11 @@
+import { reload, visit } from "./account";
 import { expect, test } from "./fixtures";
 
 test("an event added on the calendar shows up on the dashboard and survives a reload", async ({
   page,
 }) => {
-  await page.goto("/calendar");
-  await page.getByRole("button", { name: "Add" }).click();
-  await page.getByRole("menuitem", { name: "Add Event" }).click();
+  await visit(page, "/calendar");
+  await page.getByRole("button", { name: "Add Event" }).click();
   await page.getByLabel("Title").fill("Chemistry lab report");
   await page.getByRole("button", { name: "Create event" }).click();
 
@@ -17,6 +17,6 @@ test("an event added on the calendar shows up on the dashboard and survives a re
   await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
   await expect(page.getByText(/Chemistry lab report on .* at 9:00 AM/)).toBeVisible();
 
-  await page.reload();
+  await reload(page);
   await expect(page.getByText(/Chemistry lab report on .* at 9:00 AM/)).toBeVisible();
 });

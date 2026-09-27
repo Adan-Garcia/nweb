@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 
+import { reload, visit } from "./account";
 import { expect, test } from "./fixtures";
 
 /**
@@ -54,7 +55,7 @@ function columnTitles(page: Page, label: string) {
 
 test.describe("the board", () => {
   test("a card dragged to another column keeps its new status after a reload", async ({ page }) => {
-    await page.goto("/board");
+    await visit(page, "/board");
     await addTask(page, "Lab report");
 
     await dragOnto(
@@ -67,7 +68,7 @@ test.describe("the board", () => {
       expect(await columnTitles(page, "Started")).toEqual(["Lab report"]);
     }).toPass();
 
-    await page.reload();
+    await reload(page);
 
     await expect(async () => {
       expect(await columnTitles(page, "Started")).toEqual(["Lab report"]);
@@ -76,7 +77,7 @@ test.describe("the board", () => {
   });
 
   test("a card dragged over another keeps the new order after a reload", async ({ page }) => {
-    await page.goto("/board");
+    await visit(page, "/board");
     await addTask(page, "First");
     await addTask(page, "Second");
 
@@ -94,7 +95,7 @@ test.describe("the board", () => {
       expect(await columnTitles(page, "Todo")).toEqual(["Second", "First"]);
     }).toPass();
 
-    await page.reload();
+    await reload(page);
 
     await expect(async () => {
       expect(await columnTitles(page, "Todo")).toEqual(["Second", "First"]);
@@ -110,12 +111,11 @@ test.describe("the calendar", () => {
     target.setDate(target.getDate() + (today.getDate() > 20 ? -1 : 1));
     const targetLabel = target.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
-    await page.goto("/calendar");
+    await visit(page, "/calendar");
 
-    const add = page.getByRole("button", { name: "Add" });
+    const add = page.getByRole("button", { name: "Add Event" });
     await expect(add).toBeEnabled();
     await add.click();
-    await page.getByRole("menuitem", { name: "Add Event" }).click();
     await page.getByLabel("Title").fill("Quiz");
     await page.getByRole("button", { name: "Create event" }).click();
 
@@ -130,7 +130,7 @@ test.describe("the calendar", () => {
 
     await expect(page.getByText(new RegExp(`${targetLabel} at`))).toBeVisible();
 
-    await page.reload();
+    await reload(page);
     await expect(page.getByText(new RegExp(`${targetLabel} at`))).toBeVisible();
   });
 });

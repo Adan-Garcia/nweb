@@ -293,6 +293,89 @@ describe("changing a passphrase", () => {
   });
 });
 
+describe("deleting an account", () => {
+  const remove = (body: unknown, token?: string) =>
+    app.request("/v1/auth/account", {
+      method: "DELETE",
+      headers: {
+        "content-type": "application/json",
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+
+  async function seedOwned(userId: string, otherId: string) {
+    await database.query(
+      "insert into keys (id, owner_id, kind) values ('wing-1', $1, 'wing'), ('branch-1', $1, 'branch')",
+      [userId],
+    );
+    await database.query(
+      "insert into key_wraps (parent_key_id, child_key_id, wrapped) values ('wing-1', 'branch-1', 'd3JhcA')",
+    );
+    // A course this user shared with somebody else.
+    await database.query(
+      "insert into grants (key_id, user_id, role, wrapped) values ('branch-1', $1, 'reader', 'Z3JhbnQ')",
+      [otherId],
+    );
+    await database.query(
+      `insert into rows (user_id, store, id, updated_at, key_id, encryption, payload)
+       values ($1, 'twigs', 'twig-1', 1, 'branch-1', 'aes-gcm', 'c2VhbGVk')`,
+      [userId],
+    );
+  }
+
+  it("erases the account and everything it owns, and nobody else's", async () => {
+    const { token, userId } = await registerAndSignIn();
+    const other = await registerAndSignIn({ email: "friend@example.com" });
+    await seedOwned(userId, other.userId);
+
+    const response = await remove({ authKey: ENROLMENT.authKey }, token);
+    expect(response.status).toBe(204);
+
+    for (const table of ["users", "sessions", "rows", "keys", "key_wraps", "grants"]) {
+      const { rows } = await database.query<{ count: number }>(
+        `select count(*)::int as count from ${table}`,
+      );
+      // The friend is still a user with a session; nothing else of either survives.
+      const expected = table === "users" || table === "sessions" ? 1 : 0;
+      expect({ table, count: rows[0].count }).toEqual({ table, count: expected });
+    }
+
+    // The old session no longer opens anything, and the address can sign up again.
+    expect(
+      (await app.request("/v1/keys", { headers: { authorization: `Bearer ${token}` } })).status,
+    ).toBe(401);
+    expect((await post("/v1/auth/register", ENROLMENT)).status).toBe(201);
+  });
+
+  it("refuses without the passphrase's proof, even with a session", async () => {
+    const { token } = await registerAndSignIn();
+
+    expect((await remove({ authKey: "d3Jvbmc" }, token)).status).toBe(401);
+    expect((await remove({}, token)).status).toBe(400);
+    expect(
+      (
+        await app.request("/v1/auth/account", {
+          method: "DELETE",
+          headers: { authorization: `Bearer ${token}` },
+          body: "not json",
+        })
+      ).status,
+    ).toBe(400);
+
+    const { rows } = await database.query<{ count: number }>(
+      "select count(*)::int as count from users",
+    );
+    expect(rows[0].count).toBe(1);
+  });
+
+  it("refuses without a session", async () => {
+    await registerAndSignIn();
+
+    expect((await remove({ authKey: ENROLMENT.authKey })).status).toBe(401);
+  });
+});
+
 describe("rate limiting", () => {
   it("stops a run of attempts against one address", async () => {
     app = createApp({
@@ -308,6 +391,26 @@ describe("rate limiting", () => {
     expect((await attempt()).status).toBe(401);
     expect((await attempt()).status).toBe(401);
     expect((await attempt()).status).toBe(429);
+  });
+
+  it("stops a stolen session from guessing its way to a delete", async () => {
+    app = createApp({
+      sql: database,
+      serverSecret: SERVER_SECRET,
+      allowedOrigins: [],
+      limiter: createRateLimiter({ limit: 2, windowMs: 60_000 }),
+    });
+    const { token } = await registerAndSignIn();
+    const guess = () =>
+      app.request("/v1/auth/account", {
+        method: "DELETE",
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        body: JSON.stringify({ authKey: "d3Jvbmc" }),
+      });
+
+    expect((await guess()).status).toBe(401);
+    expect((await guess()).status).toBe(401);
+    expect((await guess()).status).toBe(429);
   });
 
   it("stops a run of prelogins too, or the decoy is only a speed bump", async () => {

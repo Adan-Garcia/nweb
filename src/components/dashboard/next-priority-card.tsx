@@ -1,18 +1,25 @@
+import { Flag } from "lucide-react";
+
 import type { DatedTwig } from "@/components/calendar/calendar-shared";
 import { formatHumanDate } from "@/components/calendar/calendar-shared";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function NextPriorityCard({ event }: { event: DatedTwig | null }) {
   return (
-    <Card className="mb-6 border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Next Priority</CardTitle>
-        <CardDescription>
+    <section
+      aria-label="Next priority"
+      className="flex items-start gap-3 rounded-lg border border-l-4 border-l-primary bg-card p-4"
+    >
+      <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-brand-soft text-primary">
+        <Flag className="size-4" aria-hidden="true" />
+      </span>
+      <div className="grid min-w-0 gap-0.5">
+        <h2 className="text-heading">Next Priority</h2>
+        <p className="text-body text-muted-foreground">
           {event
             ? `${event.title} on ${formatHumanDate(event.dueDate)} at ${event.dueTime}`
             : "No upcoming incomplete events in the next 7 days."}
-        </CardDescription>
-      </CardHeader>
-    </Card>
+        </p>
+      </div>
+    </section>
   );
 }

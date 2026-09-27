@@ -3,7 +3,7 @@ import type { KeyGraph, ShareRole } from "@shared/sharing-contract";
 import { readAccountRecord } from "../account/account-record";
 import { listShares, lookupPublicKey, putKeys, shareKey } from "../api/account-api";
 import type { ApiSession } from "../api/client";
-import { getNotesDb } from "../notes-db";
+import { getNotesDb } from "../db/notes-db";
 import { cipherForKey, type Keyring } from "./key-graph";
 import { adoptRotatedKey, currentKeyGraph, heldKeyring, servedKeyGraph } from "./object-keys";
 import { planKeyRotation, reshareRotatedKey } from "./rotate-key";

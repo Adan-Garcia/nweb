@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "../cipher";
-import { createBranch, createFlight, createNest, createWing } from "../entity-storage";
-import { getNotesDb } from "../notes-db";
-import { createNotesDirectoryEntry } from "../notes-directory-storage";
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "../crypto/cipher";
+import { getNotesDb } from "../db/notes-db";
+import { createBranch, createFlight, createNest, createWing } from "../hierarchy/entity-storage";
+import { createNotesDirectoryEntry } from "../notes/notes-directory-storage";
 import { createObjectKey, type Keyring } from "./key-graph";
 import { forgetKeyring, holdKeyring } from "./object-keys";
 import { KIND_LABELS, listShareable } from "./shareable";

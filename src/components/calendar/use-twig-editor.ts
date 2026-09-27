@@ -7,13 +7,13 @@ import {
   twigFormSchema,
   type TwigFormValues,
 } from "@/components/calendar/calendar-shared";
-import type { Twig } from "@/lib/twig-model";
 import {
   branchPath,
   canFileUnder,
   isReadOnlyEntity,
   type WorkspaceSnapshot,
-} from "@/lib/workspace-tree";
+} from "@/lib/hierarchy/workspace-tree";
+import type { Twig } from "@/lib/twigs/twig-model";
 
 const DEFAULT_EVENT_TIME = "9:00 AM";
 

@@ -11,18 +11,18 @@ export function PrivacyPage() {
   return (
     <MarketingPage activeHref="/privacy">
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto mb-10 max-w-3xl text-left">
+        <div className="mb-10 max-w-3xl">
           <MarketingEyebrow icon={ShieldCheck}>Privacy Policy</MarketingEyebrow>
-          <h1 className="mb-3 text-4xl font-bold sm:text-5xl">Your study data stays yours</h1>
-          <p className="text-base text-muted-foreground sm:text-lg">
-            Cuervo Planner is an early beta that runs entirely in your browser. There is no server,
-            no account, and nothing is collected. This page describes what the app does today, not
-            what it is planned to do.
+          <h1 className="mb-3 text-display">Your study data stays yours</h1>
+          <p className="text-lg text-muted-foreground">
+            Cuervo Planner is an early beta. It runs in your browser, under an account that lives on
+            your device; a sync account on a server is optional. This page describes what the app
+            does today, not what it is planned to do.
           </p>
-          <p className="mt-3 text-sm text-muted-foreground">Last updated: September 20, 2026</p>
+          <p className="mt-3 text-sm text-muted-foreground">Last updated: September 27, 2026</p>
         </div>
 
-        <PlainLanguageBreakdown intro="Short version: everything stays in this browser, it is encrypted only if you set a passphrase, and it is the only copy." />
+        <PlainLanguageBreakdown intro="Short version: without a sync account nothing leaves this browser. It is encrypted under your passphrase, and if you sync, the server only ever holds what it cannot read." />
 
         <div className="grid gap-5 md:grid-cols-2">
           {POLICY_SECTIONS.map((section) => (
@@ -36,9 +36,9 @@ export function PrivacyPage() {
         </div>
 
         <MarketingCallout title="Your choices and contact" className="mt-8">
-          You can choose what you store, what you share, and where you run the app. If you have
-          privacy questions or want data-related help, contact the project through the official
-          Cuervo Planner support channels or repository issue tracker.
+          You choose whether to have an account, what you share and with whom, and where the app and
+          its server run: both are open source and can be self-hosted. For privacy questions or help
+          with your data, open an issue on the project's GitHub repository.
         </MarketingCallout>
       </section>
     </MarketingPage>

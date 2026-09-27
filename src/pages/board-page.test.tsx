@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createBranch, createFlight, createWing } from "@/lib/entity-storage";
-import { getNotesDb } from "@/lib/notes-db";
-import { createTwig, listTwigs } from "@/lib/twig-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { createBranch, createFlight, createWing } from "@/lib/hierarchy/entity-storage";
+import { createTwig, listTwigs } from "@/lib/twigs/twig-storage";
 
 import { BoardPage } from "./board";
 
@@ -26,9 +26,9 @@ beforeEach(async () => {
   branchId = (await createBranch({ flightId: flight.id, name: "Biology" })).id;
 });
 
-function renderPage() {
+function renderPage(entry = "/board") {
   return render(
-    <MemoryRouter initialEntries={["/board"]}>
+    <MemoryRouter initialEntries={[entry]}>
       <BoardPage />
     </MemoryRouter>,
   );
@@ -140,5 +140,29 @@ describe("BoardPage", () => {
     await user.click(screen.getByRole("button", { name: "Delete Doomed" }));
 
     await waitFor(() => expect(columnTitles("Todo")).toEqual([]));
+  });
+
+  it("opens the editor for the task a link names, as the command palette sends it", async () => {
+    const twig = await createTwig({ branchId, title: "Lab report" });
+
+    renderPage(`/board?task=${twig.id}`);
+
+    expect(await screen.findByDisplayValue("Lab report")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeInTheDocument();
+  });
+
+  it("opens an empty editor for ?new=task", async () => {
+    renderPage("/board?new=task");
+
+    expect(await screen.findByRole("button", { name: "Create event" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Title")).toHaveValue("");
+  });
+
+  it("ignores a link to a task that is not there", async () => {
+    renderPage("/board?task=missing");
+
+    await screen.findByRole("heading", { level: 1, name: "Board" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add Task" })).toBeEnabled());
+    expect(screen.queryByLabelText("Title")).not.toBeInTheDocument();
   });
 });

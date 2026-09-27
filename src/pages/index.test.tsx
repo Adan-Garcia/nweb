@@ -2,6 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { cachedTheme, chooseTheme, findLoadedButton } from "@/test/theme";
+
 import { IndexPage } from "./index";
 
 beforeEach(() => {
@@ -26,7 +28,7 @@ describe("IndexPage", () => {
     expect(screen.getByRole("button", { name: "Get Started Now" })).toBeInTheDocument();
   });
 
-  it("lists all eight benefits", () => {
+  it("lists all eight benefits, none of them promised for later", () => {
     render(<IndexPage />);
     const benefits = screen.getByLabelText("Features and benefits of using Cuervo Planner");
 
@@ -34,14 +36,16 @@ describe("IndexPage", () => {
       "Private by default",
       "Open Source",
       "Free Beta",
-      "Works in any browser",
+      "Install it like an app",
       "Offline first",
       "Lock it on this device",
-      "Fast syncing",
-      "Easy sharing",
+      "Sync across devices",
+      "Share a course",
     ]) {
       expect(within(benefits).getByText(title)).toBeInTheDocument();
     }
+    // Sync and sharing shipped, so nothing on the page is promised for later.
+    expect(benefits.textContent).not.toMatch(/coming soon/i);
   });
 
   it("links to the source repository in the footer", () => {
@@ -54,50 +58,54 @@ describe("IndexPage", () => {
     );
   });
 
-  it("marks the benefits that do not exist yet as coming soon", () => {
+  it("says the lock covers titles and leaves due dates readable", () => {
     render(<IndexPage />);
     const benefits = screen.getByLabelText("Features and benefits of using Cuervo Planner");
 
-    expect(within(benefits).getAllByText("Coming soon")).toHaveLength(2);
-    for (const title of ["Fast syncing", "Easy sharing"]) {
-      expect(within(benefits).getByText(title).textContent).toContain("Coming soon");
-    }
+    expect(benefits.textContent).toMatch(/and their titles in this browser/);
+    expect(benefits.textContent).toMatch(/Due dates stay readable/);
   });
 
-  it("no longer calls the lock coming soon, and does not oversell it either", () => {
+  it("does not oversell the lock", () => {
     render(<IndexPage />);
     const benefits = screen.getByLabelText("Features and benefits of using Cuervo Planner");
 
-    const lock = within(benefits).getByText("Lock it on this device");
-    expect(lock.textContent).not.toContain("Coming soon");
     // The old wording promised more than a browser can give.
     expect(benefits.textContent).not.toMatch(/Device level encryption/i);
   });
 
-  it("has the same links in the desktop nav and the mobile menu, including the calendar", () => {
+  it("has the same links in the desktop nav and the mobile menu", async () => {
+    const user = userEvent.setup();
     render(<IndexPage />);
-    const nav = screen.getByRole("navigation");
+    const nav = screen.getByRole("navigation", { name: "Site" });
     const expected = [
       ["Documentation", "/documentation"],
       ["Pricing", "/pricing"],
       ["Privacy", "/privacy"],
-      ["Calendar", "/calendar"],
     ];
 
     for (const [label, href] of expected) {
       expect(within(nav).getByRole("link", { name: label })).toHaveAttribute("href", href);
-      // The mobile menu repeats each link.
-      expect(screen.getAllByRole("link", { name: label }).length).toBeGreaterThanOrEqual(2);
     }
-    expect(screen.getByText("Open menu")).toBeInTheDocument();
+
+    await user.click(await findLoadedButton("Open menu"));
+
+    for (const [label, href] of expected) {
+      expect(await screen.findByRole("menuitem", { name: label })).toHaveAttribute("href", href);
+    }
+  });
+
+  it("offers a way straight into the app", () => {
+    render(<IndexPage />);
+    expect(screen.getByRole("button", { name: "Open app" })).toHaveAttribute("href", "/dashboard");
   });
 
   it("toggles the theme from the header", async () => {
     const user = userEvent.setup();
     render(<IndexPage />);
 
-    await user.click(screen.getByRole("button", { name: "Switch to dark mode" }));
+    await chooseTheme(user, "Dark");
 
-    expect(document.documentElement).toHaveClass("dark");
+    expect(cachedTheme()).toBe("dark");
   });
 });

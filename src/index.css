@@ -1,202 +1,286 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
 @import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * The design system.
+ *
+ * Every colour is a token, and every token is decided by four attributes the app puts on
+ * <html> (src/lib/preferences/preferences-cache.ts, and the boot script in index.html before it):
+ *
+ *   data-theme      light | paper | dark | oled   the neutral surfaces
+ *   data-accent     rose | orange | … | violet    the one colour, as a hue and a chroma
+ *   data-density    compact | comfortable | spacious
+ *   data-font-size  sm | md | lg
+ *
+ * The accent is split from the theme on purpose: a theme sets how light the accent is
+ * (`--brand-l`) and an accent sets which colour it is (`--brand-h`, `--brand-c`), so eight
+ * accents times four themes is twelve rules rather than thirty-two. Those numbers are
+ * mirrored in `src/lib/preferences/accent-palettes.ts`, where a unit test checks every pair clears WCAG
+ * AA; `e2e/appearance.spec.ts` checks in a real browser that this file still agrees.
+ */
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: oklch(0.92 0.004 286.32);
-  --code-bg: #f4f3ec;
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
-  --heading: system-ui, "Segoe UI", Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-align: center;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  /* Accent inputs. Overridden by [data-accent] and, for lightness, by [data-theme]. */
+  --brand-h: 16.9;
+  --brand-c: 0.2;
+  --brand-l: 0.52;
+  --brand-fg: oklch(0.985 0 0);
 
   --background: oklch(1 0 0);
-
-  --foreground: oklch(0.141 0.005 285.823);
-
+  --foreground: oklch(0.21 0.006 285.9);
   --card: oklch(1 0 0);
-
-  --card-foreground: oklch(0.141 0.005 285.823);
-
+  --card-foreground: var(--foreground);
   --popover: oklch(1 0 0);
+  --popover-foreground: var(--foreground);
+  --secondary: oklch(0.967 0.001 286.4);
+  --secondary-foreground: oklch(0.21 0.006 285.9);
+  --muted: oklch(0.967 0.001 286.4);
+  --muted-foreground: oklch(0.5 0.014 285.9);
+  --accent: oklch(0.955 0.002 286.3);
+  --accent-foreground: oklch(0.21 0.006 285.9);
+  --destructive: oklch(0.577 0.245 27.3);
+  --border: oklch(0.922 0.004 286.3);
+  --input: oklch(0.9 0.004 286.3);
+  --sidebar: oklch(0.982 0.001 286.4);
+  --sidebar-foreground: oklch(0.3 0.006 285.9);
+  --sidebar-accent: oklch(0.945 0.002 286.3);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.9);
+  --sidebar-border: oklch(0.922 0.004 286.3);
 
-  --popover-foreground: oklch(0.141 0.005 285.823);
+  --radius: 0.625rem;
+  --spacing: 0.25rem;
+  --overlay-shadow:
+    0 1px 2px oklch(0 0 0 / 0.04), 0 8px 24px -6px oklch(0 0 0 / 0.12),
+    0 0 0 1px oklch(0 0 0 / 0.04);
 
-  --primary: oklch(0.514 0.222 16.935);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
 
-  --primary-foreground: oklch(0.969 0.015 12.422);
-
-  --secondary: oklch(0.967 0.001 286.375);
-
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-
-  --muted: oklch(0.967 0.001 286.375);
-
-  --muted-foreground: oklch(0.552 0.016 285.938);
-
-  --accent-foreground: oklch(0.21 0.006 285.885);
-
-  --destructive: oklch(0.577 0.245 27.325);
-
-  --input: oklch(0.92 0.004 286.32);
-
-  --ring: oklch(0.705 0.015 286.067);
-
-  --chart-1: oklch(0.808 0.114 19.571);
-
-  --chart-2: oklch(0.637 0.237 25.331);
-
-  --chart-3: oklch(0.577 0.245 27.325);
-
-  --chart-4: oklch(0.505 0.213 27.518);
-
-  --chart-5: oklch(0.444 0.177 26.899);
-
-  --radius: 0.875rem;
-
-  --sidebar: oklch(0.985 0 0);
-
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-
-  --sidebar-primary: oklch(0.586 0.253 17.585);
-
-  --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
-
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-
-  --sidebar-border: oklch(0.92 0.004 286.32);
-
-  --sidebar-ring: oklch(0.705 0.015 286.067);
+  font-size: 16px;
+  color-scheme: light;
 }
 
-.dark {
-  --text-h: #e2e2e2;
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.455 0.188 13.697);
-  --primary-foreground: oklch(0.969 0.015 12.422);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(100% 0.00011 271.152 / 0.226);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
-  --chart-1: oklch(0.808 0.114 19.571);
-  --chart-2: oklch(0.637 0.237 25.331);
-  --chart-3: oklch(0.577 0.245 27.325);
-  --chart-4: oklch(0.505 0.213 27.518);
-  --chart-5: oklch(0.444 0.177 26.899);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.645 0.246 16.439);
-  --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.552 0.016 285.938);
+/*
+ * Derived: the accent in every place it appears. Declared once on :root; each var() reads
+ * the root's final --brand-* whichever rule below set them, so themes and accents compose.
+ */
+:root {
+  --primary: oklch(var(--brand-l) var(--brand-c) var(--brand-h));
+  --primary-foreground: var(--brand-fg);
+  --ring: oklch(var(--brand-l) var(--brand-c) var(--brand-h) / 0.6);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--brand-fg);
+  --sidebar-ring: var(--ring);
+  --brand-soft: oklch(var(--brand-l) var(--brand-c) var(--brand-h) / 0.1);
+  --chart-1: oklch(calc(var(--brand-l) + 0.2) calc(var(--brand-c) * 0.6) var(--brand-h));
+  --chart-2: oklch(calc(var(--brand-l) + 0.1) calc(var(--brand-c) * 0.8) var(--brand-h));
+  --chart-3: var(--primary);
+  --chart-4: oklch(calc(var(--brand-l) - 0.08) var(--brand-c) var(--brand-h));
+  --chart-5: oklch(calc(var(--brand-l) - 0.16) calc(var(--brand-c) * 0.8) var(--brand-h));
 }
 
-#root {
-  width: 90vw;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
+/* ---- Themes ---------------------------------------------------------------------------- */
 
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 16px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+:root[data-theme="paper"] {
+  --brand-l: 0.51;
+  --background: oklch(0.984 0.006 85);
+  --foreground: oklch(0.25 0.018 60);
+  --card: oklch(0.995 0.004 85);
+  --popover: oklch(0.995 0.004 85);
+  --secondary: oklch(0.955 0.01 85);
+  --secondary-foreground: oklch(0.25 0.018 60);
+  --muted: oklch(0.955 0.01 85);
+  --muted-foreground: oklch(0.49 0.02 65);
+  --accent: oklch(0.945 0.012 85);
+  --accent-foreground: oklch(0.25 0.018 60);
+  --border: oklch(0.9 0.014 85);
+  --input: oklch(0.88 0.014 85);
+  --sidebar: oklch(0.965 0.01 85);
+  --sidebar-foreground: oklch(0.32 0.018 60);
+  --sidebar-accent: oklch(0.93 0.014 85);
+  --sidebar-accent-foreground: oklch(0.25 0.018 60);
+  --sidebar-border: oklch(0.9 0.014 85);
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+:root[data-theme="dark"],
+:root[data-theme="oled"] {
+  --brand-l: 0.72;
+  --brand-fg: oklch(0.18 0.01 285.9);
+  --background: oklch(0.165 0.004 285.9);
+  --foreground: oklch(0.96 0.002 286);
+  --card: oklch(0.195 0.005 285.9);
+  --popover: oklch(0.21 0.005 285.9);
+  --secondary: oklch(0.25 0.006 286);
+  --secondary-foreground: oklch(0.96 0.002 286);
+  --muted: oklch(0.24 0.006 286);
+  --muted-foreground: oklch(0.72 0.012 286);
+  --accent: oklch(0.26 0.006 286);
+  --accent-foreground: oklch(0.96 0.002 286);
+  --destructive: oklch(0.704 0.191 22.2);
+  --border: oklch(1 0 0 / 0.09);
+  --input: oklch(1 0 0 / 0.14);
+  --sidebar: oklch(0.18 0.004 285.9);
+  --sidebar-foreground: oklch(0.86 0.006 286);
+  --sidebar-accent: oklch(0.25 0.006 286);
+  --sidebar-accent-foreground: oklch(0.96 0.002 286);
+  --sidebar-border: oklch(1 0 0 / 0.07);
+  --overlay-shadow:
+    0 1px 2px oklch(0 0 0 / 0.3), 0 12px 32px -8px oklch(0 0 0 / 0.5),
+    0 0 0 1px oklch(1 0 0 / 0.06);
+  color-scheme: dark;
 }
 
-code {
+:root[data-theme="oled"] {
+  --background: oklch(0 0 0);
+  --card: oklch(0.13 0.003 285.9);
+  --popover: oklch(0.16 0.004 285.9);
+  --muted: oklch(0.19 0.004 286);
+  --secondary: oklch(0.19 0.004 286);
+  --accent: oklch(0.21 0.005 286);
+  --sidebar: oklch(0.07 0 0);
+  --sidebar-accent: oklch(0.19 0.004 286);
+}
+
+/* ---- Accents: hue and chroma only; the theme decides how light --------------------------- */
+
+:root[data-accent="rose"] {
+  --brand-h: 16.9;
+  --brand-c: 0.2;
+}
+:root[data-accent="orange"] {
+  --brand-h: 45;
+  --brand-c: 0.17;
+}
+:root[data-accent="amber"] {
+  --brand-h: 70;
+  --brand-c: 0.14;
+}
+:root[data-accent="green"] {
+  --brand-h: 150;
+  --brand-c: 0.14;
+}
+:root[data-accent="teal"] {
+  --brand-h: 190;
+  --brand-c: 0.11;
+}
+:root[data-accent="blue"] {
+  --brand-h: 250;
+  --brand-c: 0.17;
+}
+:root[data-accent="indigo"] {
+  --brand-h: 275;
+  --brand-c: 0.19;
+}
+:root[data-accent="violet"] {
+  --brand-h: 300;
+  --brand-c: 0.19;
+}
+
+/*
+ * A swatch shows an accent it is not the page's: the same hue/chroma rules, scoped to the
+ * element, and read against the page's own lightness. Used by the appearance settings.
+ */
+[data-swatch="rose"] {
+  --brand-h: 16.9;
+  --brand-c: 0.2;
+}
+[data-swatch="orange"] {
+  --brand-h: 45;
+  --brand-c: 0.17;
+}
+[data-swatch="amber"] {
+  --brand-h: 70;
+  --brand-c: 0.14;
+}
+[data-swatch="green"] {
+  --brand-h: 150;
+  --brand-c: 0.14;
+}
+[data-swatch="teal"] {
+  --brand-h: 190;
+  --brand-c: 0.11;
+}
+[data-swatch="blue"] {
+  --brand-h: 250;
+  --brand-c: 0.17;
+}
+[data-swatch="indigo"] {
+  --brand-h: 275;
+  --brand-c: 0.19;
+}
+[data-swatch="violet"] {
+  --brand-h: 300;
+  --brand-c: 0.19;
+}
+[data-swatch] {
+  --swatch: oklch(var(--brand-l) var(--brand-c) var(--brand-h));
+}
+
+/* ---- Density and text size ------------------------------------------------------------- */
+
+/* Tailwind derives every spacing utility from --spacing, so this scales the whole layout. */
+:root[data-density="compact"] {
+  --spacing: 0.225rem;
+  --radius: 0.5rem;
+}
+:root[data-density="spacious"] {
+  --spacing: 0.28rem;
+  --radius: 0.75rem;
+}
+
+:root[data-font-size="sm"] {
   font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+}
+:root[data-font-size="lg"] {
+  font-size: 17.5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
-  --font-sans: "Inter Variable", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  /* The type scale. Every heading in the app is one of these. */
+  --text-display: clamp(1.875rem, 1.4rem + 2vw, 2.5rem);
+  --text-display--line-height: 1.08;
+  --text-display--letter-spacing: -0.03em;
+  --text-display--font-weight: 650;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.25;
+  --text-title--letter-spacing: -0.02em;
+  --text-title--font-weight: 600;
+  --text-heading: 1rem;
+  --text-heading--line-height: 1.4;
+  --text-heading--letter-spacing: -0.01em;
+  --text-heading--font-weight: 600;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.55;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow-overlay: var(--overlay-shadow);
+
+  --color-brand-soft: var(--brand-soft);
+  --color-swatch: var(--swatch);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -241,10 +325,29 @@ code {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-background text-body text-foreground;
+    margin: 0;
+  }
+  #root {
+    display: flex;
+    min-height: 100svh;
+    flex-direction: column;
+  }
+  code {
+    @apply rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[0.85em];
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+  ::selection {
+    background: var(--brand-soft);
   }
 }

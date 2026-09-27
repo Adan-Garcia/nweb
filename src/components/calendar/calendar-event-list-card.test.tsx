@@ -20,7 +20,6 @@ const essay: DatedTwig = {
 function setup(overrides: Partial<ComponentProps<typeof CalendarEventListCard>> = {}) {
   const props: ComponentProps<typeof CalendarEventListCard> = {
     snapshot: makeSnapshot(),
-    isLoading: false,
     selectedDateKey: null,
     viewMode: "month",
     weekLabel: "Apr 12-18, 2026",
@@ -37,7 +36,6 @@ function setup(overrides: Partial<ComponentProps<typeof CalendarEventListCard>> 
       { id: "branch-1", label: "Biology 101" },
     ],
     filteredEvents: [quiz, essay],
-    onOpenAddEvent: vi.fn(),
     onOpenEditEvent: vi.fn(),
     onDeleteEvent: vi.fn(),
     onSetEventStatus: vi.fn(),
@@ -115,14 +113,6 @@ describe("CalendarEventListCard: filters", () => {
   });
 });
 
-describe("CalendarEventListCard: loading", () => {
-  it("keeps Add shut until the branches are there to file a task under", () => {
-    setup({ isLoading: true });
-
-    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
-  });
-});
-
 describe("CalendarEventListCard: events", () => {
   it("lists each event with its time and class", () => {
     setup();
@@ -163,17 +153,5 @@ describe("CalendarEventListCard: events", () => {
   it("explains an empty completed list", () => {
     setup({ filteredEvents: [], eventTab: "completed" });
     expect(screen.getByText("No completed events match your filters.")).toBeInTheDocument();
-  });
-});
-
-describe("CalendarEventListCard: adding", () => {
-  it("adds an event for the selected day from the Add menu", async () => {
-    const user = userEvent.setup();
-    const { onOpenAddEvent } = setup({ selectedDateKey: "2026-04-16" });
-
-    await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Add Event" }));
-
-    expect(onOpenAddEvent).toHaveBeenCalledWith("2026-04-16");
   });
 });

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ONBOARDING_STEPS } from "@/components/onboarding/onboarding-steps";
+import { cachedTheme, chooseTheme } from "@/test/theme";
 
 import { OnboardingPage } from "./onboarding";
 
@@ -63,7 +64,7 @@ describe("OnboardingPage", () => {
     await user.click(screen.getByRole("button", { name: /Next/ }));
 
     const [done, current] = screen.getAllByRole("button", {
-      name: /Welcome to Cuervo Planner|Create Your First Wing/,
+      name: /Welcome to Cuervo Planner|Add Your Courses/,
     });
     expect(done.querySelector("svg")).not.toBeNull();
     expect(current).toHaveTextContent("2");
@@ -73,8 +74,8 @@ describe("OnboardingPage", () => {
     const user = userEvent.setup();
     render(<OnboardingPage />);
 
-    await user.click(screen.getByRole("button", { name: "Switch to dark mode" }));
+    await chooseTheme(user, "Dark");
 
-    expect(document.documentElement).toHaveClass("dark");
+    expect(cachedTheme()).toBe("dark");
   });
 });

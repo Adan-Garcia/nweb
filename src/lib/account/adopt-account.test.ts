@@ -7,21 +7,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { server } from "@/test/server";
 
-import { getActiveCipher, resetActiveCipher } from "../cipher";
-import { createBranch, createFlight, createWing, listBranches } from "../entity-storage";
+import { getActiveCipher, resetActiveCipher } from "../crypto/cipher";
+import { getNotesDb } from "../db/notes-db";
+import { createBranch, createFlight, createWing, listBranches } from "../hierarchy/entity-storage";
 import { isReadOnlyKey } from "../keys/access";
 import { createObjectKey, wrapForRecipient } from "../keys/key-graph";
 import { cipherForObject } from "../keys/object-keys";
 import { refreshKeyGraph } from "../keys/refresh-graph";
-import { getNotesDb } from "../notes-db";
-import { loadNotesDocument, saveLinearDocumentPayload } from "../notes-document-storage";
-import { createWorkspaceLock } from "../workspace-passphrase";
+import { createWorkspaceLock } from "../lock/workspace-passphrase";
+import { loadNotesDocument, saveLinearDocumentPayload } from "../notes/notes-document-storage";
 import { readAccountRecord } from "./account-record";
 import { adoptAccount, forgetAccount, unlockAccount } from "./adopt-account";
 
 // Argon2id at its real cost is a second per call and this suite derives several times.
-vi.mock("../kdf", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../kdf")>()),
+vi.mock("../crypto/kdf", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../crypto/kdf")>()),
   createKdfParams: () => ({
     name: "Argon2id" as const,
     memorySize: 1024,

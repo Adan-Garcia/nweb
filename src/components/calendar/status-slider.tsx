@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { STATUS_META, statusOrder } from "@/components/calendar/calendar-shared";
-import type { TwigStatus } from "@/lib/twig-model";
+import type { TwigStatus } from "@/lib/twigs/twig-model";
 
 const COMPLETE_COMMIT_DELAY_MS = 150;
 

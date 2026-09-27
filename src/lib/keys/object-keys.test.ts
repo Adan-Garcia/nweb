@@ -1,14 +1,19 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createAesGcmCipher, getActiveCipher, resetActiveCipher, setActiveCipher } from "../cipher";
-import { createBranch, createFlight, createNest, createWing } from "../entity-storage";
-import { getNotesDb } from "../notes-db";
+import {
+  createAesGcmCipher,
+  getActiveCipher,
+  resetActiveCipher,
+  setActiveCipher,
+} from "../crypto/cipher";
+import { getNotesDb } from "../db/notes-db";
+import { createBranch, createFlight, createNest, createWing } from "../hierarchy/entity-storage";
 import {
   createNotesDirectoryEntry,
   listNotesDirectoryEntries,
   setNotesDirectoryEntryPlacement,
-} from "../notes-directory-storage";
+} from "../notes/notes-directory-storage";
 import { createObjectKey, type Keyring, openKeyGraph, wrapForRecipient } from "./key-graph";
 import {
   cipherForObject,

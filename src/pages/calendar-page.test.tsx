@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getNotesDb } from "@/lib/notes-db";
-import { createTwig, listTwigs } from "@/lib/twig-storage";
-import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
+import { createTwig, listTwigs } from "@/lib/twigs/twig-storage";
 
 import { CalendarPage } from "./calendar";
 
@@ -22,7 +22,7 @@ beforeEach(async () => {
 
 /** Add stays disabled until the workspace has loaded, because a task needs a branch. */
 async function findEnabledAddButton() {
-  const button = await screen.findByRole("button", { name: "Add" });
+  const button = await screen.findByRole("button", { name: "Add Event" });
   await waitFor(() => expect(button).toBeEnabled());
 
   return button;
@@ -45,12 +45,18 @@ describe("CalendarPage", () => {
     expect(await screen.findByText("No active events match your filters.")).toBeInTheDocument();
   });
 
+  it("keeps Add shut until the branches are there to file a task under", async () => {
+    renderPage();
+
+    expect(screen.getByRole("button", { name: "Add Event" })).toBeDisabled();
+    await findEnabledAddButton();
+  });
+
   it("adds an event through the form and lists it", async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.click(await findEnabledAddButton());
-    await user.click(await screen.findByRole("menuitem", { name: "Add Event" }));
     await user.type(screen.getByLabelText("Title"), "Study group");
     await user.click(screen.getByRole("button", { name: "Create event" }));
 
@@ -66,7 +72,6 @@ describe("CalendarPage", () => {
     renderPage();
 
     await user.click(await findEnabledAddButton());
-    await user.click(await screen.findByRole("menuitem", { name: "Add Event" }));
     await user.click(screen.getByRole("button", { name: "Create event" }));
 
     expect(await screen.findByText("Title is required")).toBeInTheDocument();
@@ -97,7 +102,6 @@ describe("CalendarPage", () => {
     renderPage();
 
     await user.click(await findEnabledAddButton());
-    await user.click(await screen.findByRole("menuitem", { name: "Add Event" }));
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
     await user.keyboard("{Escape}");
 

@@ -6,16 +6,17 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { Plus } from "lucide-react";
 
 import { CalendarEventListCard } from "@/components/calendar/calendar-event-list-card";
 import { CalendarGridCard } from "@/components/calendar/calendar-grid-card";
 import { EventOverlay } from "@/components/calendar/event-overlay";
 import { useCalendarPage } from "@/components/calendar/use-calendar-page";
-import { WorkspaceShell } from "@/components/workspace-shell";
-import { useThemeMode } from "@/hooks/use-theme-mode";
+import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
 
 export function CalendarPage() {
-  const { isDark, toggleTheme } = useThemeMode();
   const calendar = useCalendarPage();
   const { editor } = calendar;
 
@@ -26,16 +27,21 @@ export function CalendarPage() {
   );
 
   return (
-    <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
-      <div className="mx-auto max-w-8xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-4">
-          <div>
-            <h1 className="text-4xl font-bold">Calendar</h1>
-            <p className="text-base text-muted-foreground">
-              Plan your classes, tasks, and deadlines in one place.
-            </p>
-          </div>
-        </div>
+    <>
+      <PageContainer width="wide">
+        <PageHeader
+          title="Calendar"
+          description="Plan your classes, tasks, and deadlines in one place."
+          actions={
+            <Button
+              disabled={calendar.isLoading}
+              onClick={() => editor.openAdd(calendar.selectedDateKey)}
+            >
+              <Plus className="size-4" />
+              Add Event
+            </Button>
+          }
+        />
 
         <DndContext
           sensors={sensors}
@@ -49,10 +55,11 @@ export function CalendarPage() {
             );
           }}
         >
-          <div className="grid gap-6 lg:grid-cols-[1fr_2.5fr]">
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(18rem,1fr)_2.5fr]">
+            {/* The grid comes first on a phone, where the list would push it off the screen. */}
             <CalendarEventListCard
+              className="order-2 lg:order-1"
               snapshot={calendar.snapshot}
-              isLoading={calendar.isLoading}
               selectedDateKey={calendar.selectedDateKey}
               viewMode={calendar.viewMode}
               weekLabel={calendar.weekLabel}
@@ -66,7 +73,6 @@ export function CalendarPage() {
               onSelectedClassFilterChange={calendar.setSelectedClassFilter}
               eventClasses={calendar.eventClasses}
               filteredEvents={calendar.filteredEvents}
-              onOpenAddEvent={editor.openAdd}
               onOpenEditEvent={editor.openEdit}
               onDeleteEvent={(event) => {
                 void calendar.deleteEvent(event);
@@ -76,6 +82,7 @@ export function CalendarPage() {
               }}
             />
             <CalendarGridCard
+              className="order-1 lg:order-2"
               snapshot={calendar.snapshot}
               viewMode={calendar.viewMode}
               onViewModeChange={calendar.setViewMode}
@@ -93,7 +100,7 @@ export function CalendarPage() {
             />
           </div>
         </DndContext>
-      </div>
+      </PageContainer>
 
       <EventOverlay
         isOpen={editor.isOpen}
@@ -107,6 +114,6 @@ export function CalendarPage() {
         }}
         onClose={editor.close}
       />
-    </WorkspaceShell>
+    </>
   );
 }

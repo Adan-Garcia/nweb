@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { CalendarEvent } from "@/lib/calendar-event";
+import type { CalendarEvent } from "@/lib/twigs/calendar-event";
 
 import { StatusSlider } from "./status-slider";
 

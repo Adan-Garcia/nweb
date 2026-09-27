@@ -1,24 +1,17 @@
-import { Plus } from "lucide-react";
+import { CalendarX2 } from "lucide-react";
 
 import { CalendarEventFilters } from "@/components/calendar/calendar-event-filters";
 import { CalendarEventListItem } from "@/components/calendar/calendar-event-list-item";
 import { type DatedTwig, formatHumanDate } from "@/components/calendar/calendar-shared";
 import type { CalendarViewMode, EventTab } from "@/components/calendar/calendar-views";
-import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/layout/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import type { TwigStatus } from "@/lib/twig-model";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import type { TwigStatus } from "@/lib/twigs/twig-model";
 
 type CalendarEventListCardProps = {
+  className?: string;
   snapshot: WorkspaceSnapshot;
-  /** Until this clears there are no branches to file a task under, so Add stays shut. */
-  isLoading: boolean;
   selectedDateKey: string | null;
   viewMode: CalendarViewMode;
   weekLabel: string;
@@ -32,15 +25,14 @@ type CalendarEventListCardProps = {
   onSelectedClassFilterChange: (value: string) => void;
   eventClasses: readonly { id: string; label: string }[];
   filteredEvents: DatedTwig[];
-  onOpenAddEvent: (defaultDate?: string | null) => void;
   onOpenEditEvent: (event: DatedTwig) => void;
   onDeleteEvent: (event: DatedTwig) => void;
   onSetEventStatus: (twigId: string, nextStatus: TwigStatus) => void;
 };
 
 export function CalendarEventListCard({
+  className,
   snapshot,
-  isLoading,
   selectedDateKey,
   viewMode,
   weekLabel,
@@ -54,40 +46,22 @@ export function CalendarEventListCard({
   onSelectedClassFilterChange,
   eventClasses,
   filteredEvents,
-  onOpenAddEvent,
   onOpenEditEvent,
   onDeleteEvent,
   onSetEventStatus,
 }: CalendarEventListCardProps) {
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
-        <div className="flex items-center justify-between gap-3">
-          <CardTitle>
-            {selectedDateKey
-              ? `Events on ${formatHumanDate(selectedDateKey)}`
-              : viewMode === "week"
-                ? `Events in ${weekLabel}`
-                : `Events in ${monthLabel}`}
-          </CardTitle>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="outline" size="sm" disabled={isLoading}>
-                  <Plus className="size-4" />
-                  Add
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={() => onOpenAddEvent(selectedDateKey)}>
-                Add Event
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <CardTitle className="text-heading">
+          {selectedDateKey
+            ? `Events on ${formatHumanDate(selectedDateKey)}`
+            : viewMode === "week"
+              ? `Events in ${weekLabel}`
+              : `Events in ${monthLabel}`}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="grid gap-2">
         <CalendarEventFilters
           eventTab={eventTab}
           onEventTabChange={onEventTabChange}
@@ -112,11 +86,15 @@ export function CalendarEventListCard({
             />
           ))
         ) : (
-          <p className="text-sm text-muted-foreground">
-            {eventTab === "completed"
-              ? "No completed events match your filters."
-              : "No active events match your filters."}
-          </p>
+          <EmptyState
+            icon={CalendarX2}
+            title={
+              eventTab === "completed"
+                ? "No completed events match your filters."
+                : "No active events match your filters."
+            }
+            className="py-8"
+          />
         )}
       </CardContent>
     </Card>

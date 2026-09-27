@@ -1,7 +1,7 @@
 import type { KeyGraph, KeyKind } from "@shared/sharing-contract";
 
-import { base64ToBytes, bytesToBase64 } from "../base64";
-import { type Cipher, createAesGcmCipher } from "../cipher";
+import { base64ToBytes, bytesToBase64 } from "../crypto/base64";
+import { type Cipher, createAesGcmCipher } from "../crypto/cipher";
 
 /**
  * Walking the key graph: from a private key, through the grants it opens, down the wraps,

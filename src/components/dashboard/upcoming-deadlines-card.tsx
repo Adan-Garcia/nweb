@@ -1,4 +1,5 @@
 import { CalendarDays } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import {
   branchLabelFor,
@@ -7,7 +8,7 @@ import {
 } from "@/components/calendar/calendar-shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 
 export function UpcomingDeadlinesCard({
   snapshot,
@@ -22,7 +23,7 @@ export function UpcomingDeadlinesCard({
         <CardTitle>Upcoming Deadlines</CardTitle>
         <CardDescription>From your calendar, sorted by date.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="grid gap-1">
         {events.length ? (
           events.map((event) => {
             const branch = branchLabelFor(snapshot, event.branchId);
@@ -30,7 +31,7 @@ export function UpcomingDeadlinesCard({
             return (
               <div
                 key={event.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/20 p-3"
+                className="flex items-center justify-between gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/60"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{event.title}</p>
@@ -49,16 +50,16 @@ export function UpcomingDeadlinesCard({
             );
           })
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="px-2 py-4 text-sm text-muted-foreground">
             No upcoming incomplete events in the next week.
           </p>
         )}
 
         <Button
           variant="outline"
-          className="w-full"
+          className="mt-2 w-full"
           nativeButton={false}
-          render={<a href="/calendar" />}
+          render={<Link to="/calendar" />}
         >
           <CalendarDays className="size-4" />
           Review full calendar

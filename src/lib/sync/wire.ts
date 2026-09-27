@@ -1,13 +1,14 @@
 import { type Schedule, type SyncRow, type SyncStore } from "@shared/sync-contract";
 import { z } from "zod";
 
-import { base64ToBytes, bytesToBase64 } from "../base64";
-import { type Cipher, decryptWith } from "../cipher";
-import { branchSchema, flightSchema, nestSchema, wingSchema } from "../entity-model";
+import { base64ToBytes, bytesToBase64 } from "../crypto/base64";
+import { type Cipher, decryptWith } from "../crypto/cipher";
+import { branchSchema, flightSchema, nestSchema, wingSchema } from "../hierarchy/entity-model";
+import { pebbleSchema } from "../hierarchy/pebble-model";
+import { sharePathRecordSchema } from "../hierarchy/share-path-model";
 import { cipherForObject } from "../keys/object-keys";
-import { pebbleSchema } from "../pebble-model";
-import { sharePathRecordSchema } from "../share-path-model";
-import { twigSchema } from "../twig-model";
+import { preferencesSchema } from "../preferences/preferences-model";
+import { twigSchema } from "../twigs/twig-model";
 
 /**
  * A stored row on one side, and something a server can hold on the other.
@@ -48,7 +49,7 @@ const directoryPayloadSchema = z.object({
 });
 
 /** What a row of each store must look like once it is opened. Nothing is taken on trust. */
-export const PAYLOAD_SCHEMAS = {
+const PAYLOAD_SCHEMAS = {
   "notes-directory": directoryPayloadSchema,
   "notes-documents": documentPayloadSchema,
   wings: wingSchema,
@@ -58,6 +59,7 @@ export const PAYLOAD_SCHEMAS = {
   twigs: twigSchema,
   pebbles: pebbleSchema,
   "share-paths": sharePathRecordSchema,
+  preferences: preferencesSchema,
 } as const;
 
 /**

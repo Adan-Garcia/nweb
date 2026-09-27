@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 
+import { visit } from "./account";
 import { expect, test } from "./fixtures";
 import { createNote, openNotes } from "./helpers";
 
@@ -14,7 +15,7 @@ test.describe("an encrypted backup", () => {
     await openNotes(page);
     await createNote(page, "Secret Lecture", "linear");
 
-    await page.goto("/settings");
+    await visit(page, "/settings");
     await page.getByRole("button", { name: "Encrypt a backup" }).click();
     await page.getByLabel("Passphrase for this backup").fill("correct horse battery");
 
@@ -38,7 +39,9 @@ test.describe("an encrypted backup", () => {
       kdf: { name: "Argon2id", memorySize: 65536, iterations: 3, parallelism: 1 },
     });
 
-    await expect(page.getByRole("status")).toContainText("encrypted");
+    // The download is confirmed by a toast, which says what went into the file.
+    await expect(page.getByText("Backup downloaded")).toBeVisible();
+    await expect(page.getByText(/tasks, encrypted\./)).toBeVisible();
 
     // Restoring it asks for the passphrase rather than calling it an invalid file.
     await page.getByRole("button", { name: "Restore from file" }).click();
@@ -54,7 +57,6 @@ test.describe("an encrypted backup", () => {
     await expect(page.getByRole("status")).toContainText("Restored");
 
     // And the note really came back.
-    await page.goto("/notes");
     await openNotes(page);
     await expect(page.getByRole("button", { name: "Secret Lecture" })).toBeVisible();
   });

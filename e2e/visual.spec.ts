@@ -1,3 +1,4 @@
+import { signUp, visit } from "./account";
 import { expect, test } from "./fixtures";
 
 /**
@@ -23,7 +24,8 @@ const SIZES = {
   mobile: { width: 480, height: 900 },
 } as const;
 
-test.use({ reducedMotion: "reduce" });
+// The auth pages are shot as a new device sees them; the notes page signs up first.
+test.use({ reducedMotion: "reduce", signedUp: false });
 
 for (const scheme of ["light", "dark"] as const) {
   for (const [sizeName, viewport] of Object.entries(SIZES)) {
@@ -33,7 +35,12 @@ for (const scheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: scheme });
         await page.addInitScript((theme) => localStorage.setItem("theme", theme), scheme);
 
-        await page.goto(path);
+        if (name === "notes") {
+          await signUp(page);
+          await visit(page, path);
+        } else {
+          await page.goto(path);
+        }
         await page.evaluate(() => document.fonts.ready);
         if (name === "notes") {
           await expect(page.getByText(/Autosave enabled|Autosaved at/)).toBeVisible();

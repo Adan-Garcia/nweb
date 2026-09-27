@@ -17,7 +17,7 @@ import {
 } from "@/components/calendar/calendar-views";
 import { useCalendarTwigs } from "@/components/calendar/use-calendar-twigs";
 import { useTwigEditor } from "@/components/calendar/use-twig-editor";
-import { resolveCalendarDrop } from "@/lib/calendar-drop";
+import { resolveCalendarDrop } from "@/lib/twigs/calendar-drop";
 
 /** State and handlers behind the calendar page. */
 export function useCalendarPage() {

@@ -1,7 +1,7 @@
 import type { SyncRow, SyncStore } from "@shared/sync-contract";
 
+import { getNotesDb } from "../db/notes-db";
 import { isReadOnlyKey } from "../keys/access";
-import { getNotesDb } from "../notes-db";
 import { mergeStoredRows } from "./merge-row";
 import { fromSyncRow, type StoredRow } from "./wire";
 

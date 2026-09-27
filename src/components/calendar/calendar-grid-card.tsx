@@ -2,11 +2,19 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { CalendarDayCell } from "@/components/calendar/calendar-day-cell";
 import { type DatedTwig, formatDateKey, weekDays } from "@/components/calendar/calendar-shared";
+import { SegmentedControl } from "@/components/layout/segmented-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import { cn } from "@/lib/utils";
+
+const VIEW_OPTIONS = [
+  { value: "month", label: "Month" },
+  { value: "week", label: "Week" },
+] as const;
 
 type CalendarGridCardProps = {
+  className?: string;
   snapshot: WorkspaceSnapshot;
   viewMode: "month" | "week";
   onViewModeChange: (mode: "month" | "week") => void;
@@ -24,6 +32,7 @@ type CalendarGridCardProps = {
 };
 
 export function CalendarGridCard({
+  className,
   snapshot,
   viewMode,
   onViewModeChange,
@@ -39,46 +48,49 @@ export function CalendarGridCard({
   eventsByDate,
   onSelectDate,
 }: CalendarGridCardProps) {
+  const unit = viewMode === "month" ? "month" : "week";
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-4">
-        <CardTitle>{viewMode === "month" ? monthLabel : weekLabel}</CardTitle>
+    <Card className={cn("gap-3", className)}>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+        <CardTitle className="text-heading">
+          {viewMode === "month" ? monthLabel : weekLabel}
+        </CardTitle>
         <div className="flex items-center gap-2">
-          <div className="rounded-md border border-border p-1">
+          <SegmentedControl
+            label="Calendar view"
+            value={viewMode}
+            options={VIEW_OPTIONS}
+            onChange={onViewModeChange}
+          />
+          <div className="flex items-center">
             <Button
-              variant={viewMode === "month" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => onViewModeChange("month")}
+              variant="ghost"
+              size="icon-sm"
+              onClick={onPrevious}
+              aria-label={`Previous ${unit}`}
             >
-              Month
+              <ChevronLeft className="size-4" />
             </Button>
-            <Button
-              variant={viewMode === "week" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => onViewModeChange("week")}
-            >
-              Week
+            <Button variant="outline" size="sm" onClick={onToday}>
+              Today
+            </Button>
+            <Button variant="ghost" size="icon-sm" onClick={onNext} aria-label={`Next ${unit}`}>
+              <ChevronRight className="size-4" />
             </Button>
           </div>
-          <Button variant="outline" size="icon" onClick={onPrevious} aria-label="Previous month">
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button variant="outline" onClick={onToday}>
-            Today
-          </Button>
-          <Button variant="outline" size="icon" onClick={onNext} aria-label="Next month">
-            <ChevronRight className="size-4" />
-          </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-3 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <div className="grid grid-cols-7 overflow-hidden rounded-lg border bg-border gap-px">
           {weekDays.map((day) => (
-            <div key={day}>{day}</div>
+            <div
+              key={day}
+              className="bg-muted/60 py-1.5 text-center text-caption font-medium text-muted-foreground"
+            >
+              {day}
+            </div>
           ))}
-        </div>
-
-        <div className="grid min-h-120 grid-cols-7 auto-rows-fr gap-2">
           {visibleDates.map((date) => {
             const dateKey = formatDateKey(date);
 

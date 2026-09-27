@@ -2,11 +2,10 @@ import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { BoardCard } from "@/components/board/board-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { type BoardColumn as BoardColumnModel, columnId } from "@/lib/board";
-import type { Twig } from "@/lib/twig-model";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import { type BoardColumn as BoardColumnModel, columnId } from "@/lib/twigs/board";
+import type { Twig } from "@/lib/twigs/twig-model";
 import { cn } from "@/lib/utils";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type BoardColumnProps = {
   snapshot: WorkspaceSnapshot;
@@ -21,40 +20,42 @@ export function BoardColumn({ snapshot, column, onEdit, onDelete }: BoardColumnP
   const twigIds = column.twigs.map((twig) => twig.id);
 
   return (
-    <Card className={cn("min-w-0", isOver && "border-primary/60")}>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between gap-2 text-base">
-          {column.label}
-          <span className="rounded-full border border-border px-2 text-xs text-muted-foreground">
-            {column.twigs.length}
-          </span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <SortableContext items={twigIds} strategy={verticalListSortingStrategy}>
-          <ul
-            ref={setNodeRef}
-            aria-label={column.label}
-            className="grid min-h-24 content-start gap-2"
-          >
-            {column.twigs.map((twig) => (
-              <BoardCard
-                key={twig.id}
-                snapshot={snapshot}
-                twig={twig}
-                onEdit={onEdit}
-                onDelete={onDelete}
-              />
-            ))}
+    <section
+      aria-label={`${column.label} column`}
+      className={cn(
+        "flex min-w-[17rem] snap-start flex-col gap-2 rounded-xl bg-muted/50 p-2 transition-colors md:min-w-0",
+        isOver && "bg-brand-soft ring-1 ring-primary/40",
+      )}
+    >
+      <h2 className="flex items-center justify-between gap-2 px-1.5 pt-1 text-heading">
+        {column.label}
+        <span className="rounded-full bg-background px-2 text-caption text-muted-foreground tabular-nums">
+          {column.twigs.length}
+        </span>
+      </h2>
+      <SortableContext items={twigIds} strategy={verticalListSortingStrategy}>
+        <ul
+          ref={setNodeRef}
+          aria-label={column.label}
+          className="grid min-h-24 content-start gap-2"
+        >
+          {column.twigs.map((twig) => (
+            <BoardCard
+              key={twig.id}
+              snapshot={snapshot}
+              twig={twig}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
 
-            {column.twigs.length ? null : (
-              <li className="rounded-lg border border-dashed border-border/70 p-3 text-xs text-muted-foreground">
-                Nothing here yet.
-              </li>
-            )}
-          </ul>
-        </SortableContext>
-      </CardContent>
-    </Card>
+          {column.twigs.length ? null : (
+            <li className="rounded-lg border border-dashed border-foreground/15 p-4 text-center text-caption text-muted-foreground">
+              Nothing here yet.
+            </li>
+          )}
+        </ul>
+      </SortableContext>
+    </section>
   );
 }

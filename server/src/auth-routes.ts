@@ -1,5 +1,6 @@
 import {
   changePassphraseRequestSchema,
+  deleteAccountRequestSchema,
   preloginRequestSchema,
   registerRequestSchema,
   sessionRequestSchema,
@@ -9,6 +10,7 @@ import { Hono } from "hono";
 import {
   changePassphrase,
   createSession,
+  deleteAccount,
   endSession,
   keyMaterialFor,
   prelogin,
@@ -106,6 +108,29 @@ export function authRoutes({ sql, serverSecret, attempts }: RouteDeps) {
     const changed = await changePassphrase(sql, caller.user, parsed.data, caller.token);
 
     return changed ? noContent() : fail("invalid_credentials");
+  });
+
+  /** Everything this account owns, gone, after the passphrase is proved once more. */
+  routes.delete("/v1/auth/account", async (context) => {
+    const caller = await callerFor(sql, context.req.header("authorization"));
+
+    if (!caller) {
+      return fail("unauthorized");
+    }
+
+    const parsed = deleteAccountRequestSchema.safeParse(await context.req.json().catch(() => null));
+
+    if (!parsed.success) {
+      return fail("invalid_request");
+    }
+
+    if (attempts.isLimited(`delete:${caller.user.id}`)) {
+      return fail("rate_limited");
+    }
+
+    const deleted = await deleteAccount(sql, caller.user, parsed.data.authKey);
+
+    return deleted ? noContent() : fail("invalid_credentials");
   });
 
   return routes;

@@ -6,7 +6,7 @@ import type {
   OptimizeImageRequest,
   WorkerRequest,
   WorkerResponse,
-} from "@/lib/media-worker-protocol";
+} from "@/lib/media/media-worker-protocol";
 
 // The worker registers itself on the global scope, which is `self` in a real worker.
 // A setter on `onmessage` lets us capture the handler it installs.

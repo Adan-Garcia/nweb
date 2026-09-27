@@ -69,10 +69,12 @@ describe("CalendarGridCard", () => {
     const user = userEvent.setup();
     const props = setup();
 
+    expect(screen.getByRole("button", { name: "Week" })).toHaveAttribute("aria-pressed", "true");
     await user.click(screen.getByRole("button", { name: "Month" }));
     await user.click(screen.getByRole("button", { name: "Week" }));
-    await user.click(screen.getByRole("button", { name: "Previous month" }));
-    await user.click(screen.getByRole("button", { name: "Next month" }));
+    // The arrows say what they step by, which in week view is a week.
+    await user.click(screen.getByRole("button", { name: "Previous week" }));
+    await user.click(screen.getByRole("button", { name: "Next week" }));
     await user.click(screen.getByRole("button", { name: "Today" }));
 
     expect(props.onViewModeChange).toHaveBeenNthCalledWith(1, "month");
@@ -103,23 +105,37 @@ describe("CalendarGridCard", () => {
     expect(within(thursday).getByText("+2 more")).toBeInTheDocument();
   });
 
-  it("dims completed events", () => {
+  it("names the arrows after the month in month view", () => {
+    setup({ viewMode: "month" });
+    expect(screen.getByRole("button", { name: "Previous month" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next month" })).toBeInTheDocument();
+  });
+
+  it("strikes through completed events", () => {
     setup();
     const thursday = screen.getByRole("button", { name: /^16/ });
-    expect(within(thursday).getByText("Event 3")).toHaveClass("opacity-50");
-    expect(within(thursday).getByText("Event 2")).toHaveClass("opacity-100");
+    expect(within(thursday).getByText("Event 3").parentElement).toHaveClass("line-through");
+    expect(within(thursday).getByText("Event 2").parentElement).not.toHaveClass("line-through");
   });
 
   it("marks the selected day and today, and mutes days outside the month", () => {
     setup({ selectedDateKey: "2026-04-14", visibleDates: buildWeekDates(new Date(2026, 3, 1)) });
     // The week of April 1 starts in March.
-    expect(screen.getByRole("button", { name: /^29/ })).toHaveClass("bg-muted/40");
+    expect(screen.getByRole("button", { name: /^29/ })).toHaveClass("bg-muted/30");
     expect(screen.getByRole("button", { name: /^1(?!\d)/ })).toHaveClass("bg-card");
   });
 
-  it("highlights the selected day", () => {
+  it("highlights the selected day, and says which it is", () => {
     setup({ selectedDateKey: "2026-04-14" });
-    expect(screen.getByRole("button", { name: /^14/ })).toHaveClass("ring-1");
-    expect(screen.getByRole("button", { name: /^15/ })).not.toHaveClass("ring-1");
+    expect(screen.getByRole("button", { name: /^14/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^14/ })).toHaveClass("bg-brand-soft");
+    expect(screen.getByRole("button", { name: /^15/ })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("puts today's date in the accent", () => {
+    setup();
+    expect(within(screen.getByRole("button", { name: /^16/ })).getByText("16")).toHaveClass(
+      "bg-primary",
+    );
   });
 });

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { getNotesDb } from "../notes-db";
+import { getNotesDb } from "../db/notes-db";
 import { canWriteNote, isReadOnlyKey, keyAccess } from "./access";
 import { forgetKeyring, holdKeyring, holdServedGraph } from "./object-keys";
 

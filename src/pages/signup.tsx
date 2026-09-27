@@ -1,28 +1,28 @@
 import { LockKeyhole, ShieldCheck } from "lucide-react";
 
-import { AuthShell } from "@/components/auth-shell";
-import { SignupForm } from "@/components/signup-form";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { SignupPanel } from "@/components/auth/signup-panel";
 
 export function SignupPage() {
   return (
     <AuthShell
       formAriaLabel="Sign up form"
-      eyebrow="Join the beta"
+      eyebrow="Create your account"
       title="Plan your classes, notes, and deadlines in one place."
-      description="Accounts are still being built, so this form does not create one yet. The planner is already usable without it: your coursework is stored locally on your device, and the core planner will stay free and open source."
+      description="Your account lives on this device: a name, an email and a passphrase that encrypts everything you write. A sync server is optional — add one now or later in Settings to keep your other devices up to date."
       benefits={[
         {
           icon: <ShieldCheck className="size-4" />,
           title: "Local-first",
-          copy: "Your notes and deadlines are stored on your device.",
+          copy: "Your notes and deadlines are stored and encrypted on your device, and synced only if you choose.",
         },
         {
           icon: <LockKeyhole className="size-4" />,
-          title: "Free during the beta",
-          copy: "Free beta access through 2027.",
+          title: "One passphrase",
+          copy: "It unlocks this device and, if you add one, your sync account. Nobody can reset it.",
         },
       ]}
-      form={<SignupForm className="m-0 w-[min(100%,430px)]" />}
+      form={<SignupPanel />}
     />
   );
 }

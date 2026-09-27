@@ -1,3 +1,4 @@
+import { reload } from "./account";
 import { expect, test } from "./fixtures";
 import { createNote, inkPixels, openNotes } from "./helpers";
 
@@ -43,7 +44,7 @@ test.describe("dropping an image onto the canvas", () => {
     await expect.poll(() => inkPixels(page)).toBeGreaterThan(2000);
     await expect(page.getByText(/^Autosaved at/)).toBeVisible();
 
-    await page.reload();
+    await reload(page);
 
     await expect(page.getByRole("button", { name: "Drop E2E" })).toBeVisible();
     await expect.poll(() => inkPixels(page)).toBeGreaterThan(2000);

@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { server } from "@/test/server";
 
-import { getNotesDb } from "../notes-db";
+import { getNotesDb } from "../db/notes-db";
 import { syncMedia } from "./sync-media";
 
 const SESSION = { baseUrl: "https://api.example", token: "a-token" };

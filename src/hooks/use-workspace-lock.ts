@@ -1,20 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { passphrasesNeeded, readRekeyJournal } from "@/lib/rekey-journal";
+import { changeDevicePassphrase, unlockDevice } from "@/lib/account/device-account";
+import { passphrasesNeeded, readRekeyJournal } from "@/lib/lock/rekey-journal";
 import {
   getWorkspaceLockState,
   lockWorkspace,
+  notifyLockChanged,
   readLockHint,
-  unlockWorkspace,
-} from "@/lib/workspace-lock";
-import type { WorkspaceLockState } from "@/lib/workspace-lock-model";
-import {
-  changeWorkspacePassphrase,
-  createWorkspaceLock,
-  removeWorkspaceLock,
-  resumeRekey,
-} from "@/lib/workspace-passphrase";
-import type { RekeyProgress } from "@/lib/workspace-rekey";
+  subscribeToLockChanges,
+} from "@/lib/lock/workspace-lock";
+import type { WorkspaceLockState } from "@/lib/lock/workspace-lock-model";
+import { resumeRekey } from "@/lib/lock/workspace-passphrase";
+import type { RekeyProgress } from "@/lib/lock/workspace-rekey";
 
 /**
  * The lock, as the UI sees it.
@@ -45,6 +42,10 @@ export function useWorkspaceLock() {
 
   useEffect(() => {
     void refresh();
+
+    return subscribeToLockChanges(() => {
+      void refresh();
+    });
   }, [refresh]);
 
   /**
@@ -68,13 +69,19 @@ export function useWorkspaceLock() {
     [refresh],
   );
 
+  /**
+   * The device's passphrase, whichever key it opens: the account's on a device with a
+   * server account, the lock's otherwise (`device-account.ts`).
+   */
   const unlock = useCallback(
     async (passphrase: string) => {
       setIsWorking(true);
       setError(null);
 
       try {
-        if (await unlockWorkspace(passphrase)) {
+        if (await unlockDevice(passphrase)) {
+          // Other readers of the lock hear about it; this one reads it before returning.
+          notifyLockChanged();
           await refresh();
           return true;
         }
@@ -93,49 +100,20 @@ export function useWorkspaceLock() {
     await refresh();
   }, [refresh]);
 
-  /** Encrypts everything already stored, so this can take a moment on a full workspace. */
-  const create = useCallback(
-    (passphrase: string) =>
-      runRekey(async (onProgress) => {
-        try {
-          await createWorkspaceLock(passphrase, onProgress);
-          return true;
-        } catch {
-          setError("Could not set the passphrase. Nothing was changed.");
-          return false;
-        }
-      }),
-    [runRekey],
-  );
-
-  /** One pass from the old key to the new one, so nothing is readable in between. */
+  /**
+   * A new passphrase. On a local-only device every row is rewritten, which is why it goes
+   * through the rekey runner; on a server account it is one key and a call to the server.
+   */
   const change = useCallback(
     (currentPassphrase: string, nextPassphrase: string) =>
       runRekey(async (onProgress) => {
-        try {
-          if (await changeWorkspacePassphrase(currentPassphrase, nextPassphrase, onProgress)) {
-            return true;
-          }
+        const changed = await changeDevicePassphrase(currentPassphrase, nextPassphrase, onProgress);
 
-          setError("That passphrase is not the one this workspace is locked with.");
-          return false;
-        } catch {
-          setError("Could not change the passphrase. The old one still opens this workspace.");
-          return false;
-        }
-      }),
-    [runRekey],
-  );
-
-  const remove = useCallback(
-    (passphrase: string) =>
-      runRekey(async (onProgress) => {
-        if (await removeWorkspaceLock(passphrase, onProgress)) {
-          return true;
+        if (!changed.ok) {
+          setError(CHANGE_ERRORS[changed.reason]);
         }
 
-        setError("That passphrase is not the one this workspace was locked with.");
-        return false;
+        return changed.ok;
       }),
     [runRekey],
   );
@@ -167,10 +145,15 @@ export function useWorkspaceLock() {
     needed,
     unlock,
     lock,
-    create,
     change,
-    remove,
     resume,
     refresh,
   };
 }
+
+const CHANGE_ERRORS = {
+  "wrong-passphrase": "That passphrase is not the one this device is locked with.",
+  unreachable:
+    "Changing the passphrase of a synced account needs the server, and it could not be reached. Nothing was changed.",
+  failed: "Could not change the passphrase. The old one still opens this workspace.",
+} as const;

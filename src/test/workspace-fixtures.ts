@@ -1,7 +1,7 @@
-import type { Branch, Flight, Nest, Wing } from "@/lib/entity-model";
-import type { NotesDirectoryEntry } from "@/lib/notes-model";
-import type { Twig } from "@/lib/twig-model";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
+import type { Branch, Flight, Nest, Wing } from "@/lib/hierarchy/entity-model";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import type { NotesDirectoryEntry } from "@/lib/notes/notes-model";
+import type { Twig } from "@/lib/twigs/twig-model";
 
 /**
  * Fixtures with fixed ids, so an assertion can name the branch it means instead of

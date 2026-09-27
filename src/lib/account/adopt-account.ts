@@ -1,13 +1,12 @@
 import type { KeyGraph } from "@shared/sharing-contract";
 
-import { type AccountKeys, createAccountKeys, openAccountKeys } from "../account-keys";
 import {
   type Cipher,
   createAesGcmCipher,
   getActiveCipher,
   registerCipher,
   setActiveCipher,
-} from "../cipher";
+} from "../crypto/cipher";
 import { holdIdentity } from "../keys/identity";
 import {
   createObjectKey,
@@ -18,7 +17,8 @@ import {
 } from "../keys/key-graph";
 import { forgetKeyring, holdKeyring } from "../keys/object-keys";
 import { rotateRowsToKey } from "../keys/rotate-rows";
-import { readLockRecord, unlockWorkspace, writeLockHint } from "../workspace-lock";
+import { readLockRecord, unlockWorkspace, writeLockHint } from "../lock/workspace-lock";
+import { type AccountKeys, createAccountKeys, openAccountKeys } from "./account-keys";
 import {
   type AccountRecord,
   forgetAccountRecord,
@@ -218,7 +218,7 @@ export async function forgetAccount(): Promise<void> {
  * once opens every note it holds with no network, including the ones under courses it made
  * on a plane.
  */
-async function adoptKeyring(
+export async function adoptKeyring(
   wingKeyId: string,
   wingKey: CryptoKey,
   cached: KeyGraph,

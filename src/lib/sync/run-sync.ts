@@ -7,8 +7,8 @@ import {
 } from "@shared/sync-contract";
 
 import { apiRequest, type ApiSession } from "../api/client";
+import { getNotesDb } from "../db/notes-db";
 import { isReadOnlyKey } from "../keys/access";
-import { getNotesDb } from "../notes-db";
 import { reconcileRow } from "./reconcile";
 import { type StoredRow, toSyncRow } from "./wire";
 
@@ -106,7 +106,7 @@ export async function runSync(
 }
 
 /** Applies pulled rows one by one, and says which of them changed something here. */
-export async function applyRows(rows: SyncRow[]): Promise<ChangedRow[]> {
+async function applyRows(rows: SyncRow[]): Promise<ChangedRow[]> {
   const changed: ChangedRow[] = [];
 
   for (const row of rows) {

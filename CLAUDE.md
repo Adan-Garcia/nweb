@@ -39,9 +39,9 @@ This document defines the architectural, stylistic, and operational rules for th
 
 ## 2. Architecture & System Boundaries
 
-The app is **local-first**: it works with no server, and it reads its own notes with no server even when it has one. Persistence is IndexedDB (`idb`); `localStorage` holds only what the first paint needs before an async read could answer — the theme, the workspace-lock hint, and which way the notes page is navigated — and never user content. Heavy work runs in a Web Worker.
+The app is **local-first**: it works with no server, and it reads its own notes with no server even when it has one. Persistence is IndexedDB (`idb`); `localStorage` holds only what the first paint needs before an async read could answer — a cache of the appearance preferences, the workspace-lock hint, which way the notes page is navigated, and which sync server this device uses — and never user content. Heavy work runs in a Web Worker.
 
-There *is* a backend now, in `server/`, and it is optional in the strongest sense: a build with no `VITE_API_URL` never calls it, and a build with one still opens the workspace from the passphrase alone. It is a row store that holds ciphertext it cannot read. `BACKEND.md` is the design and `server/CLAUDE.md` the rules for writing it; requests go through `src/lib/api/`, responses are Zod-validated, and no component calls `fetch`. The workspace hierarchy is a set of entity stores (`wings`, `flights`, `branches`, `nests`, `twigs`, `pebbles`) alongside the note stores, all keyed by UUID and carrying `createdAt` / `updatedAt` / `deletedAt`.
+There *is* a backend now, in `server/`, and it is optional in the strongest sense: a device with no server chosen never calls it (`VITE_API_URL` is only the default; Settings → Sync server picks another, `lib/api/server-url.ts`), and a device on one still opens the workspace from the passphrase alone. It is a row store that holds ciphertext it cannot read. `docs/backend.md` is the design and `server/CLAUDE.md` the rules for writing it; requests go through `src/lib/api/`, responses are Zod-validated, and no component calls `fetch`. The workspace hierarchy is a set of entity stores (`wings`, `flights`, `branches`, `nests`, `twigs`, `pebbles`) alongside the note stores, all keyed by UUID and carrying `createdAt` / `updatedAt` / `deletedAt`. One more store syncs beside them: `preferences`, a single row (`lib/preferences/preferences-model.ts`) holding the theme, accent, density, text size and the order of the nav and dashboard.
 
 ### 2.1 Layers and dependency direction
 Imports flow **downward only**. A layer never imports from a layer above it. `[REQUIRED]`
@@ -49,14 +49,19 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | Layer | Path | Responsibility | May import from |
 | --- | --- | --- | --- |
 | Pages | `src/pages/<route>.tsx` | Route-level composition. Wire hooks to components. One page per route, exported as a named `XxxPage`. No business logic. | everything below |
-| Feature components | `src/components/<feature>/` | Presentational components plus that feature's hooks and pure helpers (`calendar/`, `notes/`). | `ui/`, `hooks/`, `lib/` |
-| Shared components | `src/components/*.tsx` | Cross-feature shell/nav/form components. | `ui/`, `hooks/`, `lib/` |
+| Feature components | `src/components/<feature>/` | Presentational components plus that feature's hooks and pure helpers (`calendar/`, `notes/`). | `ui/`, `hooks/`, `stores/`, `lib/` |
+| Shared components | `src/components/*.tsx` | Cross-feature shell/nav/form components. | `ui/`, `hooks/`, `stores/`, `lib/` |
 | UI primitives | `src/components/ui/` | shadcn-generated. See §8. | `lib/utils`, other `ui/` only |
-| Shared hooks | `src/hooks/` | Hooks used by **more than one** feature. | `lib/` |
+| Shared hooks | `src/hooks/` | Hooks used by **more than one** feature. | `stores/`, `lib/` |
+| Stores | `src/stores/` | Zustand stores for state shared across unrelated trees (§2.4). | `lib/` |
 | Lib | `src/lib/` | Storage modules, worker clients, pure utilities. **No React imports.** | `lib/` only |
 | Workers | `src/workers/` | Web Worker entry points. No DOM, no React. | `lib/` types only |
 
 *   **Feature-specific hooks are co-located** in their feature folder (e.g. `components/notes/use-notes-workspace.ts`). Move a hook to `src/hooks/` only when a second feature needs it.
+*   **Where a new file goes.** `[REQUIRED]` Nothing new lands loose at the root of `components/` or `lib/`; put it in the folder for what it is about, and start a folder when none fits.
+    *   `components/`: `layout/` (page scaffolding every page shares), `shell/` (the workspace frame), `theme/`, `auth/`, `lock/`, `command-palette/`, and one folder per feature (`calendar/`, `board/`, `dashboard/`, `notes/`, `settings/`, `marketing/`, `onboarding/`). A feature that outgrows one folder splits by area, as `notes/` (`spatial/`, `linear/`, `location/`, `tree/`) and `settings/` (one folder per card) do; the hooks that tie the areas together stay at the feature's root.
+    *   `lib/`: by domain. `crypto/` (ciphers, envelopes, KDF, sealed text), `db/` (the IndexedDB schema, upgrades, tombstones), `hierarchy/` (wings, flights, branches, nests, pebbles, share paths), `twigs/` (tasks, due times, board and calendar maths), `notes/`, `media/` (worker client and protocol, images, compression), `lock/`, `backup/`, `preferences/`, `account/`, `api/`, `keys/`, `push/`, `sync/`. Only app-wide helpers stay at the root (`utils.ts`, `toast.ts`, `reorder.ts`, `route-warmup.ts`, `service-worker.ts`).
+    *   Inside `lib/`, imports within one domain are `./x`; across domains they are `../<domain>/x` (never `../..`).
 *   Check: `grep -rnE 'from "@/(pages|components)' src/lib src/hooks` and `grep -rn 'from "@/pages' src/components`. Both must return nothing.
 
 ### 2.2 Presentational vs. logic
@@ -65,12 +70,13 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   Pure functions (formatting, hierarchy math, parsing) live in `*-utils.ts` / `lib/` so they are testable without React.
 
 ### 2.3 Data access and persistence
-*   Components **never** touch `indexedDB`, `localStorage`, `Worker`, or `fetch` directly. `[REQUIRED]` Go through a `lib/*-storage.ts` module or a `lib/*-client.ts` worker client (`lib/notes-navigation.ts` and `lib/workspace-lock.ts`'s hint are the `localStorage` seams). (Legacy exception: `hooks/use-theme-mode.ts` reads `localStorage`.)
+*   Components **never** touch `indexedDB`, `localStorage`, `Worker`, or `fetch` directly. `[REQUIRED]` Go through a `lib/<domain>/*-storage.ts` module or a `lib/<domain>/*-client.ts` worker client (`lib/notes/notes-navigation.ts`, `lib/preferences/preferences-cache.ts`, `lib/api/server-url.ts` and `lib/lock/workspace-lock.ts`'s hint are the `localStorage` seams).
 *   **IndexedDB schema changes** must bump `NOTES_DB_VERSION` (or the relevant version constant) and add a migration in the `upgrade` callback. Never edit a shipped store shape in place. `[REQUIRED]`
-*   **Data read from storage is untrusted.** Validate with a Zod schema before use; do not trust a cast. `[REQUIRED]` Define the schema once in `lib/` and infer the type from it (`lib/entity-model.ts` → `Wing`, `Flight`, `Branch`, `Nest`; `lib/twig-model.ts` → `Twig`).
-*   **Workers** are constructed via `new Worker(new URL("../workers/x.ts", import.meta.url), { type: "module" })` inside a `lib/*-client.ts` file, so Vite bundles them. Move CPU-heavy work (image optimization, compression, PDF processing) off the main thread. The request/response contract lives once in `lib/media-worker-protocol.ts` (types only) and is imported by both the client and the worker; never redeclare it.
+*   **Data read from storage is untrusted.** Validate with a Zod schema before use; do not trust a cast. `[REQUIRED]` Define the schema once in `lib/` and infer the type from it (`lib/hierarchy/entity-model.ts` → `Wing`, `Flight`, `Branch`, `Nest`; `lib/twigs/twig-model.ts` → `Twig`).
+*   **Workers** are constructed via `new Worker(new URL("../workers/x.ts", import.meta.url), { type: "module" })` inside a `lib/<domain>/*-client.ts` file, so Vite bundles them (the URL is relative to that file). Move CPU-heavy work (image optimization, compression, PDF processing) off the main thread. The request/response contract lives once in `lib/media/media-worker-protocol.ts` (types only) and is imported by both the client and the worker; never redeclare it.
 *   **Network access goes through `src/lib/api/`.** `[REQUIRED]` `client.ts` is the only place that calls `fetch`; every response is parsed with the schema `shared/` declares, because a server is trusted no more than a file is. Components consume it through a hook. TanStack Query is **not** installed; adding it needs approval.
 *   **An account never gates reading.** `[REQUIRED]` The keys are on disk, sealed: `unlockAccount` opens the workspace from the passphrase with no network at all, and a failed session is not a failed sign-in. Anything that makes the notes unreadable when the server is unreachable is a bug.
+*   **Every device has one local account, and the workspace waits for it.** `[REQUIRED]` It is a name, an email and a passphrase (`lib/account/local-account.ts`, made at `/auth/signup`); `RequireLocalAccount` sends a device without one there before any workspace page renders. The name and email are stored in the clear, so the lock screen can greet by name; the passphrase is the lock, and on a device with a sync account it is that account's passphrase too. `lib/account/device-account.ts` is the one place that decides which of the two a passphrase opens — unlock, verify and change through it, never through the lock or the account directly. The sync account is optional (`server-connect.ts` to join, `server-disconnect.ts` to leave or delete); leaving it moves every row this workspace owns back onto the lock, so no note depends on a server that is gone.
 *   **A session token lives in memory and nowhere else.** `[REQUIRED]` `lib/api/session-store.ts` holds it; writing one to IndexedDB would leave a working credential on disk beside the ciphertext it is meant to be separate from.
 *   **Every shareable object gets its own key, and only with an account.** `[REQUIRED]` `lib/keys/object-keys.ts` is the one place a key is minted; a storage module asks it for the cipher to write with and never reaches for `getActiveCipher()` itself. Reads pass no cipher at all, so the keyring resolves each row by the `keyId` it carries — a list can hold rows on several keys. With no account it all falls back to the active cipher, which is what keeps a purely local workspace unchanged.
 *   **An optional callback never wraps the work.** `[REQUIRED]` Write `const x = await work(); on?.(x)`, never `on?.(await work())`: an optional call does not evaluate its arguments, so the work silently never happens when nobody is listening. This has bitten twice — the reminder sweep and the background sync.
@@ -79,7 +85,8 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   Default to local `useState` / `useReducer`. Prefer **derived state** over duplicated state.
 *   **Shared mutable, non-rendering state** (timers, "latest value" mirrors, in-flight request ids) lives in one session hook that returns a stable bundle of refs (`notes/use-notes-session.ts`), which sibling hooks receive as a parameter. React Compiler's `react-hooks/immutability` rule only allows mutating a ref that arrived as an argument if it is a local whose name ends in `Ref`, so destructure at the top of the hook (`const { pendingEditRef } = refs`) and list those locals in dependency arrays.
 *   **Derive, don't sync.** If a value can be computed from existing state, compute it; do not copy it into state from an effect (`react-hooks/set-state-in-effect` fails the build once the file is analysable).
-*   Shared UI state: composition or Context first. Zustand (installed on purpose for this, currently unused; do not remove it) only when state must be shared across unrelated trees; stores live in `src/stores/use-<name>-store.ts`. Keep global state minimal.
+*   Shared UI state: composition or Context first. Zustand only when state must be shared across unrelated trees; stores live in `src/stores/use-<name>-store.ts`. Keep global state minimal. There are two: `use-preferences-store.ts` (read by the sidebar, settings, the palette and every theme menu) and `use-command-palette-store.ts` (opened by a hotkey, the sidebar and the phone's "More" sheet). `src/test/setup.ts` resets both after every test; a new store is added there too.
+*   **Preferences are written three places, in order.** `usePreferencesStore().update` sets the store, writes the `localStorage` cache (what the next first paint reads) and then the IndexedDB row (what syncs). `useApplyAppearance` (mounted once in `App`) puts them on `<html>`; `index.html`'s inline boot script does the same before any bundle loads, so it must stay in step with `applyPreferencesToDocument`. Read them through `useAppearance()`, never by passing `isDark` down.
 *   **Drag and drop** is `@dnd-kit`. Keep the "what was dropped where" arithmetic in a pure `lib/` function (`board.ts`, `calendar-drop.ts`) and let the hook do the writing: jsdom reports every element as zero-sized, so the mapping is only testable away from the DOM. Pointer drags belong in the E2E suite; the keyboard path (`KeyboardSensor`) works in jsdom and is covered there.
 
 ### 2.5 Routing
@@ -108,7 +115,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
     *   Group order, `[ENFORCED]` by `simple-import-sort` (`npm run lint -- --fix` reorders): packages (`react` first), then `@/…`, then `./…`, then side-effect/style imports. Side-effect imports come last and keep their written order, because CSS order is the cascade. `src/main.tsx` is exempt: the global stylesheet (`./index.css`) must load before `App`, and therefore before any page stylesheet.
 *   **Exports:** named exports only, except `App.tsx`.
 *   **Comments:** explain *why*, not *what*. No commented-out code. TODOs need an owner or issue: `// TODO(name): …`.
-*   **Logging:** no `console.*` in committed code except the sanctioned `lib/notes-trace.ts` tracer. `[ENFORCED]` by `no-console`.
+*   **Logging:** no `console.*` in committed code except the sanctioned `lib/notes/notes-trace.ts` tracer. `[ENFORCED]` by `no-console`.
 *   **Formatting:** Prettier (`.prettierrc.json`) and `.editorconfig`: 2-space indent, double quotes, semicolons, print width 100. `[REQUIRED]` Run `npm run format` before committing; `npm run format:check` must pass. Prettier is not part of lint or the build, so nothing fails automatically. `src/components/ui` (regenerated by the shadcn CLI), markdown, CSS and HTML are deliberately excluded (`.prettierignore`).
     *   The one-off reformat commit is listed in `.git-blame-ignore-revs`; run `git config blame.ignoreRevsFile .git-blame-ignore-revs` so `git blame` skips it.
 *   **Accessibility:** interactive elements are real `<button>` / `<a>`; icon-only controls have `aria-label`; form fields use the `Field` primitives with associated labels. `[REQUIRED]`
@@ -128,8 +135,8 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   **Type casts in tests:** avoid them. Where a fixture must stand in for a very large third-party type (e.g. Excalidraw's `AppState`), a single plain `as` on a minimal object is acceptable; never `as any` / `as unknown as`.
 *   **Pattern:** test user behaviour, not implementation. Query by role, label or visible text (`getByRole`, `getByLabelText`, `getByText`), never DOM structure or generic test IDs unless unavoidable. Drive the UI with `user-event`.
 *   **Timezone** `[ENFORCED]`: `vitest.global-setup.ts` pins every test run to `America/New_York`, a zone west of UTC, so date bugs (e.g. `new Date("YYYY-MM-DD")`, which is UTC and lands on the previous day) fail on any machine. Parse date keys with `dateKeyToDate()` from `calendar-shared.ts`, never `new Date(key)`.
-*   **Isolation** `[ENFORCED]`: the setup file runs an MSW server that fails any network request without a handler (`data:` and `blob:` URLs are in-memory and exempt); add handlers with `server.use(...)` from `src/test/server.ts`. IndexedDB is `fake-indexeddb` (auto-installed); `localStorage` and the `<html>` class are reset after every test. Stub `window.matchMedia` per test where needed (jsdom has none).
-*   **Coverage** `[ENFORCED]` by `npm run test:coverage` (thresholds in `vite.config.ts`, deliberately just under what is measured so it can only go up): overall lines/statements 97%, functions 95%, branches 90%; `src/hooks/**` 100%; feature hooks (`src/components/**/use-*.ts`) 97% lines / 85% branches; `src/lib/**` 95%; `src/workers/**` 98%. Pure utilities in `lib/` and `*-utils.ts` should reach 100% of their logic `[REQUIRED]`. Raise a threshold whenever coverage improves. The text reporter hides fully covered files, so read totals from `--coverage.reporter=json-summary` if a file seems missing.
+*   **Isolation** `[ENFORCED]`: the setup file runs an MSW server that fails any network request without a handler (`data:` and `blob:` URLs are in-memory and exempt); add handlers with `server.use(...)` from `src/test/server.ts`. IndexedDB is `fake-indexeddb` (auto-installed); `localStorage`, the `<html>` class and its `data-*` attributes, and the Zustand stores are reset after every test; `ResizeObserver` and `scrollIntoView` are stubbed (jsdom has neither; cmdk needs both). Stub `window.matchMedia` per test where needed (jsdom has none).
+*   **Coverage** `[ENFORCED]` by `npm run test:coverage` (thresholds in `vite.config.ts`, deliberately just under what is measured so it can only go up): overall lines/statements 97.5%, functions 96%, branches 93%; `src/hooks/**` 100%; feature hooks (`src/components/**/use-*.ts`) 97% lines / 88% branches; `src/lib/**` 97% lines / 99% functions / 93% branches; `src/workers/**` 100% lines / 90% branches; `server/**` 99% lines / 96% branches. Pure utilities in `lib/` and `*-utils.ts` should reach 100% of their logic `[REQUIRED]`. Raise a threshold whenever coverage improves. The text reporter hides fully covered files, so read totals from `--coverage.reporter=json-summary` if a file seems missing.
 *   Suites that need real streams or no DOM (the Web Worker) opt into Node with a `// @vitest-environment node` first line; the shared setup is safe in both environments.
 *   **Browser-level tests (Playwright)** `[REQUIRED]` live in `e2e/*.spec.ts` and cover only what jsdom cannot: the real Excalidraw canvas, real pdf.js, drag-and-drop, fullscreen, and cross-page flows. Do not re-test routing, forms or filters there; those belong in Vitest. Specs run against a production build served by `vite preview` (`playwright.config.ts` builds it), each in a fresh browser context so IndexedDB and `localStorage` start empty. Every test also fails on any uncaught page error or `console.error` (`e2e/fixtures.ts`), and each spec was checked by breaking the behavior it covers.
     *   Drive Excalidraw like a user: its tool buttons are radio inputs behind a label, so click the label; choosing a tool opens a properties panel over the left of the canvas, so start strokes right of centre. Measure the canvas with `inkPixels()`, not with selectors.
@@ -145,19 +152,19 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
     *   Also validate: data read from IndexedDB/`localStorage`, worker messages, imported files.
 *   **XSS / code execution:** no `dangerouslySetInnerHTML`, `eval`, or `new Function`. Rich text goes through TipTap's schema. `[REQUIRED]` (`grep -rnE 'dangerouslySetInnerHTML|\beval\(|new Function' src` → nothing.)
 *   **Secrets:** never commit secrets. Anything in `import.meta.env.VITE_*` is public in the bundle; do not put credentials there.
-*   **Encryption goes through the cipher seam** (`lib/cipher.ts`). `[REQUIRED]` Storage modules ask for the active cipher and run their payload through it; they never branch on whether encryption is on. Every document row records which cipher wrote it, so a database can hold a mix and nothing has to be rewritten at once. Two rules when touching it:
+*   **Encryption goes through the cipher seam** (`lib/crypto/cipher.ts`). `[REQUIRED]` Storage modules ask for the active cipher and run their payload through it; they never branch on whether encryption is on. Every document row records which cipher wrote it, so a database can hold a mix and nothing has to be rewritten at once. Two rules when touching it:
     *   **Seal before opening an IndexedDB transaction, never inside one.** Awaiting anything that is not an IDB request lets the transaction auto-commit, and the puts after it fail with `TransactionInactiveError` in a real browser (fake-indexeddb is lenient and will not catch this).
     *   **An encrypted row that cannot be read is an error, not a fallback.** Returning the raw bytes would hand the editor ciphertext and autosave would write it back as the note.
-*   **Crypto is AES-GCM from WebCrypto, under a key derived by Argon2id** (`hash-wasm`, the one crypto dependency — WebCrypto has no Argon2). The KDF's name and parameters travel inside every envelope and inside the lock record (`lib/kdf.ts`), so a workspace locked under PBKDF2 still opens with it and raising a cost is a new value rather than a migration. New key material is always Argon2id. Say "encrypted on this device"; the key is in JS memory while the data is readable and the code using it is served from the same origin, so it protects a file that leaves the device and a copied profile directory, not a compromised bundle or an XSS bug.
+*   **Crypto is AES-GCM from WebCrypto, under a key derived by Argon2id** (`hash-wasm`, the one crypto dependency — WebCrypto has no Argon2). The KDF's name and parameters travel inside every envelope and inside the lock record (`lib/crypto/kdf.ts`), so a workspace locked under PBKDF2 still opens with it and raising a cost is a new value rather than a migration. New key material is always Argon2id. Say "encrypted on this device"; the key is in JS memory while the data is readable and the code using it is served from the same origin, so it protects a file that leaves the device and a copied profile directory, not a compromised bundle or an XSS bug.
 *   **A path resolves as far as it can, and never further.** `[REQUIRED]` `branchPath` is
     deliberately not all-or-nothing: a course shared with you has no readable term or wing,
     and dropping its own name along with them would lose the one thing that *is* readable.
     Say `SHARED_SEGMENT_LABEL` where a name cannot be read; never invent one, and never
     show a blank where the reason is knowable.
-*   **The lock covers content and names, and deliberately not dates.** `lib/sealed-text.ts` is the seam for the one display field a row is listed by (`feather`, `name`, `title`); `lib/cipher.ts` is the seam for payloads. A twig's `dueDate`, `dueTime`, `status` and every timestamp stay in the clear on purpose, so a future server holding nothing but ciphertext can still drive a reminder. `[REQUIRED]` Storage modules seal on write and open on read: a row leaves `lib/*-storage.ts` in plaintext and with no `encryption` marker, and a row that cannot be opened is an error, never its ciphertext.
+*   **The lock covers content and names, and deliberately not dates.** `lib/crypto/sealed-text.ts` is the seam for the one display field a row is listed by (`feather`, `name`, `title`); `lib/crypto/cipher.ts` is the seam for payloads. A twig's `dueDate`, `dueTime`, `status` and every timestamp stay in the clear on purpose, so a future server holding nothing but ciphertext can still drive a reminder. `[REQUIRED]` Storage modules seal on write and open on read: a row leaves `lib/<domain>/*-storage.ts` in plaintext and with no `encryption` marker, and a row that cannot be opened is an error, never its ciphertext.
 *   **Vite assets:** import static assets (images, SVGs) through Vite's module system; do not reference `public/` paths directly from components. The exception is what the browser fetches by URL rather than the bundler: `manifest.webmanifest`, `sw.js` and the PWA icons live in `public/` and are referenced from `index.html`.
 *   **The service worker (`public/sw.js`) is hand-written and takes no build step.** `[REQUIRED]` It needs no precache manifest because everything under `/assets/` is content-hashed (cached forever, served cache-first) while the HTML document is not (network-first, so a deploy is picked up). Do not add `vite-plugin-pwa` to replace it without a reason; it would be a new dependency for something that already works. Registration goes through `lib/service-worker.ts`, production only — in dev a cache would serve yesterday's modules back after an edit.
-*   **Bundle weight:** every route except the landing page is loaded on demand through `lazyPage()` in `App.tsx`, which kept the entry chunk at ~230 kB instead of ~2.1 MB. New pages must be added the same way; do not import a page eagerly into `App.tsx`. `[REQUIRED]`
+*   **Bundle weight:** every route except the landing page is loaded on demand through `lazyPage()` in `App.tsx`, which keeps the entry chunk at ~237 kB instead of ~2.1 MB. New pages must be added the same way; do not import a page eagerly into `App.tsx`. `[REQUIRED]`
 *   **Untrusted files:** user-supplied PDFs/images are untrusted input; process them in the worker where possible.
 
 ## 6. Common Commands
@@ -172,7 +179,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | Build | `npm run build` | `tsc -b && vite build` |
 | Build the server | `npm run build:server` | Bundles `server/src/main.ts`; Node cannot resolve `./app` or `@shared/…` on its own. |
 | Run the server | `npm run start:server` | Needs `DATABASE_URL` and `SERVER_SECRET`; see `server/CLAUDE.md` §5. |
-| Server + Postgres in Docker | `docker compose up --build` | Needs `POSTGRES_PASSWORD` and `SERVER_SECRET` in a git-ignored `.env`; see `BACKEND.md` ("Running it"). |
+| Server + Postgres in Docker | `docker compose up --build` | Needs `POSTGRES_PASSWORD` and `SERVER_SECRET` in a git-ignored `.env`; see `docs/backend.md` ("Running it"). |
 | Test | `npm run test` | Vitest; see §4. |
 
 *   **Before reporting completion run:** `npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build`. All pass on a clean tree today; keep them clean.
@@ -181,7 +188,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 
 ## 7. Domain Model
 
-The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source of truth; if code and doc diverge, update the doc in the same change.
+The data hierarchy is defined in `docs/hierarchy.md`. That file is the source of truth; if code and doc diverge, update the doc in the same change.
 
 | Term | Meaning | Notes |
 | --- | --- | --- |
@@ -194,7 +201,7 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 | **Pebble** | File | PDFs, images, other data. |
 
 *   **Use this vocabulary in identifiers** (types, functions, storage keys). Do not introduce synonyms (`course`, `semester`, `workspace`, `tag`) for these concepts in code. UI copy may use plain-language labels.
-*   Each term above is a record in its own store, with an id of its own, so any of them can be renamed without touching what points at it. `lib/workspace-tree.ts` resolves ids to the names the UI shows; `NotesHierarchyLocation` is that display projection, not storage. Extend those rather than creating parallel shapes.
+*   Each term above is a record in its own store, with an id of its own, so any of them can be renamed without touching what points at it. `lib/hierarchy/workspace-tree.ts` resolves ids to the names the UI shows; `NotesHierarchyLocation` is that display projection, not storage. Extend those rather than creating parallel shapes.
 
 ## 8. UI System (shadcn/ui + Tailwind v4)
 
@@ -204,8 +211,11 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 *   **Use design tokens** (`bg-background`, `text-muted-foreground`, `border-border`, …). No hard-coded hex colours or arbitrary colour values in components. Dark mode goes through the token system.
 *   **No inline `style={{}}`** except for dynamically computed positioning/sizing values.
 *   **Plain CSS:** none, except `pages/notes.css`, which holds the Excalidraw branding overrides (third-party markup that cannot take utility classes). Do not add new global CSS files.
-*   **`index.css` element rules are unlayered.** Its `h1`, `h2`, `p`, `body` and `#root` rules sit outside `@layer`, so they beat every Tailwind utility on the same property (an `h1` with `text-4xl` still renders at 56px). To override one, use the `!` modifier on just that property (`m-0!`, `text-[..]!`) and say why in a comment; do not move those rules into `@layer base` without checking every page, because that resizes headings app-wide.
-*   **Icons:** `lucide-react` for UI icons; brand marks go through `components/brand-icon.tsx`.
+*   **Theming is four attributes on `<html>`.** `data-theme` (`light` / `paper` / `dark` / `oled`, plus the `.dark` class for `dark:` utilities), `data-accent` (eight hues), `data-density` (scales Tailwind's `--spacing`, so every gap and padding) and `data-font-size` (the root size). A component never branches on them: it uses tokens. The accent is `--brand-h` / `--brand-c` from the accent and `--brand-l` from the theme; those numbers are mirrored in `lib/preferences/accent-palettes.ts`, where `color-contrast.test.ts` checks every pair against WCAG AA and `e2e/appearance.spec.ts` checks the stylesheet still agrees. Change both or neither.
+*   **Type scale.** Headings and body text use `text-display`, `text-title`, `text-heading`, `text-body` and `text-caption` (declared in `@theme`), not ad-hoc sizes. `cn()` is taught these names (`lib/utils.ts`), so they survive a merge with a text colour; a new size added to `@theme` is added there too. Base element rules live in `@layer base`, so utilities win without `!`.
+*   **Page layout.** Every workspace page is `PageContainer` + `PageHeader` (title, description, optional eyebrow and actions) and renders inside `WorkspaceLayout`, the layout route in `App.tsx` that keeps the shell mounted between pages. An empty list uses `EmptyState`; a small set of views uses `SegmentedControl`. Transient confirmations go through `lib/toast.ts`; anything someone must act on stays on the page.
+*   **The entry chunk stays lean.** The landing page is eager, so anything it renders is in the entry chunk. The theme menu and the marketing mobile menu load their dropdown on demand (a disabled look-alike button stands in until then), and the toaster, the sync client and the preferences' IndexedDB layer are dynamic imports. Check `npm run build`'s `index-*.js` size after touching `App`, the landing page or the stores.
+*   **Icons:** `lucide-react` for UI icons; brand marks go through `components/layout/brand-icon.tsx`.
 *   **Forms:** React Hook Form + Zod + the `Field` primitives; do not hand-roll form state.
 *   **Dates:** use `date-fns`. Do not add a second date library.
 
@@ -214,12 +224,13 @@ The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source o
 *   **Never run `npm audit fix --force`.** It downgrades `@excalidraw/excalidraw` to 0.17.6 (removing the `/types` and `index.css` subpaths `src/` imports) and bumps `pdfjs-dist` a major; Vite then fails to boot. `[REQUIRED]`
 *   Remaining audit advisories in the Excalidraw chain (`lodash-es`, `nanoid`, `@mermaid-js/parser`) are handled by the scoped `overrides` block in `package.json`. Extend that block; do not remove it.
 *   Pinned constraints: `@excalidraw/excalidraw` stays on `^0.18`; `pdfjs-dist` stays on v6 (fixes a high-severity malicious-PDF advisory; `destroy()` is on the loading task, not `PDFDocumentProxy`).
-*   **`brotli-wasm`** is there because no browser exposes Brotli through `CompressionStream`. Its ESM entry loads the `.wasm` by fetching a URL relative to the module, which Vite rewrites but Node cannot resolve for a `file:` URL — so `vite.config.ts` aliases the package to its own Node build **for tests only**. Keep that alias if the package is upgraded. The WASM is behind a dynamic `import()` in `lib/text-compression.ts`, so it is fetched on the first save and never on a path that does not compress.
+*   **`brotli-wasm`** is there because no browser exposes Brotli through `CompressionStream`. Its ESM entry loads the `.wasm` by fetching a URL relative to the module, which Vite rewrites but Node cannot resolve for a `file:` URL — so `vite.config.ts` aliases the package to its own Node build **for tests only**. Keep that alias if the package is upgraded. The WASM is behind a dynamic `import()` in `lib/media/text-compression.ts`, so it is fetched on the first save and never on a path that does not compress.
 *   After **any** dependency change run `npm run format:check`, `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`, and `npm audit`; also confirm `npm ls @excalidraw/excalidraw pdfjs-dist nanoid lodash-es` still shows the pinned versions.
 *   Playwright downloads its own browser to `~/.cache/ms-playwright` (`npx playwright install chromium`); the browser revision is tied to the `@playwright/test` version, so re-run that command after upgrading it.
 *   `ws` is there for the live channel's server side and nothing else: `@hono/node-server` does the WebSocket upgrade but needs a server implementation to hand it to. The browser uses its own `WebSocket`; tests replace the global with an inert one (`src/test/setup.ts`), so no test opens a real socket except `server/src/live.test.ts`, which does so on purpose.
 *   `hash-wasm` is there for Argon2id and nothing else: it carries its WASM inline, so unlike `brotli-wasm` it needs no Vite alias and no fetch at runtime.
-*   Prefer what is already installed (`date-fns`, `zod`, `lucide-react`, `@dnd-kit`, `zustand`, `hash-wasm`) over adding a new package. A new dependency needs a stated reason and explicit approval.
+*   `cmdk` is there for the command palette (`components/ui/command.tsx`) and `sonner` for toasts (`components/shell/toaster.tsx`, `lib/toast.ts`). Neither goes in the entry chunk.
+*   Prefer what is already installed (`date-fns`, `zod`, `lucide-react`, `@dnd-kit`, `zustand`, `hash-wasm`, `cmdk`, `sonner`) over adding a new package. A new dependency needs a stated reason and explicit approval.
 *   Commit `package-lock.json` with `package.json`. Do not use `--force` or `--legacy-peer-deps`.
 
 ## 10. Git & Review Hygiene
@@ -238,7 +249,7 @@ A change is done only when:
 3.  No leftover `console.*`, commented-out code, or unowned TODOs.
 4.  Any new storage shape has a version bump and migration; any new external input has a Zod schema.
 5.  New or changed behaviour has tests (§4). If you changed the notes canvas, PDF import, image drop, fullscreen or a page flow, `npm run test:e2e` passes too. UI changes were also exercised in the running app, or you state that they were not.
-6.  Docs stay true: if you changed the domain model, commands, or structure, this file or `Heirarchy.md` is updated in the same change.
+6.  Docs stay true: if you changed the domain model, commands, or structure, this file or `docs/hierarchy.md` is updated in the same change.
 
 ## 12. Working Agreement for AI Agents
 
@@ -248,9 +259,9 @@ A change is done only when:
 *   Do not run destructive or state-changing package commands (`npm audit fix --force`, `rm -rf node_modules`, lockfile regeneration) without asking.
 *   Report outcomes faithfully: failing checks are reported with their output; skipped verification is stated as skipped.
 
-## 13. Known Gaps & Backlog (audited 2026-09-21)
+## 13. Known Gaps & Backlog (audited 2026-09-27)
 
-Pre-existing; not blockers for unrelated work (§0). `BACKEND.md` ("What is still missing")
+Pre-existing; not blockers for unrelated work (§0). `docs/backend.md` ("What is still missing")
 has the server-side list and the reasoning; this is the short form for someone editing the code. Everything buildable
 without a server has shipped, so what is left here is inherent or waiting on the backend.
 
@@ -273,4 +284,3 @@ without a server has shipped, so what is left here is inherent or waiting on the
 5.  **A rotated key's old grants stay.** `lib/keys/rotate-shared.ts` rotates a shared key on
     a revoke and once it is ninety days old, and moves every row onto the new one, but it
     leaves the grants on the old key in place rather than revoking them.
-

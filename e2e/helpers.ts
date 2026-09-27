@@ -1,12 +1,13 @@
 import type { Page } from "@playwright/test";
 
+import { visit } from "./account";
 import { expect } from "./fixtures";
 
 const AUTOSAVE_STATUS = /Autosave (enabled|paused while loading|unavailable)|Autosaved at/;
 
 /** Opens the notes page and waits until storage is ready. */
 export async function openNotes(page: Page) {
-  await page.goto("/notes");
+  await visit(page, "/notes");
   await expect(page.getByText(AUTOSAVE_STATUS)).toBeVisible();
   await expect(page.getByText("Autosave unavailable")).toBeHidden();
 }
