@@ -10,7 +10,11 @@ import { loadWorkspaceSnapshot } from "@/lib/hierarchy/workspace-storage";
 import { notifyError, notifySuccess } from "@/lib/toast";
 
 /** "12 new, 3 changed, 1 removed", or that nothing changed. */
-export function describeReport({ added, updated, removed }: FeedReport): string {
+export function describeReport({
+  added,
+  updated,
+  removed,
+}: Pick<FeedReport, "added" | "updated" | "removed">): string {
   const parts = [
     added ? `${added} new` : "",
     updated ? `${updated} changed` : "",

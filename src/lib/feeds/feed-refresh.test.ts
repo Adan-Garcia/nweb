@@ -128,7 +128,7 @@ describe("refreshFeed", () => {
 
     const outcome = await refreshFeed(feed, undefined, NOW);
 
-    expect(outcome).toEqual({
+    expect(outcome).toMatchObject({
       ok: true,
       report: { added: 4, updated: 0, removed: 0, total: 5, excluded: 1 },
     });
@@ -148,6 +148,43 @@ describe("refreshFeed", () => {
       lastError: null,
       lastCount: 5,
     });
+  });
+
+  it("remembers what it removed across refreshes, and restores it when a rule is undone", async () => {
+    const withLectures = await saveFeed(settings({ pastDays: null }));
+    await refreshFeed(withLectures, CALENDAR, NOW);
+
+    const hidden = settings({
+      pastDays: null,
+      rules: [
+        {
+          id: "x",
+          action: "exclude",
+          field: "title",
+          pattern: "Lecture",
+          caseSensitive: false,
+          replacement: "",
+          kind: "other",
+          branchId: "",
+          enabled: true,
+        },
+      ],
+    });
+    const edited = await saveFeed(hidden, withLectures.id);
+
+    expect(await refreshFeed(edited, CALENDAR, NOW)).toMatchObject({
+      ok: true,
+      report: { removed: 3 },
+    });
+    expect((await getFeed(edited.id))?.removedIds).toHaveLength(3);
+
+    const undone = await saveFeed(settings({ pastDays: null }), edited.id);
+
+    expect(await refreshFeed((await getFeed(undone.id))!, CALENDAR, NOW)).toMatchObject({
+      ok: true,
+      report: { added: 3 },
+    });
+    expect((await listTwigs()).filter((twig) => twig.title === "Lecture")).toHaveLength(3);
   });
 
   it("imports a file's text without fetching anything", async () => {

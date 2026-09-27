@@ -20,6 +20,8 @@ function makeFeed(settings: Partial<Feed["settings"]> = {}): Feed {
     lastFetchedAt: null,
     lastError: null,
     lastCount: null,
+    removedIds: [],
+    dismissedIds: [],
     settings: { ...defaultFeedSettings(), name: "myCourses", ...settings },
   };
 }

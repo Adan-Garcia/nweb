@@ -51,12 +51,10 @@ beforeEach(async () => {
 
 describe("describeReport", () => {
   it("says what changed, or that nothing did", () => {
-    expect(describeReport({ added: 2, updated: 1, removed: 3, total: 0, excluded: 0 })).toBe(
+    expect(describeReport({ added: 2, updated: 1, removed: 3 })).toBe(
       "2 new, 1 changed, 3 removed.",
     );
-    expect(describeReport({ added: 0, updated: 0, removed: 0, total: 0, excluded: 0 })).toBe(
-      "Nothing had changed.",
-    );
+    expect(describeReport({ added: 0, updated: 0, removed: 0 })).toBe("Nothing had changed.");
   });
 });
 

@@ -68,6 +68,8 @@ describe("feed storage", () => {
       lastFetchedAt: null,
       lastError: null,
       lastCount: null,
+      removedIds: [],
+      dismissedIds: [],
     };
 
     await database.put("feeds", { ...base, id: "bad-json", settings: "{" });

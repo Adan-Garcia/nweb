@@ -56,11 +56,7 @@ describe("applyFeedItems", () => {
         item(),
         item({ key: "past", title: "Old quiz", dueDate: "2026-09-01", dueMinutes: null }),
       ]),
-    ).toEqual({
-      added: 2,
-      updated: 0,
-      removed: 0,
-    });
+    ).toMatchObject({ added: 2, updated: 0, removed: 0 });
 
     const twigs = await listTwigs();
     const quiz = twigs.find((twig) => twig.title === "Quiz 1");
@@ -92,7 +88,7 @@ describe("applyFeedItems", () => {
   it("changes nothing when the feed has not changed", async () => {
     await apply([item()]);
 
-    expect(await apply([item()])).toEqual({ added: 0, updated: 0, removed: 0 });
+    expect(await apply([item()])).toMatchObject({ added: 0, updated: 0, removed: 0 });
   });
 
   it("updates what the feed owns and keeps what the user did", async () => {
@@ -124,11 +120,58 @@ describe("applyFeedItems", () => {
     ]);
   });
 
+  it("brings back a task it removed itself once the event returns", async () => {
+    const first = await apply([item()]);
+    const hidden = await apply([], { memory: first.memory });
+    const id = await feedTwigId("feed-1", "quiz");
+
+    expect(hidden).toMatchObject({ removed: 1, memory: { removedIds: [id] } });
+
+    const back = await apply([item({ title: "Quiz 1 (again)" })], { memory: hidden.memory });
+
+    expect(back).toMatchObject({ added: 1, updated: 1, memory: { removedIds: [] } });
+    expect((await listTwigs()).map((twig) => [twig.id, twig.title])).toEqual([
+      [id, "Quiz 1 (again)"],
+    ]);
+  });
+
+  it("remembers a task deleted by hand, so it stays gone after its tombstone is collected", async () => {
+    await apply([item()]);
+    const id = await feedTwigId("feed-1", "quiz");
+    await softDeleteTwig(id);
+
+    const seen = await apply([item()]);
+
+    expect(seen.memory.dismissedIds).toEqual([id]);
+
+    // The tombstone is collected, and the row is gone altogether.
+    await (await getNotesDb()).delete("twigs", id);
+
+    expect(await apply([item()], { memory: seen.memory })).toMatchObject({ added: 0 });
+    expect(await listTwigs()).toEqual([]);
+
+    // Once the event itself leaves the feed there is nothing left to dismiss.
+    expect((await apply([], { memory: seen.memory })).memory.dismissedIds).toEqual([]);
+  });
+
+  it("forgets a removal whose tombstone has already been collected", async () => {
+    await apply([item()]);
+    const hidden = await apply([]);
+    await (await getNotesDb()).delete("twigs", await feedTwigId("feed-1", "quiz"));
+
+    expect((await apply([], { memory: hidden.memory })).memory.removedIds).toEqual([]);
+    expect(await apply([item()], { memory: hidden.memory })).toMatchObject({ added: 1 });
+  });
+
   it("does not bring back a task deleted by hand", async () => {
     await apply([item()]);
     await softDeleteTwig(await feedTwigId("feed-1", "quiz"));
 
-    expect(await apply([item({ title: "Changed" })])).toEqual({ added: 0, updated: 0, removed: 0 });
+    expect(await apply([item({ title: "Changed" })])).toMatchObject({
+      added: 0,
+      updated: 0,
+      removed: 0,
+    });
     expect(await listTwigs()).toEqual([]);
   });
 
@@ -145,7 +188,7 @@ describe("applyFeedItems", () => {
           cutoff: "2026-09-13",
         },
       ),
-    ).toEqual({ added: 0, updated: 0, removed: 0 });
+    ).toMatchObject({ added: 0, updated: 0, removed: 0 });
     expect((await listTwigs()).map((twig) => twig.title)).toEqual(["Quiz 1"]);
   });
 
@@ -162,7 +205,7 @@ describe("applyFeedItems", () => {
     const undo = sharedToRead("their-key");
 
     try {
-      expect(await apply([item({ title: "Changed" })])).toEqual({
+      expect(await apply([item({ title: "Changed" })])).toMatchObject({
         added: 0,
         updated: 0,
         removed: 0,

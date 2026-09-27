@@ -5,6 +5,7 @@ import { provisionObjectKey } from "../keys/object-keys";
 import { formatDueTime } from "../twigs/due-time";
 import { BOARD_ORDER_STEP, type Twig, type TwigStatus } from "../twigs/twig-model";
 import { containerKeyIds, listTwigs, updateTwig } from "../twigs/twig-storage";
+import type { FeedMemory } from "./feed-model";
 import type { FeedItem } from "./feed-rules";
 
 /**
@@ -19,7 +20,13 @@ import type { FeedItem } from "./feed-rules";
  * A task deleted by hand stays deleted: its tombstone has the same id the feed would write,
  * and a tombstone is never brought back.
  */
-export type FeedApplyResult = { added: number; updated: number; removed: number };
+export type FeedApplyResult = {
+  added: number;
+  updated: number;
+  removed: number;
+  /** What the feed should remember for next time; see `FeedMemory`. */
+  memory: FeedMemory;
+};
 
 export async function feedTwigId(feedId: string, key: string): Promise<string> {
   const digest = await crypto.subtle.digest(
@@ -76,6 +83,7 @@ export async function applyFeedItems({
   cutoff,
   completePast,
   today,
+  memory = { removedIds: [], dismissedIds: [] },
 }: {
   feedId: string;
   items: FeedItem[];
@@ -84,6 +92,7 @@ export async function applyFeedItems({
   cutoff: string | null;
   completePast: boolean;
   today: string;
+  memory?: FeedMemory;
 }): Promise<FeedApplyResult> {
   const database = await getNotesDb();
   const stored = new Map((await database.getAll("twigs")).map((row) => [row.id, row]));
@@ -93,9 +102,12 @@ export async function applyFeedItems({
     wanted.set(await feedTwigId(feedId, item.key), item);
   }
 
+  const removedIds = new Set(memory.removedIds);
+  const dismissedIds = new Set(memory.dismissedIds);
   const created: Twig[] = [];
+  const restored: Twig[] = [];
+  const toUpdate: [string, Wanted][] = [];
   const nextOrder = await boardOrderCounter();
-  let updated = 0;
 
   for (const [id, item] of wanted) {
     // Long past is left as it is: not brought in, not moved, and — since it is still in
@@ -107,13 +119,32 @@ export async function applyFeedItems({
     const row = stored.get(id);
     const fields = wantedFor(item, branchFor(item));
 
+    if (row?.deletedAt && !removedIds.has(id)) {
+      // Deleted, and not by this feed: somebody did not want it. Remembered, so the task
+      // stays gone after its tombstone is collected and the row is no longer here to say so.
+      dismissedIds.add(id);
+      continue;
+    }
+
+    if (!row && dismissedIds.has(id)) {
+      continue;
+    }
+
+    removedIds.delete(id);
+
     if (row) {
-      if (
-        !row.deletedAt &&
-        !isReadOnlyKey(row.keyId) &&
-        differs(await openRow(row, "title"), fields)
-      ) {
-        updated += (await updateTwig(id, fields)) ? 1 : 0;
+      if (isReadOnlyKey(row.keyId)) {
+        continue;
+      }
+
+      // Taken away by this feed and back in it now: the same row returns, newer than its
+      // tombstone, so every device that saw it go sees it come back.
+      if (row.deletedAt) {
+        restored.push({ ...row, deletedAt: null, updatedAt: Date.now() });
+      }
+
+      if (differs(await openRow(row, "title"), fields)) {
+        toUpdate.push([id, fields]);
       }
 
       continue;
@@ -157,11 +188,35 @@ export async function applyFeedItems({
 
   await Promise.all([
     ...sealed.map((row) => transaction.store.put(row)),
+    ...restored.map((row) => transaction.store.put(row)),
     ...gone.map((row) => transaction.store.put({ ...row, deletedAt: now, updatedAt: now })),
   ]);
   await transaction.done;
 
-  return { added: created.length, updated, removed: gone.length };
+  let updated = 0;
+
+  for (const [id, fields] of toUpdate) {
+    updated += (await updateTwig(id, fields)) ? 1 : 0;
+  }
+
+  for (const row of gone) {
+    removedIds.add(row.id);
+  }
+
+  // Only what can still matter is kept: a removal whose tombstone has been collected has
+  // nothing left to restore, and a dismissal of an event the feed no longer has is moot.
+  const stillTombstoned = (id: string) =>
+    gone.some((row) => row.id === id) || Boolean(stored.get(id)?.deletedAt);
+
+  return {
+    added: created.length + restored.length,
+    updated,
+    removed: gone.length,
+    memory: {
+      removedIds: [...removedIds].filter(stillTombstoned),
+      dismissedIds: [...dismissedIds].filter((id) => wanted.has(id)),
+    },
+  };
 }
 
 /** Removes every task a feed brought in, for a feed being removed along with its tasks. */

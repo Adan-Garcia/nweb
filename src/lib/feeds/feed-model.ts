@@ -120,7 +120,22 @@ export const feedRunSchema = z.object({
 
 export type FeedRun = z.infer<typeof feedRunSchema>;
 
+/**
+ * What a feed remembers about the tasks it made, so it can tell its own removals from
+ * yours. `removedIds` are tasks it took away because their event left the feed or a rule
+ * hid it; they come back when the event does. `dismissedIds` are tasks someone deleted by
+ * hand; they stay gone even after their tombstone is collected. Twig ids only, which are
+ * hashes, so this is kept in the clear beside the run.
+ */
+export const feedMemorySchema = z.object({
+  removedIds: z.array(z.string()).default([]),
+  dismissedIds: z.array(z.string()).default([]),
+});
+
+export type FeedMemory = z.infer<typeof feedMemorySchema>;
+
 export const feedSchema = feedRunSchema.extend({
+  ...feedMemorySchema.shape,
   id: z.string(),
   createdAt: z.number(),
   updatedAt: z.number(),
@@ -171,6 +186,7 @@ export function isFeedDue(feed: Feed, now: number): boolean {
  * `encryption` and `keyId` say which cipher sealed `settings`, as on every named row.
  */
 export const feedRecordSchema = feedRunSchema.extend({
+  ...feedMemorySchema.shape,
   id: z.string(),
   createdAt: z.number(),
   updatedAt: z.number(),

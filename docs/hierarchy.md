@@ -72,7 +72,9 @@ or Outlook link, or an imported `.ics` file (`src/lib/feeds/`). Each event becom
 carrying the `feedId` of the feed that made it, and an id derived from the feed and the
 event, so fetching the calendar again updates the same twig rather than adding a copy. The
 feed owns what it says (title, date, time, course, kind); the status and board position are
-the user's, and a feed twig deleted by hand stays deleted.
+the user's. A feed twig deleted by hand stays deleted, even after its tombstone is
+collected, because the feed remembers the dismissal; one the feed removed itself — its
+event left the calendar, or a rule hid it — comes back when the event does.
 
 A feed's rules pick which course each event goes in, and a `branch-from` rule names the
 course from the event itself — "MECE.102.01 - Mechanics" becomes a branch called

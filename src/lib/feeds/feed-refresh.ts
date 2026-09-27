@@ -6,8 +6,8 @@ import { type Feed, type FeedError, type FeedSettings, isFeedDue } from "./feed-
 import { applyFeedRules, type FeedRulesResult } from "./feed-rules";
 import { listFeeds, recordFeedRun } from "./feed-storage";
 import { applyFeedItems, type FeedApplyResult } from "./feed-twigs";
+import { expandEvents } from "./ics-occurrences";
 import { parseIcs } from "./ics-parse";
-import { expandEvents } from "./ics-recurrence";
 import { addDays, dateKeyOf } from "./ics-time";
 
 /**
@@ -54,6 +54,7 @@ async function importText(feed: Feed, text: string, now: Date): Promise<FeedRepo
     cutoff,
     completePast: feed.settings.completePast,
     today: dateKeyOf(now),
+    memory: { removedIds: feed.removedIds, dismissedIds: feed.dismissedIds },
   });
 
   return { ...applied, total: items.length, excluded };
@@ -85,6 +86,7 @@ export async function refreshFeed(
     lastFetchedAt: now.getTime(),
     lastError: outcome.ok ? null : outcome.error,
     lastCount: outcome.ok ? outcome.report.total : feed.lastCount,
+    ...(outcome.ok ? outcome.report.memory : {}),
   });
 
   return outcome;

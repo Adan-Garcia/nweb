@@ -14,6 +14,8 @@ function makeFeed(overrides: Partial<Feed> = {}, settings: Partial<Feed["setting
     lastFetchedAt: null,
     lastError: null,
     lastCount: null,
+    removedIds: [],
+    dismissedIds: [],
     settings: {
       ...defaultFeedSettings(),
       name: "myCourses",

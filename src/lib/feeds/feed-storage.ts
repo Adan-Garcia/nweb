@@ -3,6 +3,7 @@ import { getNotesDb } from "../db/notes-db";
 import { cipherForObject } from "../keys/object-keys";
 import {
   type Feed,
+  type FeedMemory,
   type FeedRecord,
   feedRecordSchema,
   type FeedRun,
@@ -43,6 +44,8 @@ function toFeed(record: FeedRecord): Feed | null {
     lastFetchedAt: record.lastFetchedAt,
     lastError: record.lastError,
     lastCount: record.lastCount,
+    removedIds: record.removedIds,
+    dismissedIds: record.dismissedIds,
     settings: settings.data,
   };
 }
@@ -85,6 +88,8 @@ export async function saveFeed(settings: FeedSettings, id?: string): Promise<Fee
     lastFetchedAt: stored?.lastFetchedAt ?? null,
     lastError: stored?.lastError ?? null,
     lastCount: stored?.lastCount ?? null,
+    removedIds: stored?.removedIds ?? [],
+    dismissedIds: stored?.dismissedIds ?? [],
     settings: JSON.stringify(settings),
   };
 
@@ -95,7 +100,7 @@ export async function saveFeed(settings: FeedSettings, id?: string): Promise<Fee
 }
 
 /** Stamps what a refresh did. The sealed settings are left exactly as they were. */
-export async function recordFeedRun(id: string, run: FeedRun): Promise<void> {
+export async function recordFeedRun(id: string, run: FeedRun & Partial<FeedMemory>): Promise<void> {
   const database = await getNotesDb();
   const [stored] = parseRecords([await database.get("feeds", id)]);
 
