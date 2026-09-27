@@ -130,6 +130,8 @@ export const apiErrorSchema = z.object({
     "too_large",
     "rate_limited",
     "registration_closed",
+    /** A calendar feed the server was asked to relay could not be fetched, or was not one. */
+    "feed_unavailable",
   ]),
   message: z.string(),
 });

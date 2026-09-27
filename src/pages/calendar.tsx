@@ -6,7 +6,8 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { Plus } from "lucide-react";
+import { CalendarSync, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { CalendarEventListCard } from "@/components/calendar/calendar-event-list-card";
 import { CalendarGridCard } from "@/components/calendar/calendar-grid-card";
@@ -14,7 +15,7 @@ import { EventOverlay } from "@/components/calendar/event-overlay";
 import { useCalendarPage } from "@/components/calendar/use-calendar-page";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 export function CalendarPage() {
   const calendar = useCalendarPage();
@@ -33,13 +34,19 @@ export function CalendarPage() {
           title="Calendar"
           description="Plan your classes, tasks, and deadlines in one place."
           actions={
-            <Button
-              disabled={calendar.isLoading}
-              onClick={() => editor.openAdd(calendar.selectedDateKey)}
-            >
-              <Plus className="size-4" />
-              Add Event
-            </Button>
+            <>
+              <Link to="/settings#feeds" className={buttonVariants({ variant: "outline" })}>
+                <CalendarSync className="size-4" />
+                Subscribe
+              </Link>
+              <Button
+                disabled={calendar.isLoading}
+                onClick={() => editor.openAdd(calendar.selectedDateKey)}
+              >
+                <Plus className="size-4" />
+                Add Event
+              </Button>
+            </>
           }
         />
 

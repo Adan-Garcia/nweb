@@ -56,6 +56,17 @@ export const twigSchema = entityBaseSchema.extend({
   boardOrder: z.number().default(0),
   /** The feather this task was raised from, when it was created inside a note. */
   featherId: z.string().nullable().default(null),
+  /**
+   * The calendar feed this task was brought in by (`lib/feeds/`), or null for one typed in
+   * by hand. The feed owns the title, date and course of its tasks; status and board order
+   * stay the user's.
+   */
+  feedId: z.string().nullable().default(null),
+  /**
+   * Shared by every occurrence of a repeating task (`twig-series.ts`), or null for one that
+   * does not repeat. Each occurrence is a twig of its own; this is only what ties them.
+   */
+  seriesId: z.string().nullable().default(null),
 });
 
 export type Twig = z.infer<typeof twigSchema>;

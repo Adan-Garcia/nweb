@@ -123,6 +123,12 @@ describe("CalendarEventListCard: events", () => {
     expect(screen.getAllByText(/Biology 101 . Homework/)).toHaveLength(2);
   });
 
+  it("gives an all-day event, as a calendar feed brings in, a date and no dangling time", () => {
+    setup({ filteredEvents: [{ ...quiz, dueTime: "" }] });
+    expect(screen.getByText("Apr 16")).toBeInTheDocument();
+    expect(screen.queryByText(/ at/)).not.toBeInTheDocument();
+  });
+
   it("labels an event on the 1st of a month with that day, not the day before", () => {
     setup({ filteredEvents: [{ ...quiz, dueDate: "2026-04-01" }] });
     expect(screen.getByText(/Apr 1 at 9:00 AM/)).toBeInTheDocument();

@@ -4,6 +4,10 @@ import { AccountSection } from "@/components/settings/account/account-section";
 import { AppearanceSection } from "@/components/settings/appearance/appearance-section";
 import { BackupCard } from "@/components/settings/backup/backup-card";
 import { useWorkspaceBackup } from "@/components/settings/backup/use-workspace-backup";
+import { FeedEditor } from "@/components/settings/feeds/feed-editor";
+import { FeedsCard } from "@/components/settings/feeds/feeds-card";
+import { useCalendarFeeds } from "@/components/settings/feeds/use-calendar-feeds";
+import { useFeedEditor } from "@/components/settings/feeds/use-feed-editor";
 import { RemindersCard } from "@/components/settings/reminders/reminders-card";
 import { useReminders } from "@/components/settings/reminders/use-reminders";
 import { ServerAccountCard } from "@/components/settings/server/server-account-card";
@@ -26,6 +30,8 @@ export function SettingsPage() {
   const local = useLocalAccount();
   const reminders = useReminders(account.sessionFor);
   const sharing = useSharing(account.sessionFor, account.record?.material.publicKey ?? null);
+  const feeds = useCalendarFeeds();
+  const feedEditor = useFeedEditor({ onSaved: feeds.afterSave });
 
   return (
     <PageContainer>
@@ -64,6 +70,19 @@ export function SettingsPage() {
 
           <SettingsBlock id="workspace">
             <WorkspaceEditorCard {...editor} />
+          </SettingsBlock>
+
+          <SettingsBlock id="feeds">
+            <FeedsCard
+              feeds={feeds.feeds}
+              isLoading={feeds.isLoading}
+              busyFeedId={feeds.busyFeedId}
+              onAdd={() => feedEditor.open(null)}
+              onEdit={feedEditor.open}
+              onRefresh={(feed) => void feeds.refresh(feed)}
+              onRemove={(feed, removeTasks) => void feeds.remove(feed, removeTasks)}
+            />
+            <FeedEditor editor={feedEditor} branchOptions={feeds.branchOptions} />
           </SettingsBlock>
 
           <SettingsBlock id="backup">

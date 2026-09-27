@@ -1,13 +1,16 @@
 import type { FieldErrors, UseFormHandleSubmit, UseFormRegister } from "react-hook-form";
 
 import type { TwigFormValues } from "@/components/calendar/calendar-shared";
-import { EventSelectField, EventTextField } from "@/components/calendar/event-select-field";
+import { EventKindStatusFields } from "@/components/calendar/event-kind-status-fields";
+import { EventRepeatFields } from "@/components/calendar/event-repeat-fields";
+import {
+  EventSelectField,
+  EventTextField,
+  SELECT_CLASS,
+} from "@/components/calendar/event-select-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldGroup } from "@/components/ui/field";
-import { TWIG_KIND_LABELS, TWIG_KINDS } from "@/lib/twigs/twig-model";
-
-const SELECT_CLASS = "h-9 rounded-md border border-input bg-background px-3 text-sm";
 
 type EventOverlayProps = {
   isOpen: boolean;
@@ -99,33 +102,10 @@ export function EventOverlay({
                 </select>
               </EventSelectField>
 
-              <EventSelectField id="event-kind" label="Type" error={errors.kind}>
-                <select
-                  id="event-kind"
-                  {...register("kind")}
-                  aria-invalid={!!errors.kind}
-                  className={SELECT_CLASS}
-                >
-                  {TWIG_KINDS.map((kind) => (
-                    <option key={kind} value={kind}>
-                      {TWIG_KIND_LABELS[kind]}
-                    </option>
-                  ))}
-                </select>
-              </EventSelectField>
-
-              <EventSelectField id="event-status" label="Status" error={errors.status}>
-                <select
-                  id="event-status"
-                  {...register("status")}
-                  aria-invalid={!!errors.status}
-                  className={SELECT_CLASS}
-                >
-                  <option value="incomplete">Incomplete</option>
-                  <option value="inprogress">In Progress</option>
-                  <option value="complete">Complete</option>
-                </select>
-              </EventSelectField>
+              <EventKindStatusFields register={register} errors={errors} />
+              {editingTwigId === null ? (
+                <EventRepeatFields register={register} errors={errors} />
+              ) : null}
 
               <Field orientation="horizontal" className="justify-end gap-2">
                 <Button type="button" variant="outline" onClick={onClose}>

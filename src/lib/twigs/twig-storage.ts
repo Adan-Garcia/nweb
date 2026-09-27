@@ -22,6 +22,8 @@ export type TwigDraft = {
   status?: TwigStatus;
   nestIds?: string[];
   featherId?: string | null;
+  /** Set on each occurrence of a repeating task; see `twig-series.ts`. */
+  seriesId?: string | null;
 };
 
 /**
@@ -52,7 +54,12 @@ export async function listTwigs(): Promise<Twig[]> {
     "title",
   );
 
-  return live.map(withParsedTime).sort(compareTwigsByBoardOrder);
+  // A row from before version 14 has no `feedId` or `seriesId`: typed in by hand, once.
+  return live
+    .map((twig) =>
+      withParsedTime({ ...twig, feedId: twig.feedId ?? null, seriesId: twig.seriesId ?? null }),
+    )
+    .sort(compareTwigsByBoardOrder);
 }
 
 /** New tasks land at the end of their column, clear of everything already ordered. */
@@ -71,7 +78,7 @@ async function nextBoardOrder(status: TwigStatus) {
  * Every container this row belongs to: its course, and each tag it carries. Its key is
  * wrapped under all of them, so sharing either one reaches it.
  */
-async function containerKeyIds(branchId: string, nestIds: string[]): Promise<string[]> {
+export async function containerKeyIds(branchId: string, nestIds: string[]): Promise<string[]> {
   const database = await getNotesDb();
   const branchKey = (await database.get("branches", branchId))?.keyId;
   const nestKeys = await Promise.all(
@@ -99,6 +106,8 @@ export async function createTwig(draft: TwigDraft): Promise<Twig> {
     status,
     boardOrder: await nextBoardOrder(status),
     featherId: draft.featherId ?? null,
+    feedId: null,
+    seriesId: draft.seriesId ?? null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

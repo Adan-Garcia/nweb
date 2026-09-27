@@ -8,6 +8,8 @@ import { secureHeaders } from "hono/secure-headers";
 import { authRoutes } from "./auth-routes";
 import { clientIpFor } from "./client-ip";
 import type { Sql } from "./db";
+import { createFeedFetcher, type FeedFetcher } from "./feed-relay";
+import { feedRoutes } from "./feed-routes";
 import { fail, type RouteDeps } from "./http";
 import { createLiveHub, type LiveHub } from "./live";
 import { liveRoutes } from "./live-routes";
@@ -62,10 +64,14 @@ export type AppOptions = {
    * `app.request`, which cannot upgrade: `/v1/live` is simply not mounted there.
    */
   upgrade?: typeof upgradeWebSocket;
+  /** How calendar feeds are fetched for the relay. Tests pass a stand-in. */
+  fetchFeed?: FeedFetcher;
+  /** Limits the feed relay per account; one is made when none is passed. */
+  feedLimiter?: RateLimiter;
 };
 
 /**
- * The whole server: CORS, a rate limiter, and three groups of routes over one database.
+ * The whole server: CORS, a rate limiter, and its groups of routes over one database.
  *
  * The database is passed in rather than reached for, which is what lets the tests run
  * against real Postgres in-process instead of against a mock of it. The groups are mounted
@@ -84,6 +90,8 @@ export function createApp({
   addressLimiter,
   registrationEmails = null,
   staticDir = null,
+  fetchFeed,
+  feedLimiter,
 }: AppOptions) {
   // Thirty a minute from one address, across every guess-taking route: generous for a
   // household behind one router, useless for working through a list.
@@ -115,6 +123,15 @@ export function createApp({
   app.route("/", authRoutes(deps));
   app.route("/", syncRoutes(deps));
   app.route("/", sharingRoutes(deps));
+  app.route(
+    "/",
+    feedRoutes({
+      sql,
+      fetchFeed: fetchFeed ?? createFeedFetcher(),
+      // Twenty a minute: a device refreshing every feed it has, several times over.
+      limiter: feedLimiter ?? createRateLimiter({ limit: 20, windowMs: 60_000 }),
+    }),
+  );
 
   if (upgrade) {
     app.route("/", liveRoutes({ sql, hub: deps.live, upgrade }));

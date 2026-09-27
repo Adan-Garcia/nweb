@@ -72,10 +72,40 @@ describe("twigFormSchema", () => {
     branchId: "branch-1",
     kind: "exam",
     status: "inprogress",
+    repeat: "none",
+    repeatUntil: "",
   };
 
   it("accepts a valid form", () => {
     expect(twigFormSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("refuses a repeat that would create no task at all", () => {
+    // 2026-05-02 is a Saturday; nothing between it and the Sunday after is a weekday.
+    const result = twigFormSchema.safeParse({
+      ...valid,
+      date: "2026-05-02",
+      repeat: "weekdays",
+      repeatUntil: "2026-05-03",
+    });
+
+    expect(result.error?.issues.map((issue) => issue.message)).toEqual([
+      "No day in that range fits the repeat",
+    ]);
+  });
+
+  it("needs a last date after the first for a task that repeats", () => {
+    const repeating = { ...valid, repeat: "weekly" };
+
+    expect(twigFormSchema.safeParse({ ...repeating, repeatUntil: "2026-06-01" }).success).toBe(
+      true,
+    );
+
+    for (const repeatUntil of ["", "2026-04-27", "2026-04-01"]) {
+      const result = twigFormSchema.safeParse({ ...repeating, repeatUntil });
+
+      expect(result.error?.issues.map((issue) => issue.path.join("."))).toEqual(["repeatUntil"]);
+    }
   });
 
   it("requires a non-blank title and time", () => {

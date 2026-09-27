@@ -88,7 +88,8 @@ export function CalendarEventListItem({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <Clock3 className="size-3.5" />
-          {formatShortDate(event.dueDate)} at {event.dueTime}
+          {formatShortDate(event.dueDate)}
+          {event.dueTime ? ` at ${event.dueTime}` : null}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className={cn("inline-block size-2 rounded-full", branch.colorClass)} />

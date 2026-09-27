@@ -36,7 +36,8 @@ export function UpcomingDeadlinesCard({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{event.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatHumanDate(event.dueDate)} at {event.dueTime}
+                    {formatHumanDate(event.dueDate)}
+                    {event.dueTime ? ` at ${event.dueTime}` : null}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

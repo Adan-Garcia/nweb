@@ -100,3 +100,39 @@ export async function apiFetchBytes(
     return NETWORK_ERROR;
   }
 }
+
+export type TextResult =
+  { ok: true; text: string } | { ok: false; reason: "network" | "status" | "too-large" };
+
+/**
+ * A text file from somewhere that is not this app's server: a calendar feed, read directly
+ * when its host allows it. No credentials go with it, since the address is the credential.
+ *
+ * "network" is also what a host that refuses cross-origin reads looks like from here: a
+ * browser reports a CORS refusal as a failed fetch and says nothing more, on purpose.
+ */
+export async function fetchExternalText(url: string, maxBytes: number): Promise<TextResult> {
+  let response: Response;
+
+  try {
+    response = await fetch(url, { credentials: "omit", redirect: "follow" });
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+
+  if (!response.ok) {
+    return { ok: false, reason: "status" };
+  }
+
+  if (Number(response.headers.get("content-length") ?? 0) > maxBytes) {
+    return { ok: false, reason: "too-large" };
+  }
+
+  const text = await response.text().catch(() => null);
+
+  if (text === null) {
+    return { ok: false, reason: "network" };
+  }
+
+  return text.length > maxBytes ? { ok: false, reason: "too-large" } : { ok: true, text };
+}

@@ -9,6 +9,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAppearance } from "@/hooks/use-appearance";
 import { useBackgroundSync } from "@/hooks/use-background-sync";
+import { useFeedRefresh } from "@/hooks/use-feed-refresh";
 import { useLocalAccount } from "@/hooks/use-local-account";
 import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
 import { collectTombstonesOnce } from "@/lib/db/tombstones";
@@ -39,6 +40,9 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
 
   // Runs for as long as the workspace is open, and does nothing until there is a session.
   useBackgroundSync(isUsable);
+
+  // Subscribed calendars, fetched again as each falls due.
+  useFeedRefresh(isUsable);
 
   // Checked before the lock screen: a half-converted workspace cannot be unlocked, only
   // finished, and offering a passphrase box that cannot work would be a dead end.

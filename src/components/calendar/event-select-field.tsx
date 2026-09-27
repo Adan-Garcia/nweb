@@ -4,6 +4,9 @@ import type { UseFormRegisterReturn } from "react-hook-form";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
+/** The native `<select>` look the event form uses, beside the shadcn inputs. */
+export const SELECT_CLASS = "h-9 rounded-md border border-input bg-background px-3 text-sm";
+
 type EventSelectFieldProps = {
   id: string;
   label: string;

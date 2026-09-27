@@ -69,6 +69,8 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
       branchId: "",
       kind: "homework",
       status: "incomplete",
+      repeat: "none",
+      repeatUntil: "",
     },
   });
 
@@ -86,6 +88,8 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
       branchId: branchOptions[0]?.id ?? "",
       kind: "homework",
       status: "incomplete",
+      repeat: "none",
+      repeatUntil: "",
     });
     setIsOpen(true);
   };
@@ -104,6 +108,8 @@ export function useTwigEditor({ snapshot, saveTwig, onSaved }: UseTwigEditorOpti
       branchId: twigToEdit.branchId,
       kind: twigToEdit.kind,
       status: twigToEdit.status,
+      repeat: "none",
+      repeatUntil: "",
     });
     setIsOpen(true);
   };

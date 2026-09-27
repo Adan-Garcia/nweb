@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/crypto/cipher";
 import { getNotesDb } from "@/lib/db/notes-db";
 import { createBranch, createFlight, createWing } from "@/lib/hierarchy/entity-storage";
+import { createTwigSeries } from "@/lib/twigs/twig-series";
 import { createTwig, listTwigs } from "@/lib/twigs/twig-storage";
 
 import type { TwigFormValues } from "./calendar-shared";
@@ -57,6 +58,8 @@ describe("useCalendarTwigs", () => {
       branchId: branch.id,
       kind: "project",
       status: "incomplete",
+      repeat: "none",
+      repeatUntil: "",
     };
 
     await act(async () => {
@@ -87,6 +90,8 @@ describe("useCalendarTwigs", () => {
           branchId: branch.id,
           kind: "exam",
           status: "complete",
+          repeat: "none",
+          repeatUntil: "",
         },
         existing.id,
       );
@@ -135,6 +140,65 @@ describe("useCalendarTwigs", () => {
     const database = await getNotesDb();
     expect((await database.get("twigs", twig.id))?.deletedAt).toEqual(expect.any(Number));
     expect(await listTwigs()).toEqual([]);
+  });
+
+  it("creates one task per date of a repeating one, tied into a series", async () => {
+    const branch = await seedBranch();
+    const { result } = await mount();
+
+    await act(async () => {
+      await result.current.saveTwig(
+        {
+          title: "Problem set",
+          date: "2026-05-04",
+          time: "5:00 PM",
+          branchId: branch.id,
+          kind: "homework",
+          status: "incomplete",
+          repeat: "weekly",
+          repeatUntil: "2026-05-18",
+        },
+        null,
+      );
+    });
+
+    const twigs = await listTwigs();
+
+    expect(twigs.map((twig) => twig.dueDate).sort()).toEqual([
+      "2026-05-04",
+      "2026-05-11",
+      "2026-05-18",
+    ]);
+    expect(new Set(twigs.map((twig) => twig.seriesId)).size).toBe(1);
+    expect(twigs[0].seriesId).not.toBeNull();
+  });
+
+  it("offers to delete a whole series, and falls back to the one occurrence", async () => {
+    const branch = await seedBranch();
+    const [first] = await createTwigSeries(
+      { branchId: branch.id, title: "Reading", dueDate: "2026-05-04" },
+      "daily",
+      "2026-05-06",
+    );
+    const { result } = await mount();
+    const confirm = vi
+      .spyOn(window, "confirm")
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+
+    await act(() => result.current.deleteTwig(first));
+
+    expect(confirm).toHaveBeenNthCalledWith(1, 'Delete every occurrence of "Reading"?');
+    expect(confirm).toHaveBeenNthCalledWith(2, 'Delete "Reading"?');
+    expect(await listTwigs()).toHaveLength(2);
+
+    confirm.mockReturnValueOnce(true);
+    const [left] = await listTwigs();
+
+    await act(() => result.current.deleteTwig(left));
+
+    expect(await listTwigs()).toEqual([]);
+    confirm.mockRestore();
   });
 
   it("loads nothing while the workspace is locked, instead of failing the page", async () => {
