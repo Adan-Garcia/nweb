@@ -23,7 +23,7 @@ export function UpcomingDeadlinesCard({
         <CardTitle>Upcoming Deadlines</CardTitle>
         <CardDescription>From your calendar, sorted by date.</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-1">
+      <CardContent className="grid grid-cols-1 gap-1">
         {events.length ? (
           events.map((event) => {
             const branch = branchLabelFor(snapshot, event.branchId);
@@ -34,18 +34,22 @@ export function UpcomingDeadlinesCard({
                 className="flex items-center justify-between gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/60"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{event.title}</p>
+                  <p className="truncate text-sm font-semibold" title={event.title}>
+                    {event.title}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {formatHumanDate(event.dueDate)}
                     {event.dueTime ? ` at ${event.dueTime}` : null}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 max-w-[45%] items-center gap-2">
                   <span
                     aria-hidden="true"
-                    className={`inline-block size-2.5 rounded-full ${branch.colorClass}`}
+                    className={`inline-block size-2.5 shrink-0 rounded-full ${branch.colorClass}`}
                   />
-                  <span className="text-xs text-muted-foreground">{branch.name}</span>
+                  <span className="truncate text-xs text-muted-foreground" title={branch.name}>
+                    {branch.name}
+                  </span>
                 </div>
               </div>
             );

@@ -20,7 +20,7 @@ export function RecentNotesCard({ snapshot, notes, isLoading }: RecentNotesCardP
         <CardTitle>Recent Notes</CardTitle>
         <CardDescription>Your latest note activity from saved workspace documents.</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-1">
+      <CardContent className="grid grid-cols-1 gap-1">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading saved notes...</p>
         ) : notes.length ? (

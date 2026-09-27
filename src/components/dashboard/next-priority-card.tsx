@@ -14,7 +14,7 @@ export function NextPriorityCard({ event }: { event: DatedTwig | null }) {
       </span>
       <div className="grid min-w-0 gap-0.5">
         <h2 className="text-heading">Next Priority</h2>
-        <p className="text-body text-muted-foreground">
+        <p className="break-words text-body text-muted-foreground">
           {event
             ? `${event.title} on ${formatHumanDate(event.dueDate)} at ${event.dueTime}`
             : "No upcoming incomplete events in the next 7 days."}

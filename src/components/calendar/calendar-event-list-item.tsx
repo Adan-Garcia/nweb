@@ -39,7 +39,7 @@ export function CalendarEventListItem({
     <div
       ref={setNodeRef}
       className={cn(
-        "group/event grid gap-2 rounded-lg border bg-card p-3 transition-colors hover:border-foreground/15",
+        "group/event grid min-w-0 grid-cols-1 gap-2 rounded-lg border bg-card p-3 transition-colors hover:border-foreground/15",
         isComplete && "opacity-60",
         isDragging && "opacity-40",
       )}
@@ -51,7 +51,7 @@ export function CalendarEventListItem({
           eventTitle={event.title}
         />
 
-        <div className="flex items-center text-muted-foreground">
+        <div className="flex shrink-0 items-center text-muted-foreground">
           <button
             type="button"
             ref={setActivatorNodeRef}
@@ -81,7 +81,13 @@ export function CalendarEventListItem({
         </div>
       </div>
 
-      <p className={cn("truncate font-medium", isComplete && "text-muted-foreground line-through")}>
+      <p
+        title={event.title}
+        className={cn(
+          "line-clamp-2 break-words font-medium",
+          isComplete && "text-muted-foreground line-through",
+        )}
+      >
         {event.title}
       </p>
 
@@ -91,9 +97,11 @@ export function CalendarEventListItem({
           {formatShortDate(event.dueDate)}
           {event.dueTime ? ` at ${event.dueTime}` : null}
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className={cn("inline-block size-2 rounded-full", branch.colorClass)} />
-          {branch.name} &middot; {TWIG_KIND_LABELS[event.kind]}
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          <span className={cn("inline-block size-2 shrink-0 rounded-full", branch.colorClass)} />
+          <span className="min-w-0 break-words">
+            {branch.name} &middot; {TWIG_KIND_LABELS[event.kind]}
+          </span>
         </span>
       </div>
     </div>

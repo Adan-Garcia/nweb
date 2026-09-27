@@ -61,7 +61,7 @@ export function CalendarEventListCard({
               : `Events in ${monthLabel}`}
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-2">
+      <CardContent className="grid grid-cols-1 gap-2">
         <CalendarEventFilters
           eventTab={eventTab}
           onEventTabChange={onEventTabChange}

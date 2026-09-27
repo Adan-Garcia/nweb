@@ -36,7 +36,7 @@ export function BoardCard({ snapshot, twig, onEdit, onDelete }: BoardCardProps) 
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "group/card grid gap-1.5 rounded-lg border bg-card p-2.5 transition-colors hover:border-foreground/15",
+        "group/card grid min-w-0 grid-cols-1 gap-1.5 rounded-lg border bg-card p-2.5 transition-colors hover:border-foreground/15",
         isDragging && "opacity-50",
       )}
     >
@@ -45,14 +45,19 @@ export function BoardCard({ snapshot, twig, onEdit, onDelete }: BoardCardProps) 
           type="button"
           ref={setActivatorNodeRef}
           aria-label={`Reorder ${twig.title}`}
-          className="mt-0.5 cursor-grab rounded text-muted-foreground hover:text-foreground"
+          className="mt-0.5 shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground"
           {...attributes}
           {...listeners}
         >
           <GripVertical className="size-4" />
         </button>
 
-        <p className="min-w-0 flex-1 truncate text-sm font-medium">{twig.title}</p>
+        <p
+          className="line-clamp-2 min-w-0 flex-1 break-words text-sm font-medium"
+          title={twig.title}
+        >
+          {twig.title}
+        </p>
 
         <Button
           variant="ghost"
@@ -72,10 +77,10 @@ export function BoardCard({ snapshot, twig, onEdit, onDelete }: BoardCardProps) 
         </Button>
       </div>
 
-      <p className="flex flex-wrap items-center gap-1.5 pl-6 text-caption text-muted-foreground">
+      <p className="flex min-w-0 flex-wrap items-center gap-1.5 break-words pl-6 text-caption text-muted-foreground">
         <span
           aria-hidden="true"
-          className={cn("inline-block size-2 rounded-full", branch.colorClass)}
+          className={cn("inline-block size-2 shrink-0 rounded-full", branch.colorClass)}
         />
         {branch.name} &middot; {TWIG_KIND_LABELS[twig.kind]}
         {twig.dueDate ? ` · ${formatShortDate(twig.dueDate)}` : " · No date"}

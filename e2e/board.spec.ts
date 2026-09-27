@@ -103,6 +103,44 @@ test.describe("the board", () => {
   });
 });
 
+const LONG_TITLE =
+  "Submission Folder Special Access: Milestone 3 - CAD Model + Print 1 of the Compression Test Lab Report";
+
+/** How far `inner` sticks out past the right edge of `outer`, in pixels. */
+async function overflowPast(inner: Locator, outer: Locator) {
+  const [innerBox, outerBox] = await Promise.all([inner.boundingBox(), outer.boundingBox()]);
+
+  if (!innerBox || !outerBox) {
+    throw new Error("could not measure the layout");
+  }
+
+  return innerBox.x + innerBox.width - (outerBox.x + outerBox.width);
+}
+
+test.describe("long names", () => {
+  test("keep a card inside its column on the board and in the calendar list", async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await visit(page, "/board");
+    await addTask(page, LONG_TITLE);
+
+    const todo = page.getByRole("list", { name: "Todo" });
+    const card = todo.getByRole("listitem").filter({ hasText: LONG_TITLE });
+
+    expect(await overflowPast(card, todo)).toBeLessThanOrEqual(0);
+    // The actions stay on the card rather than being pushed off it into the next column.
+    expect(
+      await overflowPast(page.getByRole("button", { name: `Delete ${LONG_TITLE}` }), card),
+    ).toBeLessThanOrEqual(0);
+
+    await visit(page, "/calendar");
+    const deleteButton = page.getByRole("button", { name: `Delete ${LONG_TITLE}` });
+    await expect(deleteButton).toBeVisible();
+    const list = page.getByText(/^Events in /).locator("xpath=ancestor::*[@data-slot='card'][1]");
+
+    expect(await overflowPast(deleteButton, list)).toBeLessThanOrEqual(0);
+  });
+});
+
 test.describe("the calendar", () => {
   test("a task dragged onto another day is rescheduled to it", async ({ page }) => {
     // Relative to today, so the drag never has to navigate between months.

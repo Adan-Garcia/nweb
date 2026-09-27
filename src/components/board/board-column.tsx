@@ -37,7 +37,7 @@ export function BoardColumn({ snapshot, column, onEdit, onDelete }: BoardColumnP
         <ul
           ref={setNodeRef}
           aria-label={column.label}
-          className="grid min-h-24 content-start gap-2"
+          className="grid min-h-24 grid-cols-1 content-start gap-2"
         >
           {column.twigs.map((twig) => (
             <BoardCard
