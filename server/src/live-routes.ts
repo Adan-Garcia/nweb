@@ -107,27 +107,24 @@ export function liveRoutes({
     "/v1/live",
     upgrade(() => {
       const session = liveSession({ sql, hub });
+      let connection: LiveConnection | null = null;
+      // One wrapper per socket, made on first use and shared by every event it raises.
+      const connect = (ws: { send: (data: string) => void; close: (code: number) => void }) =>
+        (connection ??= {
+          send: (data) => {
+            ws.send(data);
+          },
+          close: (code) => {
+            ws.close(code);
+          },
+        });
 
       return {
         onOpen(_event, ws) {
-          session.onOpen({
-            send: (data) => {
-              ws.send(data);
-            },
-            close: (code) => {
-              ws.close(code);
-            },
-          });
+          session.onOpen(connect(ws));
         },
         onMessage(event: { data: unknown }, ws) {
-          void session.onMessage(event.data, {
-            send: (data) => {
-              ws.send(data);
-            },
-            close: (code) => {
-              ws.close(code);
-            },
-          });
+          void session.onMessage(event.data, connect(ws));
         },
         onClose() {
           session.onClose();
