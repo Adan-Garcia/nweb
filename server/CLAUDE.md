@@ -60,6 +60,21 @@ write it.
     because a leaked table should not be a pile of working credentials.
 *   **Rate-limit anything that takes a guess.** The limiter is per-process, which is honest
     for one instance and is the thing to replace first when there are two.
+*   **Refusals cost the same as acceptances.** `[REQUIRED]` A sign-in for an address with
+    no account still runs one Argon2 verification (against a hash nothing matches), or the
+    fast "no" is the tell the identical error bodies were hiding.
+*   **A row goes only under a key its writer may write with.** `[REQUIRED]` The store serves
+    rows by `key_id` to everyone who can reach that key, so a new row under a key someone
+    else owns and the caller cannot write would be planted in their course (`sync.ts`,
+    `foreignKeyIds`). A key nobody has registered yet is allowed; `putKeys` keeps the first
+    owner of an id.
+*   **The server calls out only to public https push services.** `[REQUIRED]` A stored push
+    endpoint is where the sweep POSTs from inside the server's network, so it is checked with
+    `isPublicPushEndpoint` when saved and again before each delivery.
+*   **Bodies are capped while they stream in** (`app.ts`): 25 MiB for a file, 64 MiB for a
+    sync page, 1 MiB for everything else. Account fields and KDF parameters have bounds in
+    `shared/`, so nobody can make the server hash a megabyte or store parameters that would
+    weaken or stall another device.
 *   `no-console` is **off** here — a service that cannot log is not operable. Never log a
     token, an `authKey`, a sealed blob, or an email beside either.
 
