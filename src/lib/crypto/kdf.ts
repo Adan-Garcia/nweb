@@ -1,4 +1,9 @@
-import { accountKdfSchema, ARGON2ID_DEFAULTS, type KdfParams } from "@shared/kdf-params";
+import {
+  ACCOUNT_KDF_BOUNDS,
+  accountKdfSchema,
+  ARGON2ID_DEFAULTS,
+  type KdfParams,
+} from "@shared/kdf-params";
 import { argon2id } from "hash-wasm";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
@@ -41,6 +46,25 @@ export function assertAccountKdf(params: KdfParams): void {
   if (!accountKdfSchema.safeParse(params).success || saltBytes < SALT_BYTES) {
     throw new UntrustedKdfError();
   }
+}
+
+/**
+ * Whether deriving with these would finish in a reasonable time. No floor: an old backup
+ * made at a lower cost still opens. But parameters read from a file anybody can hand over
+ * could otherwise ask for ten million passes, and the tab would hang trying.
+ */
+export function isWithinKdfCeiling(params: KdfParams): boolean {
+  if (params.name === "PBKDF2") {
+    return params.iterations <= ACCOUNT_KDF_BOUNDS.pbkdf2.iterations.max;
+  }
+
+  const { argon2id } = ACCOUNT_KDF_BOUNDS;
+
+  return (
+    params.memorySize <= argon2id.memorySize.max &&
+    params.iterations <= argon2id.iterations.max &&
+    params.parallelism <= argon2id.parallelism.max
+  );
 }
 
 /** What new key material is derived with. Old material keeps whatever it recorded. */

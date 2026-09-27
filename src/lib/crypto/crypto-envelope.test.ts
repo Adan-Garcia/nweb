@@ -44,6 +44,29 @@ describe("sealWithPassphrase", () => {
     expect(await openWithPassphrase(envelope, "correct horse")).toBe("the quick brown fox");
   });
 
+  it("refuses a file that asks for more work than a tab should do, rather than trying", async () => {
+    const envelope = await sealWithPassphrase("the quick brown fox", "correct horse");
+    const started = performance.now();
+
+    // A backup is a file anybody can hand over. Ten million passes would hang the tab.
+    expect(
+      await openWithPassphrase(
+        {
+          ...envelope,
+          kdf: {
+            name: "Argon2id",
+            memorySize: 8,
+            iterations: 10_000_000,
+            parallelism: 1,
+            salt: envelope.kdf.salt,
+          },
+        },
+        "correct horse",
+      ),
+    ).toBeNull();
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
+
   it("round-trips text that is not ASCII", async () => {
     const text = "Notes — “smart quotes”, an emoji 🪶 and 日本語.";
     const envelope = await sealWithPassphrase(text, "pw", fastArgon2id());

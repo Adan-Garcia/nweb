@@ -2,7 +2,13 @@ import { ARGON2ID_DEFAULTS, type KdfParams, kdfParamsSchema } from "@shared/kdf-
 import { describe, expect, it } from "vitest";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
-import { assertAccountKdf, createKdfParams, deriveKey, UntrustedKdfError } from "./kdf";
+import {
+  assertAccountKdf,
+  createKdfParams,
+  deriveKey,
+  isWithinKdfCeiling,
+  UntrustedKdfError,
+} from "./kdf";
 
 const SALT = bytesToBase64(new Uint8Array(16).fill(7));
 
@@ -157,5 +163,28 @@ describe("assertAccountKdf", () => {
     expect(() => assertAccountKdf({ ...shipped, memorySize: 4_194_304 })).toThrow(
       UntrustedKdfError,
     );
+  });
+});
+
+describe("isWithinKdfCeiling", () => {
+  it("allows any cost this app has made, however old, and refuses a runaway one", () => {
+    const salt = bytesToBase64(new Uint8Array(16));
+
+    expect(isWithinKdfCeiling(createKdfParams())).toBe(true);
+    expect(isWithinKdfCeiling({ name: "PBKDF2", hash: "SHA-256", iterations: 100, salt })).toBe(
+      true,
+    );
+    expect(
+      isWithinKdfCeiling({ name: "PBKDF2", hash: "SHA-256", iterations: 50_000_000, salt }),
+    ).toBe(false);
+    expect(
+      isWithinKdfCeiling({
+        name: "Argon2id",
+        memorySize: 8,
+        iterations: 10_000_000,
+        parallelism: 1,
+        salt,
+      }),
+    ).toBe(false);
   });
 });

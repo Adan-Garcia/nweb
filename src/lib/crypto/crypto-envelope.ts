@@ -2,7 +2,7 @@ import { type KdfParams, kdfParamsSchema } from "@shared/kdf-params";
 import { z } from "zod";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
-import { createKdfParams, deriveKey } from "./kdf";
+import { createKdfParams, deriveKey, isWithinKdfCeiling } from "./kdf";
 
 /**
  * AES-GCM under a key derived from a passphrase, with everything needed to open it again
@@ -72,6 +72,10 @@ export async function openWithPassphrase(
   envelope: EncryptedEnvelope,
   passphrase: string,
 ): Promise<string | null> {
+  if (!isWithinKdfCeiling(envelope.kdf)) {
+    return null;
+  }
+
   try {
     const key = await deriveKey(passphrase, envelope.kdf);
 
