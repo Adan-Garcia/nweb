@@ -16,6 +16,7 @@ import {
   prelogin,
   register,
 } from "./accounts";
+import { normalizeEmail } from "./db";
 import { callerFor, fail, noContent, type RouteDeps } from "./http";
 
 /**
@@ -32,7 +33,7 @@ export function authRoutes({ sql, serverSecret, attempts }: RouteDeps) {
       return fail("invalid_request");
     }
 
-    if (attempts.isLimited(`prelogin:${parsed.data.email}`)) {
+    if (attempts.isLimited(`prelogin:${normalizeEmail(parsed.data.email)}`)) {
       return fail("rate_limited");
     }
 
@@ -44,6 +45,11 @@ export function authRoutes({ sql, serverSecret, attempts }: RouteDeps) {
 
     if (!parsed.success) {
       return fail("invalid_request");
+    }
+
+    // Registering costs an Argon2 hash, and "taken" is an answer about who has an account.
+    if (attempts.isLimited(`register:${normalizeEmail(parsed.data.email)}`)) {
+      return fail("rate_limited");
     }
 
     const outcome = await register(sql, parsed.data);
@@ -58,7 +64,7 @@ export function authRoutes({ sql, serverSecret, attempts }: RouteDeps) {
       return fail("invalid_request");
     }
 
-    if (attempts.isLimited(`session:${parsed.data.email}`)) {
+    if (attempts.isLimited(`session:${normalizeEmail(parsed.data.email)}`)) {
       return fail("rate_limited");
     }
 

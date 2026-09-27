@@ -6,7 +6,7 @@ import type {
   SessionRequest,
 } from "@shared/account-contract";
 import { ARGON2ID_DEFAULTS, type KdfParams } from "@shared/kdf-params";
-import { createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 
 import { normalizeEmail, type Sql } from "./db";
 import { hashToken, issueToken, SESSION_TTL_MS } from "./tokens";
@@ -136,7 +136,15 @@ export async function createSession(
 ): Promise<Session | null> {
   const user = await findByEmail(sql, request.email);
 
-  if (!user || !(await verifyAuthKey(request.authKey, user.auth_hash))) {
+  // An address with no account is checked against a hash that matches nothing, so both
+  // refusals cost one Argon2 verification. Returning early would make "no such account" the
+  // fast answer, and a stopwatch would turn this into a list of who has one.
+  const isProven = await verifyAuthKey(
+    request.authKey,
+    user?.auth_hash ?? (await unmatchableHash()),
+  );
+
+  if (!user || !isProven) {
     return null;
   }
 
@@ -156,6 +164,15 @@ export async function createSession(
     expiresAt,
     keyMaterial: materialFrom(user),
   };
+}
+
+let unmatchable: Promise<string> | null = null;
+
+/** A real Argon2id hash, at the server's cost, of a value no proof can be. Made once. */
+function unmatchableHash(): Promise<string> {
+  unmatchable ??= hash(randomBytes(32).toString("base64"), ARGON2_SERVER);
+
+  return unmatchable;
 }
 
 /** A wrong proof is a false, not a throw: a malformed hash in the table is still a no. */

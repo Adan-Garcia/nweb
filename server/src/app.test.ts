@@ -436,6 +436,37 @@ describe("rate limiting", () => {
     expect((await attempt()).status).toBe(429);
   });
 
+  it("counts an address however it is capitalised, since the account does", async () => {
+    app = createApp({
+      sql: database,
+      serverSecret: SERVER_SECRET,
+      allowedOrigins: [],
+      limiter: createRateLimiter({ limit: 2, windowMs: 60_000 }),
+    });
+    await post("/v1/auth/register", ENROLMENT);
+
+    const attempt = (email: string) => post("/v1/auth/session", { email, authKey: "d3Jvbmc" });
+
+    expect((await attempt("student@example.com")).status).toBe(401);
+    expect((await attempt("Student@Example.com")).status).toBe(401);
+    expect((await attempt("STUDENT@EXAMPLE.COM")).status).toBe(429);
+  });
+
+  it("stops a run of registrations for one address", async () => {
+    app = createApp({
+      sql: database,
+      serverSecret: SERVER_SECRET,
+      allowedOrigins: [],
+      limiter: createRateLimiter({ limit: 2, windowMs: 60_000 }),
+    });
+
+    expect((await post("/v1/auth/register", ENROLMENT)).status).toBe(201);
+    expect((await post("/v1/auth/register", ENROLMENT)).status).toBe(409);
+    expect(
+      (await post("/v1/auth/register", { ...ENROLMENT, email: "Student@example.com" })).status,
+    ).toBe(429);
+  });
+
   it("stops a stolen session from guessing its way to a delete", async () => {
     app = createApp({
       sql: database,
