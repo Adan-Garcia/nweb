@@ -71,6 +71,11 @@ describe("UpcomingDeadlinesCard", () => {
     );
   });
 
+  it("gives an all-day event a date and no dangling time", () => {
+    render(<UpcomingDeadlinesCard snapshot={snapshot} events={[{ ...event, dueTime: "" }]} />);
+    expect(screen.getByText("Tue, Apr 21, 2026")).toBeInTheDocument();
+  });
+
   it("explains an empty list", () => {
     render(<UpcomingDeadlinesCard snapshot={snapshot} events={[]} />);
     expect(screen.getByText("No upcoming incomplete events in the next week.")).toBeInTheDocument();
