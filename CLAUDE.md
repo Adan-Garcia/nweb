@@ -135,7 +135,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   **Pattern:** test user behaviour, not implementation. Query by role, label or visible text (`getByRole`, `getByLabelText`, `getByText`), never DOM structure or generic test IDs unless unavoidable. Drive the UI with `user-event`.
 *   **Timezone** `[ENFORCED]`: `vitest.global-setup.ts` pins every test run to `America/New_York`, a zone west of UTC, so date bugs (e.g. `new Date("YYYY-MM-DD")`, which is UTC and lands on the previous day) fail on any machine. Parse date keys with `dateKeyToDate()` from `calendar-shared.ts`, never `new Date(key)`.
 *   **Isolation** `[ENFORCED]`: the setup file runs an MSW server that fails any network request without a handler (`data:` and `blob:` URLs are in-memory and exempt); add handlers with `server.use(...)` from `src/test/server.ts`. IndexedDB is `fake-indexeddb` (auto-installed); `localStorage`, the `<html>` class and its `data-*` attributes, and the Zustand stores are reset after every test; `ResizeObserver` and `scrollIntoView` are stubbed (jsdom has neither; cmdk needs both). Stub `window.matchMedia` per test where needed (jsdom has none).
-*   **Coverage** `[ENFORCED]` by `npm run test:coverage` (thresholds in `vite.config.ts`, deliberately just under what is measured so it can only go up): overall lines/statements 97%, functions 95%, branches 90%; `src/hooks/**` 100%; feature hooks (`src/components/**/use-*.ts`) 97% lines / 85% branches; `src/lib/**` 95%; `src/workers/**` 98%. Pure utilities in `lib/` and `*-utils.ts` should reach 100% of their logic `[REQUIRED]`. Raise a threshold whenever coverage improves. The text reporter hides fully covered files, so read totals from `--coverage.reporter=json-summary` if a file seems missing.
+*   **Coverage** `[ENFORCED]` by `npm run test:coverage` (thresholds in `vite.config.ts`, deliberately just under what is measured so it can only go up): overall lines/statements 97.5%, functions 96%, branches 93%; `src/hooks/**` 100%; feature hooks (`src/components/**/use-*.ts`) 97% lines / 88% branches; `src/lib/**` 97% lines / 99% functions / 93% branches; `src/workers/**` 100% lines / 90% branches; `server/**` 99% lines / 96% branches. Pure utilities in `lib/` and `*-utils.ts` should reach 100% of their logic `[REQUIRED]`. Raise a threshold whenever coverage improves. The text reporter hides fully covered files, so read totals from `--coverage.reporter=json-summary` if a file seems missing.
 *   Suites that need real streams or no DOM (the Web Worker) opt into Node with a `// @vitest-environment node` first line; the shared setup is safe in both environments.
 *   **Browser-level tests (Playwright)** `[REQUIRED]` live in `e2e/*.spec.ts` and cover only what jsdom cannot: the real Excalidraw canvas, real pdf.js, drag-and-drop, fullscreen, and cross-page flows. Do not re-test routing, forms or filters there; those belong in Vitest. Specs run against a production build served by `vite preview` (`playwright.config.ts` builds it), each in a fresh browser context so IndexedDB and `localStorage` start empty. Every test also fails on any uncaught page error or `console.error` (`e2e/fixtures.ts`), and each spec was checked by breaking the behavior it covers.
     *   Drive Excalidraw like a user: its tool buttons are radio inputs behind a label, so click the label; choosing a tool opens a properties panel over the left of the canvas, so start strokes right of centre. Measure the canvas with `inkPixels()`, not with selectors.
@@ -163,7 +163,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   **The lock covers content and names, and deliberately not dates.** `lib/crypto/sealed-text.ts` is the seam for the one display field a row is listed by (`feather`, `name`, `title`); `lib/crypto/cipher.ts` is the seam for payloads. A twig's `dueDate`, `dueTime`, `status` and every timestamp stay in the clear on purpose, so a future server holding nothing but ciphertext can still drive a reminder. `[REQUIRED]` Storage modules seal on write and open on read: a row leaves `lib/<domain>/*-storage.ts` in plaintext and with no `encryption` marker, and a row that cannot be opened is an error, never its ciphertext.
 *   **Vite assets:** import static assets (images, SVGs) through Vite's module system; do not reference `public/` paths directly from components. The exception is what the browser fetches by URL rather than the bundler: `manifest.webmanifest`, `sw.js` and the PWA icons live in `public/` and are referenced from `index.html`.
 *   **The service worker (`public/sw.js`) is hand-written and takes no build step.** `[REQUIRED]` It needs no precache manifest because everything under `/assets/` is content-hashed (cached forever, served cache-first) while the HTML document is not (network-first, so a deploy is picked up). Do not add `vite-plugin-pwa` to replace it without a reason; it would be a new dependency for something that already works. Registration goes through `lib/service-worker.ts`, production only — in dev a cache would serve yesterday's modules back after an edit.
-*   **Bundle weight:** every route except the landing page is loaded on demand through `lazyPage()` in `App.tsx`, which kept the entry chunk at ~230 kB instead of ~2.1 MB. New pages must be added the same way; do not import a page eagerly into `App.tsx`. `[REQUIRED]`
+*   **Bundle weight:** every route except the landing page is loaded on demand through `lazyPage()` in `App.tsx`, which keeps the entry chunk at ~237 kB instead of ~2.1 MB. New pages must be added the same way; do not import a page eagerly into `App.tsx`. `[REQUIRED]`
 *   **Untrusted files:** user-supplied PDFs/images are untrusted input; process them in the worker where possible.
 
 ## 6. Common Commands
@@ -258,7 +258,7 @@ A change is done only when:
 *   Do not run destructive or state-changing package commands (`npm audit fix --force`, `rm -rf node_modules`, lockfile regeneration) without asking.
 *   Report outcomes faithfully: failing checks are reported with their output; skipped verification is stated as skipped.
 
-## 13. Known Gaps & Backlog (audited 2026-09-21)
+## 13. Known Gaps & Backlog (audited 2026-09-27)
 
 Pre-existing; not blockers for unrelated work (§0). `docs/backend.md` ("What is still missing")
 has the server-side list and the reasoning; this is the short form for someone editing the code. Everything buildable
@@ -283,4 +283,9 @@ without a server has shipped, so what is left here is inherent or waiting on the
 5.  **A rotated key's old grants stay.** `lib/keys/rotate-shared.ts` rotates a shared key on
     a revoke and once it is ninety days old, and moves every row onto the new one, but it
     leaves the grants on the old key in place rather than revoking them.
-
+6.  **The `/auth` sign-in and sign-up forms are previews.** `login-form.tsx` and
+    `signup-form.tsx` validate and then do nothing; accounts are created and opened from
+    Settings → Account & sync (`settings/account/`). The pages say so. Wiring them to
+    `lib/account/` is a feature, not a copy change.
+7.  **An account cannot be deleted from the app.** There is no endpoint for it; signing out
+    only forgets the account on this device. The privacy page says so.

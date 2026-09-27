@@ -1,32 +1,74 @@
+# Cuervo Planner — feature checklist
 
-# Cuervo Planner - Technical Specification & Feature Checklist (V3 Local Architecture)
+What the app does today, by area, and what is known to be missing. Checked items are built
+and covered by tests. The design reasons live in [`backend.md`](./backend.md) and
+[`hierarchy.md`](./hierarchy.md); the rules for changing any of it live in
+[`CLAUDE.md`](../CLAUDE.md).
 
-## 🎨 1. The Hybrid Editor System (UI/UX)
-*Providing students with both linear note-taking and infinite spatial organization.*
-- [x] **Dual-Mode Document Architecture**
-  - [x] **Mode A (Linear Mode):** A standalone, full-page `tiptap` editor for traditional, Notion-style document writing.
-  - [x] **Mode B (Spatial Mode):** An infinite `excalidraw` canvas for mind-mapping, whiteboard photos, and spatial organization.
-- [x] **Tiptap Integration & Customization**
-  - [x] Install `@tiptap/react`, `@tiptap/starter-kit`.
-- [x] **Excalidraw Integration**
-  - [x] Use Excalidraw as the infinite spatial canvas in Notes mode.
+## 1. Notes
 
-## 🚀 2. The Media Processing Pipeline
-*Handling massive student files (lectures, textbooks, whiteboard photos) without freezing the React UI.*
-- [x] **Web Worker Setup**
-  - [x] Create a dedicated Web Worker (`media-worker.ts`) to handle all heavy file processing off the main React thread.
-- [x] **Image Optimization (WebP)**
-  - [x] Intercept clipboard `onPaste` and `onDrop` events in Excalidraw.
-  - [x] Pass dropped image `File` objects to the Web Worker to draw onto an `OffscreenCanvas` and convert to `image/webp` to reduce local storage size.
-- [x] **Text Compression (Brotli)**
-  - [x] Implement Brotli compression in the Web Worker to compress the raw JSON state from Tiptap and Excalidraw *before* saving to local storage.
+- [x] **Two kinds of note.** Linear notes in a full-page TipTap editor; spatial notes on an
+      infinite Excalidraw canvas. A note is created as one or the other.
+- [x] **Autosave.** Every edit is saved as you type, and flushed before switching notes.
+- [x] **Files on the canvas.** Drop or paste an image; import a PDF and choose which pages to
+      draw. Fullscreen canvas and pen support.
+- [x] **Finding a note.** A path bar (wing → flight → branch → nest → note) or a tree of every
+      saved note, remembered between visits; ⌘K searches every note by title.
 
-## 💾 3. Local Storage & State Management
-*Ensuring students can store, access, and edit huge files efficiently directly on their device.*
-- [x] **IndexedDB Migration**
-  - [x] Replace standard `localStorage` with `IndexedDB` to bypass standard storage limits.
-  - [x] Integrate a library like `localforage` or `idb` with your Zustand `useEventStore` persist middleware.
-- [x] **Asset Separation Architecture**
-  - [x] Update data models: Separate heavy media files (Images, PDFs) from lightweight metadata (Text JSON, Tags, Course info).
-  - [x] Store media files locally in IndexedDB as binary blobs, and link to them in the Excalidraw JSON via local object URLs (`blob:http://...`).
+## 2. Planning
 
+- [x] **Calendar.** Month and week views, filters by course and status, drag a task onto
+      another day.
+- [x] **Board.** Todo, Started and Done columns; drag to reorder or to change status.
+- [x] **Dashboard.** Next priority, what is due today and overdue, upcoming deadlines and
+      recent notes. Which cards show, and their order, is up to you.
+- [x] **Reminders.** A notification bell while the app is open; push reminders with an
+      account.
+
+## 3. Storage and media
+
+- [x] **IndexedDB for everything.** Notes, tasks, files and the hierarchy each have a store;
+      `localStorage` holds only what the first paint needs (appearance, notes navigation,
+      the lock hint).
+- [x] **Media off the main thread.** A Web Worker turns dropped images into WebP and
+      compresses note bodies with Brotli before they are stored.
+- [x] **Heavy files kept apart.** Images and PDFs are stored as blobs and referenced from the
+      canvas, not embedded in it.
+- [x] **Backups.** Download the workspace as a file, optionally encrypted; restore it
+      replacing what is here, or merged note by note.
+
+## 4. Privacy and security
+
+- [x] **The lock.** A passphrase encrypts note content, drawings, files and every name with
+      AES-GCM under an Argon2id key. Dates and statuses stay readable on purpose.
+- [x] **Changing or removing it** rewrites every row in one resumable pass.
+- [x] **No logging of content or credentials**, and no analytics.
+
+## 5. Accounts, sync and sharing (needs a server)
+
+- [x] **Account.** Created from Settings; one passphrase, split so the server never learns
+      the key the data is encrypted with.
+- [x] **Sync.** Rows and files travel sealed; two edits of one row merge by paragraph, word,
+      shape or field. Devices are nudged live over a WebSocket.
+- [x] **Sharing.** A course, a unit or a note, read-only or editable. Revoking someone rotates
+      the key; keys also rotate after ninety days.
+- [x] **Push reminders** that say something is due, never what.
+
+## 6. Interface
+
+- [x] **Themes.** System, light, paper, dark and black; eight accents checked for contrast;
+      density and text size. Painted before any script loads, and synced with an account.
+- [x] **Navigation.** A collapsible sidebar in the order you choose, a phone tab bar, and a
+      ⌘K command palette.
+- [x] **Installable and offline.** A hand-written service worker serves the app with no
+      connection.
+
+## 7. Not built yet
+
+- [ ] Deleting an account from inside the app.
+- [ ] Wiring the `/auth` sign-in and sign-up pages to real accounts (they are previews;
+      accounts are made in Settings).
+- [ ] Two people rewriting the same words at once keeping both versions (needs a CRDT).
+- [ ] Revoking the grants on a key after it has been rotated.
+- [ ] Live updates across more than one server process.
+- [ ] Paid hosting plans.

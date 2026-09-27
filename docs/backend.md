@@ -1,12 +1,14 @@
 # The backend
 
-Written 2026-09-21. This is the plan for the half of the app that needs a server:
-accounts, sync, sharing and push. It says how that part is built, and why it is shaped the
-way it is.
+Written 2026-09-21, brought up to date 2026-09-27. This is the design for the half of the
+app that needs a server: accounts, sync, sharing and push. It says how that part is built,
+and why it is shaped the way it is.
 
-Phases 0 to 4 are built: `server/` runs, and the app has an account, a sync button and a
-key graph. What is left is listed under "What is still missing" at the end. It replaces
-`Todo.md`, which described a different architecture than the one that shipped.
+Phases 0 to 4 are built and wired into the app: `server/` runs, and Settings → Account &
+sync creates an account, syncs, shares and turns on push reminders. What is left is listed
+under "What is still missing" at the end. This document replaced an earlier `Todo.md`,
+which described a different architecture (Supabase, and Zustand for core data) than the one
+that shipped.
 
 ## What the client already decided
 
@@ -301,7 +303,8 @@ them drift the first time one gains a field.
     `Intl` alone, so the server needs no timezone dependency.
 4.  **Sharing.** Done, on the server and in `src/lib/keys/`. The key graph, grants,
     revocation, and a walk that derives every key reachable from a grant and nothing else.
-    Lazy rotation is recorded (`keys.rotated_from`) and not yet performed.
+    Rotation is recorded (`keys.rotated_from`) and performed by the client, on a revoke and
+    once a shared key is ninety days old (see "Revocation, and its limit").
 5.  **Paid tiers.** Not started, and needs billing infrastructure this repository has none
     of. Out of scope until the four above are wired into the app.
 
@@ -387,7 +390,9 @@ to make sharing possible need one too.
     wings and branches would carry no information and one more thing to keep in step.
 *   **A data-fetching library.** `CLAUDE.md` §2.3 requires approval, and a sync cursor is
     not what TanStack Query is for.
-*   **Zustand for core data.** `Todo.md` proposed it; the app stores data in IndexedDB and
-    derives state from it, and §2.4 says to keep global state minimal.
+*   **Zustand for core data.** The old plan proposed it; the app stores data in IndexedDB and
+    derives state from it, and §2.4 says to keep global state minimal. Zustand is in the app
+    now, but only for UI state shared across unrelated trees (the appearance preferences and
+    the command palette), never for rows.
 *   **`vite-plugin-pwa`.** §5 forbids replacing the hand-written service worker without a
     reason, and this is not one.
