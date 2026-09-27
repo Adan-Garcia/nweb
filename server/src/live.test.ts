@@ -7,7 +7,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { createApp } from "./app";
 import type { Sql } from "./db";
 import { createLiveHub, type LiveHub } from "./live";
-import { liveSession } from "./live-routes";
+import { LIVE_AUTH_DEADLINE_MS, liveSession } from "./live-routes";
 import { createRateLimiter } from "./rate-limit";
 import { createTestDb } from "./test-db";
 
@@ -198,6 +198,37 @@ describe("a live session", () => {
 
     expect(close).toHaveBeenCalledWith(LIVE_CLOSE_UNAUTHORIZED);
     expect(hub.size()).toBe(0);
+  });
+
+  it("closes a socket that never says who it is, so an idle one cannot be held open", () => {
+    vi.useFakeTimers();
+    const close = vi.fn();
+    const session = liveSession({ sql: database, hub });
+
+    session.onOpen({ send: vi.fn(), close });
+    vi.advanceTimersByTime(LIVE_AUTH_DEADLINE_MS);
+
+    expect(close).toHaveBeenCalledWith(LIVE_CLOSE_UNAUTHORIZED);
+    vi.useRealTimers();
+  });
+
+  it("leaves a socket open once it has said who it is, or once it has gone", async () => {
+    const owner = await signUp("owner@example.com");
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const joined = { send: vi.fn(), close: vi.fn() };
+    const gone = { send: vi.fn(), close: vi.fn() };
+    const session = liveSession({ sql: database, hub });
+    const leaving = liveSession({ sql: database, hub });
+
+    session.onOpen(joined);
+    await session.onMessage(JSON.stringify({ type: "auth", token: owner.token }), joined);
+    leaving.onOpen(gone);
+    leaving.onClose();
+    vi.advanceTimersByTime(LIVE_AUTH_DEADLINE_MS);
+
+    expect(joined.close).not.toHaveBeenCalled();
+    expect(gone.close).not.toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
   it("ignores what is not an auth message, and anything after it has joined", async () => {

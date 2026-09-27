@@ -23,11 +23,27 @@ export type LiveConnection = {
  *
  * Kept apart from the route so it can be driven without a socket at all.
  */
+/**
+ * How long a socket may stay open before saying who it is. An upgrade costs nothing to ask
+ * for, and without a deadline anybody could hold open as many idle sockets as the process
+ * has file descriptors.
+ */
+export const LIVE_AUTH_DEADLINE_MS = 10_000;
+
 export function liveSession({ sql, hub }: { sql: Sql; hub: LiveHub }) {
   let leave: (() => void) | null = null;
   let closed = false;
+  let deadline: ReturnType<typeof setTimeout> | null = null;
 
   return {
+    onOpen(connection: LiveConnection): void {
+      deadline = setTimeout(() => {
+        if (!leave && !closed) {
+          connection.close(LIVE_CLOSE_UNAUTHORIZED);
+        }
+      }, LIVE_AUTH_DEADLINE_MS);
+    },
+
     async onMessage(data: unknown, connection: LiveConnection): Promise<void> {
       if (leave || typeof data !== "string") {
         return;
@@ -64,6 +80,11 @@ export function liveSession({ sql, hub }: { sql: Sql; hub: LiveHub }) {
 
     onClose(): void {
       closed = true;
+
+      if (deadline) {
+        clearTimeout(deadline);
+      }
+
       leave?.();
       leave = null;
     },
@@ -88,6 +109,16 @@ export function liveRoutes({
       const session = liveSession({ sql, hub });
 
       return {
+        onOpen(_event, ws) {
+          session.onOpen({
+            send: (data) => {
+              ws.send(data);
+            },
+            close: (code) => {
+              ws.close(code);
+            },
+          });
+        },
         onMessage(event: { data: unknown }, ws) {
           void session.onMessage(event.data, {
             send: (data) => {
