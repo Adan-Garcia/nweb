@@ -1,7 +1,7 @@
 import type { KeyGraph } from "@shared/sharing-contract";
 import { describe, expect, it } from "vitest";
 
-import { bytesToBase64 } from "../base64";
+import { bytesToBase64 } from "../crypto/base64";
 import {
   cipherForKey,
   createObjectKey,

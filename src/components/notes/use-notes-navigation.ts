@@ -4,7 +4,7 @@ import {
   type NotesNavigationMode,
   readNotesNavigationMode,
   writeNotesNavigationMode,
-} from "@/lib/notes-navigation";
+} from "@/lib/notes/notes-navigation";
 
 /**
  * Which way the notes page is navigated, and remembering the answer.

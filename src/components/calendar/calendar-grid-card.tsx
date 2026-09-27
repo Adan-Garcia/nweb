@@ -5,8 +5,8 @@ import { type DatedTwig, formatDateKey, weekDays } from "@/components/calendar/c
 import { SegmentedControl } from "@/components/segmented-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 import { cn } from "@/lib/utils";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 const VIEW_OPTIONS = [
   { value: "month", label: "Month" },

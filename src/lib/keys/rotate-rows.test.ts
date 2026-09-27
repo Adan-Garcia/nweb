@@ -11,26 +11,29 @@ import {
   registerCipher,
   resetActiveCipher,
   setActiveCipher,
-} from "../cipher";
+} from "../crypto/cipher";
+import { openText, sealRow } from "../crypto/sealed-text";
+import { getNotesDb } from "../db/notes-db";
 import {
   createBranch,
   createFlight,
   createNest,
   createWing,
   listBranches,
-} from "../entity-storage";
-import { getNotesDb } from "../notes-db";
-import { createNotesDirectoryEntry, listNotesDirectoryEntries } from "../notes-directory-storage";
+} from "../hierarchy/entity-storage";
+import { createPebble, listPebbles } from "../hierarchy/pebble-storage";
+import { sharePathRecordSchema } from "../hierarchy/share-path-model";
+import {
+  createNotesDirectoryEntry,
+  listNotesDirectoryEntries,
+} from "../notes/notes-directory-storage";
 import {
   loadNotesDocument,
   saveLinearDocumentPayload,
   saveSpatialDocumentPayload,
-} from "../notes-document-storage";
-import { buildEmptyDocument } from "../notes-model";
-import { createPebble, listPebbles } from "../pebble-storage";
-import { openText, sealRow } from "../sealed-text";
-import { sharePathRecordSchema } from "../share-path-model";
-import { createTwig, listTwigs } from "../twig-storage";
+} from "../notes/notes-document-storage";
+import { buildEmptyDocument } from "../notes/notes-model";
+import { createTwig, listTwigs } from "../twigs/twig-storage";
 import { rotateRowsToKey } from "./rotate-rows";
 
 const PATH_RECORD = { id: "note-1", kind: "feather", path: "{}", updatedAt: 1, deletedAt: null };

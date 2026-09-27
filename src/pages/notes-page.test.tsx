@@ -16,8 +16,8 @@ vi.mock("@excalidraw/excalidraw", () => ({
   }),
 }));
 
-import { createNotesDirectoryEntry } from "@/lib/notes-directory-storage";
-import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
+import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
+import { createNotesDirectoryEntry } from "@/lib/notes/notes-directory-storage";
 
 import { NotesPage } from "./notes";
 

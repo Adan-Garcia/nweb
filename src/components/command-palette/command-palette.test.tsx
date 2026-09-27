@@ -3,10 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getNotesDb } from "@/lib/notes-db";
-import { createNotesDirectoryEntry } from "@/lib/notes-directory-storage";
-import { createTwig } from "@/lib/twig-storage";
-import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
+import { createNotesDirectoryEntry } from "@/lib/notes/notes-directory-storage";
+import { createTwig } from "@/lib/twigs/twig-storage";
 import { useCommandPaletteStore } from "@/stores/use-command-palette-store";
 import { usePreferencesStore } from "@/stores/use-preferences-store";
 

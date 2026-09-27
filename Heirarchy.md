@@ -32,7 +32,7 @@ renaming a wing, flight, branch or nest renames it everywhere at once and change
 row. A feather points at its branch and lists its nests; a twig and a pebble do the same.
 
 Only the feather's own title is stored on the feather. Everything else the UI shows as a
-path is resolved from the records at read time (`src/lib/workspace-tree.ts`).
+path is resolved from the records at read time (`src/lib/hierarchy/workspace-tree.ts`).
 
 With a workspace passphrase set, the one display name on each of those records — a wing,
 flight, branch or nest's `name`, a feather's `feather`, a twig's `title`, a pebble's

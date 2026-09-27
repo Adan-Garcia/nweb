@@ -2,10 +2,10 @@ import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { BoardCard } from "@/components/board/board-card";
-import { type BoardColumn as BoardColumnModel, columnId } from "@/lib/board";
-import type { Twig } from "@/lib/twig-model";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import { type BoardColumn as BoardColumnModel, columnId } from "@/lib/twigs/board";
+import type { Twig } from "@/lib/twigs/twig-model";
 import { cn } from "@/lib/utils";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type BoardColumnProps = {
   snapshot: WorkspaceSnapshot;

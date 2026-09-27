@@ -1,0 +1,291 @@
+import { decryptWith } from "../crypto/cipher";
+import { getNotesDb } from "../db/notes-db";
+import { canWriteNote } from "../keys/access";
+import { cipherForObject } from "../keys/object-keys";
+import { blobToDataUrl } from "../media/blob-utils";
+import { touchNotesDirectoryEntry } from "./notes-directory-storage";
+import {
+  buildEmptyDocument,
+  DEFAULT_NOTES_DOCUMENT_ID,
+  type LoadedNotesDocument,
+  type LoadedSceneFile,
+  type NotesDocumentMode,
+  type PersistedSceneFile,
+  type SceneFileRef,
+} from "./notes-model";
+import { notesTrace } from "./notes-trace";
+
+export async function loadNotesDocument(
+  documentId = DEFAULT_NOTES_DOCUMENT_ID,
+): Promise<LoadedNotesDocument | null> {
+  const database = await getNotesDb();
+  const storedRecord = await database.get("notes-documents", documentId);
+  // Rows written before the cipher seam existed carry no marker, which means plaintext.
+  const documentRecord = storedRecord
+    ? {
+        ...storedRecord,
+        linearCompressed: storedRecord.linearCompressed
+          ? await decryptWith(storedRecord.linearCompressed, storedRecord)
+          : null,
+        sceneCompressed: storedRecord.sceneCompressed
+          ? await decryptWith(storedRecord.sceneCompressed, storedRecord)
+          : null,
+      }
+    : undefined;
+
+  notesTrace("notes-storage", "loadNotesDocument:start", {
+    documentId,
+    hasDocument: Boolean(documentRecord),
+  });
+
+  if (!documentRecord) {
+    return null;
+  }
+
+  const sceneFiles: Record<string, LoadedSceneFile> = {};
+  const objectUrls: string[] = [];
+  const missingMediaIds: string[] = [];
+
+  for (const fileRef of documentRecord.sceneFiles) {
+    const mediaRecord = await database.get("notes-media", fileRef.id);
+
+    if (!mediaRecord) {
+      missingMediaIds.push(fileRef.id);
+      continue;
+    }
+
+    // Only a sealed blob is read back as bytes. Leaving the plaintext path alone keeps it
+    // a straight blob-to-data-URL, which is both less work and what the stored Blob can
+    // always do, sealed or not.
+    const blob =
+      (mediaRecord.encryption ?? "none") === "none"
+        ? mediaRecord.blob
+        : new Blob(
+            [
+              Uint8Array.from(
+                await decryptWith(
+                  new Uint8Array(await mediaRecord.blob.arrayBuffer()),
+                  mediaRecord,
+                ),
+              ),
+            ],
+            { type: mediaRecord.mimeType },
+          );
+
+    const dataUrl = await blobToDataUrl(blob);
+
+    sceneFiles[fileRef.id] = {
+      id: fileRef.id,
+      mimeType: mediaRecord.mimeType,
+      created: mediaRecord.created,
+      dataUrl,
+    };
+  }
+
+  notesTrace("notes-storage", "loadNotesDocument:complete", {
+    documentId,
+    declaredSceneFileRefs: documentRecord.sceneFiles.length,
+    loadedSceneFiles: Object.keys(sceneFiles).length,
+    missingSceneFiles: missingMediaIds,
+  });
+
+  return {
+    document: documentRecord,
+    sceneFiles,
+    objectUrls,
+  };
+}
+
+/**
+ * The key a note's content is sealed with is the note's own, and a document is keyed by the
+ * same id as its directory entry — so the entry's cipher marker is where to look. A document
+ * with no entry yet, or a workspace with no account, falls back to the active cipher.
+ */
+async function cipherForDocument(documentId: string) {
+  const database = await getNotesDb();
+
+  return cipherForObject((await database.get("notes-directory", documentId))?.keyId);
+}
+
+export async function saveLinearDocumentPayload({
+  documentId = DEFAULT_NOTES_DOCUMENT_ID,
+  compressionAlgorithm,
+  compressed,
+  createdMode,
+}: {
+  documentId?: string;
+  compressionAlgorithm: string;
+  compressed: Uint8Array;
+  createdMode?: NotesDocumentMode;
+}) {
+  // The editor is read-only for a reader already; this is the backstop for any path that
+  // still reaches a save, so a shared note's copy here never drifts from the real one.
+  if (!(await canWriteNote(documentId))) {
+    return;
+  }
+
+  const database = await getNotesDb();
+  const existingDocument =
+    (await database.get("notes-documents", documentId)) ?? buildEmptyDocument(documentId);
+
+  const cipher = await cipherForDocument(documentId);
+  const sealed = await cipher.encrypt(compressed);
+
+  await database.put("notes-documents", {
+    ...existingDocument,
+    linearCompressed: sealed,
+    linearCompressionAlgorithm: compressionAlgorithm,
+    updatedAt: Date.now(),
+    encryption: cipher.name,
+    keyId: cipher.keyId || undefined,
+  });
+
+  await touchNotesDirectoryEntry(documentId, createdMode);
+}
+
+export async function saveSpatialDocumentPayload({
+  documentId = DEFAULT_NOTES_DOCUMENT_ID,
+  compressionAlgorithm,
+  compressed,
+  files,
+  referencedFileIds,
+  createdMode,
+}: {
+  documentId?: string;
+  compressionAlgorithm: string;
+  compressed: Uint8Array;
+  files: PersistedSceneFile[];
+  referencedFileIds?: readonly string[];
+  createdMode?: NotesDocumentMode;
+}) {
+  if (!(await canWriteNote(documentId))) {
+    return;
+  }
+
+  const database = await getNotesDb();
+  // Sealed before the transaction opens, not inside it: awaiting anything that is not an
+  // IndexedDB request lets the transaction auto-commit, and the puts below would then fail
+  // with TransactionInactiveError in a real browser.
+  const cipher = await cipherForDocument(documentId);
+  const sealed = await cipher.encrypt(compressed);
+  const sealedFiles = await Promise.all(
+    files.map(async (file) => ({
+      ...file,
+      blob:
+        cipher.name === "none"
+          ? file.blob
+          : new Blob([
+              Uint8Array.from(await cipher.encrypt(new Uint8Array(await file.blob.arrayBuffer()))),
+            ]),
+    })),
+  );
+  const transaction = database.transaction(
+    ["notes-documents", "notes-media", "pebbles"],
+    "readwrite",
+  );
+
+  const documentStore = transaction.objectStore("notes-documents");
+  const mediaStore = transaction.objectStore("notes-media");
+
+  const existingDocument = (await documentStore.get(documentId)) ?? buildEmptyDocument(documentId);
+
+  notesTrace("notes-storage", "saveSpatialDocumentPayload:start", {
+    documentId,
+    incomingFileCount: files.length,
+    previousSceneFileCount: existingDocument.sceneFiles.length,
+    incomingMimeTypes: files.map((file) => file.mimeType),
+  });
+
+  const nextSceneFiles: SceneFileRef[] = [];
+
+  for (const file of sealedFiles) {
+    await mediaStore.put({
+      id: file.id,
+      blob: file.blob,
+      mimeType: file.mimeType,
+      created: file.created,
+      updatedAt: Date.now(),
+      encryption: cipher.name,
+      keyId: cipher.keyId || undefined,
+    });
+
+    nextSceneFiles.push({
+      id: file.id,
+      mimeType: file.mimeType,
+      created: file.created,
+    });
+  }
+
+  if (referencedFileIds?.length) {
+    const retainedFileIds = new Set(nextSceneFiles.map((file) => file.id));
+
+    for (const existingFile of existingDocument.sceneFiles) {
+      if (referencedFileIds.includes(existingFile.id) && !retainedFileIds.has(existingFile.id)) {
+        nextSceneFiles.push(existingFile);
+        retainedFileIds.add(existingFile.id);
+      }
+    }
+  }
+
+  const nextSceneFileIds = new Set(nextSceneFiles.map((file) => file.id));
+  const previousSceneFileIds = new Set(existingDocument.sceneFiles.map((file) => file.id));
+  const droppedFileIds = [...previousSceneFileIds].filter((id) => !nextSceneFileIds.has(id));
+  const deletedFileIds: string[] = [];
+
+  /**
+   * A file that has left this scene only loses its bytes if nothing else points at them.
+   * Excalidraw derives an image's id from its contents, so the same picture dropped into
+   * two notes really is one row: deleting it because one scene stopped drawing it would
+   * leave the other note rendering a hole. The same count guards every other delete path.
+   *
+   * This document's own stored row is skipped, because it still lists what is being
+   * replaced — it is written below, once the counting is done.
+   */
+  if (droppedFileIds.length) {
+    const stillReferenced = new Set<string>();
+
+    for (const otherDocument of await documentStore.getAll()) {
+      if (otherDocument.id === documentId) {
+        continue;
+      }
+
+      for (const sceneFile of otherDocument.sceneFiles) {
+        stillReferenced.add(sceneFile.id);
+      }
+    }
+
+    for (const pebble of await transaction.objectStore("pebbles").getAll()) {
+      if (!pebble.deletedAt) {
+        stillReferenced.add(pebble.mediaId);
+      }
+    }
+
+    for (const droppedId of droppedFileIds) {
+      if (!stillReferenced.has(droppedId)) {
+        await mediaStore.delete(droppedId);
+        deletedFileIds.push(droppedId);
+      }
+    }
+  }
+
+  await documentStore.put({
+    ...existingDocument,
+    sceneCompressed: sealed,
+    sceneCompressionAlgorithm: compressionAlgorithm,
+    sceneFiles: nextSceneFiles,
+    updatedAt: Date.now(),
+    encryption: cipher.name,
+    keyId: cipher.keyId || undefined,
+  });
+
+  await transaction.done;
+
+  notesTrace("notes-storage", "saveSpatialDocumentPayload:complete", {
+    documentId,
+    persistedFileCount: nextSceneFiles.length,
+    deletedFileCount: deletedFileIds.length,
+    deletedFileIds,
+  });
+
+  await touchNotesDirectoryEntry(documentId, createdMode);
+}

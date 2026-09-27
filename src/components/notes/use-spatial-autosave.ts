@@ -8,9 +8,9 @@ import {
 } from "@/components/notes/scene-utils";
 import type { NotesDocumentMode, SpatialSnapshot } from "@/components/notes/types";
 import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
-import type { MediaWorkerClient } from "@/lib/media-worker-client";
-import { saveSpatialDocumentPayload } from "@/lib/notes-document-storage";
-import { notesTrace } from "@/lib/notes-trace";
+import type { MediaWorkerClient } from "@/lib/media/media-worker-client";
+import { saveSpatialDocumentPayload } from "@/lib/notes/notes-document-storage";
+import { notesTrace } from "@/lib/notes/notes-trace";
 
 type HandleSpatialChange = NonNullable<ExcalidrawProps["onChange"]>;
 

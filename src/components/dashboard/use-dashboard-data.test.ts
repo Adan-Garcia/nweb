@@ -2,11 +2,11 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { formatDateKey } from "@/components/calendar/calendar-shared";
-import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/cipher";
-import { createBranch, createFlight, createWing } from "@/lib/entity-storage";
-import { getNotesDb } from "@/lib/notes-db";
-import { createNotesDirectoryEntry } from "@/lib/notes-directory-storage";
-import { createTwig } from "@/lib/twig-storage";
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/crypto/cipher";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { createBranch, createFlight, createWing } from "@/lib/hierarchy/entity-storage";
+import { createNotesDirectoryEntry } from "@/lib/notes/notes-directory-storage";
+import { createTwig } from "@/lib/twigs/twig-storage";
 
 import { useDashboardData } from "./use-dashboard-data";
 

@@ -1,11 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { resetActiveCipher } from "@/lib/cipher";
-import { getNotesDb } from "@/lib/notes-db";
-import { REKEY_JOURNAL_ID, writeRekeyJournal } from "@/lib/rekey-journal";
-import { lockWorkspace } from "@/lib/workspace-lock";
-import { createWorkspaceLock } from "@/lib/workspace-passphrase";
+import { resetActiveCipher } from "@/lib/crypto/cipher";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { REKEY_JOURNAL_ID, writeRekeyJournal } from "@/lib/lock/rekey-journal";
+import { lockWorkspace } from "@/lib/lock/workspace-lock";
+import { createWorkspaceLock } from "@/lib/lock/workspace-passphrase";
 
 import { useWorkspaceLock } from "./use-workspace-lock";
 
@@ -14,8 +14,8 @@ const PASSPHRASE = "correct horse battery";
 /** Flipped by the one test that needs the resume to fail the way a bad row would. */
 const failures = vi.hoisted(() => ({ resume: false }));
 
-vi.mock("@/lib/workspace-passphrase", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/workspace-passphrase")>();
+vi.mock("@/lib/lock/workspace-passphrase", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/lock/workspace-passphrase")>();
 
   return {
     ...actual,
@@ -31,8 +31,8 @@ vi.mock("@/lib/workspace-passphrase", async (importOriginal) => {
 
 // The shipped Argon2id cost — 64 MiB, three passes — would make each of these take a
 // second. The parameters travel in the lock record, so unlocking uses the cheap ones too.
-vi.mock("@/lib/kdf", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/kdf")>()),
+vi.mock("@/lib/crypto/kdf", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/crypto/kdf")>()),
   createKdfParams: () => ({
     name: "Argon2id",
     memorySize: 1024,

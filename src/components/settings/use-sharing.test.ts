@@ -2,13 +2,13 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { bytesToBase64 } from "@/lib/base64";
-import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/cipher";
-import { createBranch, createFlight, createNest, createWing } from "@/lib/entity-storage";
+import { bytesToBase64 } from "@/lib/crypto/base64";
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/crypto/cipher";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { createBranch, createFlight, createNest, createWing } from "@/lib/hierarchy/entity-storage";
 import { createObjectKey, type Keyring, openKeyGraph } from "@/lib/keys/key-graph";
 import { currentKeyGraph, forgetKeyring, holdKeyring } from "@/lib/keys/object-keys";
-import { getNotesDb } from "@/lib/notes-db";
-import { createNotesDirectoryEntry } from "@/lib/notes-directory-storage";
+import { createNotesDirectoryEntry } from "@/lib/notes/notes-directory-storage";
 import { server } from "@/test/server";
 
 import { useSharing } from "./use-sharing";

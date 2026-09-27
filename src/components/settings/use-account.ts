@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { deriveAuthKey } from "@/lib/account/account-keys";
 import type { AccountRecord } from "@/lib/account/account-record";
 import { readAccountRecord } from "@/lib/account/account-record";
 import { adoptAccount, forgetAccount, unlockAccount } from "@/lib/account/adopt-account";
-import { deriveAuthKey } from "@/lib/account-keys";
 import {
   apiBaseUrl,
   endSession,

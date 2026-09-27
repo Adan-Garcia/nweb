@@ -3,9 +3,9 @@ import { useCallback } from "react";
 import type { NotesDirectoryEntry } from "@/components/notes/types";
 import type { useDocumentSwitchQueue } from "@/components/notes/use-document-switch-queue";
 import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
-import { softDeleteNote } from "@/lib/notes-delete";
-import { createNotesDirectoryEntry } from "@/lib/notes-directory-storage";
-import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
+import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
+import { softDeleteNote } from "@/lib/notes/notes-delete";
+import { createNotesDirectoryEntry } from "@/lib/notes/notes-directory-storage";
 
 type UseNotesDeleteOptions = {
   refs: NotesSessionRefs;

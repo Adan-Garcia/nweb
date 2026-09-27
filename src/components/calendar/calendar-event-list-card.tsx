@@ -6,8 +6,8 @@ import { type DatedTwig, formatHumanDate } from "@/components/calendar/calendar-
 import type { CalendarViewMode, EventTab } from "@/components/calendar/calendar-views";
 import { EmptyState } from "@/components/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { TwigStatus } from "@/lib/twig-model";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import type { TwigStatus } from "@/lib/twigs/twig-model";
 
 type CalendarEventListCardProps = {
   className?: string;

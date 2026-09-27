@@ -1,6 +1,6 @@
-import type { NotesDirectoryEntry } from "@/lib/notes-model";
-import { compareTwigsByDue, type Twig } from "@/lib/twig-model";
-import { branchPath, type WorkspaceSnapshot } from "@/lib/workspace-tree";
+import { branchPath, type WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import type { NotesDirectoryEntry } from "@/lib/notes/notes-model";
+import { compareTwigsByDue, type Twig } from "@/lib/twigs/twig-model";
 
 /**
  * What the palette can jump to, as plain rows: a label to show, extra words to match on,

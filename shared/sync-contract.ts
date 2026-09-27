@@ -23,9 +23,9 @@ export const SYNC_STORES = [
   "nests",
   "twigs",
   "pebbles",
-  /** The names above something shared: see `src/lib/share-path-model.ts`. */
+  /** The names above something shared: see `src/lib/hierarchy/share-path-model.ts`. */
   "share-paths",
-  /** How someone has arranged the app: see `src/lib/preferences-model.ts`. */
+  /** How someone has arranged the app: see `src/lib/preferences/preferences-model.ts`. */
   "preferences",
 ] as const;
 

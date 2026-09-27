@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { createBranch, createFlight, createWing } from "@/lib/entity-storage";
-import { getNotesDb } from "@/lib/notes-db";
-import { createTwig } from "@/lib/twig-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { createBranch, createFlight, createWing } from "@/lib/hierarchy/entity-storage";
+import { createTwig } from "@/lib/twigs/twig-storage";
 
 import { NotificationBell } from "./notification-bell";
 

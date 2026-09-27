@@ -8,7 +8,7 @@ import {
 } from "@/components/calendar/calendar-shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 
 export function UpcomingDeadlinesCard({
   snapshot,

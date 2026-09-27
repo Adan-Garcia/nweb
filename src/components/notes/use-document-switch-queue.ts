@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 
-import { notesTrace } from "@/lib/notes-trace";
+import { notesTrace } from "@/lib/notes/notes-trace";
 
 type SwitchContext = "openDocumentById" | "createNoteAt" | "deleteDocument";
 

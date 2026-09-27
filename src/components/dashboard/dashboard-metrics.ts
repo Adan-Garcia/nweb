@@ -3,8 +3,8 @@ import {
   dateKeyToDate,
   formatDateKey,
 } from "@/components/calendar/calendar-shared";
-import type { NotesDirectoryEntry } from "@/lib/notes-model";
-import { branchPath, type WorkspaceSnapshot } from "@/lib/workspace-tree";
+import { branchPath, type WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import type { NotesDirectoryEntry } from "@/lib/notes/notes-model";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

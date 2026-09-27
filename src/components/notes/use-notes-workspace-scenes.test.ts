@@ -13,8 +13,8 @@ vi.mock("@excalidraw/excalidraw", () => ({
 
 // jsdom's Blob is cloned into a plain object by fake-indexeddb, so the real Blob -> data URL
 // conversion (covered in blob-utils.test.ts) is replaced here.
-vi.mock("@/lib/blob-utils", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/blob-utils")>()),
+vi.mock("@/lib/media/blob-utils", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/media/blob-utils")>()),
   blobToDataUrl: () => Promise.resolve("data:image/png;base64,restored"),
 }));
 
@@ -23,7 +23,7 @@ async function loadWorkspace() {
   const { IDBFactory } = await import("fake-indexeddb");
   globalThis.indexedDB = new IDBFactory();
 
-  const documents = await import("@/lib/notes-document-storage");
+  const documents = await import("@/lib/notes/notes-document-storage");
   const { useNotesWorkspace } = await import("./use-notes-workspace");
 
   return { useNotesWorkspace, saveSpatial: vi.spyOn(documents, "saveSpatialDocumentPayload") };

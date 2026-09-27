@@ -2,10 +2,10 @@ import { cipherNameSchema } from "@shared/cipher-name";
 import type { SyncStore } from "@shared/sync-contract";
 import { z } from "zod";
 
-import { type Cipher, type CipherMarker, decryptWith } from "../cipher";
+import { type Cipher, type CipherMarker, decryptWith } from "../crypto/cipher";
+import { openText, sealText } from "../crypto/sealed-text";
 import { cipherForObject } from "../keys/object-keys";
-import { openText, sealText } from "../sealed-text";
-import { compressText, decompressText } from "../text-compression";
+import { compressText, decompressText } from "../media/text-compression";
 import { mergeScenes } from "./merge-scene";
 import { mergeFields, mergeHtml, type Side } from "./three-way";
 

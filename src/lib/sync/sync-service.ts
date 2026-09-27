@@ -2,6 +2,7 @@ import type { KeyGraph } from "@shared/sharing-contract";
 
 import { putKeys } from "../api/account-api";
 import { getApiSession } from "../api/session-store";
+import { refreshSharePaths } from "../hierarchy/share-path-storage";
 import {
   currentKeyGraph,
   keysNeedUpload,
@@ -10,7 +11,6 @@ import {
 } from "../keys/object-keys";
 import { refreshKeyGraph } from "../keys/refresh-graph";
 import { rotateAgedKeys } from "../keys/rotate-shared";
-import { refreshSharePaths } from "../share-path-storage";
 import { type LiveChannelOptions, openLiveChannel } from "./live-channel";
 import {
   backfillGrants,

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { useSystemPrefersDark } from "@/hooks/use-appearance";
-import { applyPreferencesToDocument } from "@/lib/preferences-cache";
+import { applyPreferencesToDocument } from "@/lib/preferences/preferences-cache";
 import { usePreferencesStore } from "@/stores/use-preferences-store";
 
 /**
@@ -33,23 +33,24 @@ export function useApplyAppearance(): void {
     let unsubscribe: (() => void) | null = null;
     let isMounted = true;
 
-    void Promise.all([import("@/lib/sync/sync-service"), import("@/lib/preferences-storage")]).then(
-      ([{ subscribeToSyncChanges }, { readPreferences }]) => {
-        if (!isMounted) {
-          return;
-        }
+    void Promise.all([
+      import("@/lib/sync/sync-service"),
+      import("@/lib/preferences/preferences-storage"),
+    ]).then(([{ subscribeToSyncChanges }, { readPreferences }]) => {
+      if (!isMounted) {
+        return;
+      }
 
-        unsubscribe = subscribeToSyncChanges((changed) => {
-          if (changed.some((row) => row.store === "preferences")) {
-            void readPreferences().then((stored) => {
-              if (stored) {
-                receive(stored);
-              }
-            });
-          }
-        });
-      },
-    );
+      unsubscribe = subscribeToSyncChanges((changed) => {
+        if (changed.some((row) => row.store === "preferences")) {
+          void readPreferences().then((stored) => {
+            if (stored) {
+              receive(stored);
+            }
+          });
+        }
+      });
+    });
 
     return () => {
       isMounted = false;

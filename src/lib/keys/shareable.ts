@@ -1,7 +1,7 @@
 import type { KeyKind } from "@shared/sharing-contract";
 
-import { getNotesDb } from "../notes-db";
-import { openText } from "../sealed-text";
+import { openText } from "../crypto/sealed-text";
+import { getNotesDb } from "../db/notes-db";
 
 /**
  * The things this workspace can hand over, with the key that hands each one over.

@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { passphrasesNeeded, readRekeyJournal } from "@/lib/rekey-journal";
+import { passphrasesNeeded, readRekeyJournal } from "@/lib/lock/rekey-journal";
 import {
   getWorkspaceLockState,
   lockWorkspace,
   readLockHint,
   unlockWorkspace,
-} from "@/lib/workspace-lock";
-import type { WorkspaceLockState } from "@/lib/workspace-lock-model";
+} from "@/lib/lock/workspace-lock";
+import type { WorkspaceLockState } from "@/lib/lock/workspace-lock-model";
 import {
   changeWorkspacePassphrase,
   createWorkspaceLock,
   removeWorkspaceLock,
   resumeRekey,
-} from "@/lib/workspace-passphrase";
-import type { RekeyProgress } from "@/lib/workspace-rekey";
+} from "@/lib/lock/workspace-passphrase";
+import type { RekeyProgress } from "@/lib/lock/workspace-rekey";
 
 /**
  * The lock, as the UI sees it.

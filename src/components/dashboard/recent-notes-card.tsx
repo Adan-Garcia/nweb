@@ -4,8 +4,8 @@ import { Link } from "react-router-dom";
 import { formatLastUpdated, toLocationLabel } from "@/components/dashboard/dashboard-metrics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { NotesDirectoryEntry } from "@/lib/notes-model";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import type { NotesDirectoryEntry } from "@/lib/notes/notes-model";
 
 type RecentNotesCardProps = {
   snapshot: WorkspaceSnapshot;

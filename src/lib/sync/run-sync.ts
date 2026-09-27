@@ -7,8 +7,8 @@ import {
 } from "@shared/sync-contract";
 
 import { apiRequest, type ApiSession } from "../api/client";
+import { getNotesDb } from "../db/notes-db";
 import { isReadOnlyKey } from "../keys/access";
-import { getNotesDb } from "../notes-db";
 import { reconcileRow } from "./reconcile";
 import { type StoredRow, toSyncRow } from "./wire";
 

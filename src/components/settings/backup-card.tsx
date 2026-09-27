@@ -5,7 +5,7 @@ import { BackupPassphraseField } from "@/components/settings/backup-passphrase-f
 import { RestoreModeField } from "@/components/settings/restore-mode-field";
 import type { BackupStatus } from "@/components/settings/use-workspace-backup";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { RestoreMode } from "@/lib/workspace-restore";
+import type { RestoreMode } from "@/lib/backup/workspace-restore";
 
 type BackupCardProps = {
   status: BackupStatus;

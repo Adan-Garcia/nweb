@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { getNotesDb } from "../notes-db";
-import { DEFAULT_PREFERENCES, type Preferences } from "../preferences-model";
-import { readPreferences, writePreferences } from "../preferences-storage";
+import { getNotesDb } from "../db/notes-db";
+import { DEFAULT_PREFERENCES, type Preferences } from "../preferences/preferences-model";
+import { readPreferences, writePreferences } from "../preferences/preferences-storage";
 import { mergeStoredRows } from "./merge-row";
 import { reconcileRow } from "./reconcile";
 import { fromSyncRow, toSyncRow } from "./wire";

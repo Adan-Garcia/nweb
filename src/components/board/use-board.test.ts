@@ -2,10 +2,10 @@ import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { columnId } from "@/lib/board";
-import { createBranch, createFlight, createWing } from "@/lib/entity-storage";
-import { getNotesDb } from "@/lib/notes-db";
-import { createTwig, listTwigs } from "@/lib/twig-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { createBranch, createFlight, createWing } from "@/lib/hierarchy/entity-storage";
+import { columnId } from "@/lib/twigs/board";
+import { createTwig, listTwigs } from "@/lib/twigs/twig-storage";
 
 import { useBoard } from "./use-board";
 

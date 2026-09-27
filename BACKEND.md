@@ -12,7 +12,7 @@ key graph. What is left is listed under "What is still missing" at the end. It r
 
 The server does not get to read anything. Note content, drawings, file bytes and every
 display name — note titles, course names, task titles, file names — are sealed on the
-device before they are stored (`lib/sealed-text.ts`, `lib/cipher.ts`). What is left in the
+device before they are stored (`lib/crypto/sealed-text.ts`, `lib/crypto/cipher.ts`). What is left in the
 clear is when things happen: a twig's due date and time, its status, and every timestamp.
 
 That was chosen so a server holding nothing but ciphertext could still say "something is
@@ -141,7 +141,7 @@ onto a shared channel (Postgres `LISTEN/NOTIFY`), and nothing else in the protoc
 
 Every row above the shared thing — "Above it" in the table — is still sealed under a key the
 recipient does not hold. What they get instead is its **path**: a `share-paths` row
-(`lib/share-path-model.ts`) holding just the names on the way down — wing, term, course and
+(`lib/hierarchy/share-path-model.ts`) holding just the names on the way down — wing, term, course and
 the note's own tags — sealed under the shared object's *own* key. The row store files it
 under that key, so it reaches exactly the people the object does, and a backfill brings it
 with everything else. The recipient's path bar shows the shared thing where it really lives;

@@ -12,7 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { displayLocation, formatLocationPath, type WorkspaceSnapshot } from "@/lib/workspace-tree";
+import {
+  displayLocation,
+  formatLocationPath,
+  type WorkspaceSnapshot,
+} from "@/lib/hierarchy/workspace-tree";
 
 type NotesDeleteNoteControlProps = {
   snapshot: WorkspaceSnapshot;

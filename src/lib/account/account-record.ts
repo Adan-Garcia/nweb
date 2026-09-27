@@ -2,8 +2,8 @@ import { accountKeyMaterialSchema } from "@shared/account-contract";
 import { keyGraphSchema } from "@shared/sharing-contract";
 import { z } from "zod";
 
+import { getNotesDb } from "../db/notes-db";
 import { mergeKeyGraphs } from "../keys/key-graph";
-import { getNotesDb } from "../notes-db";
 
 /**
  * The account, as this device remembers it.

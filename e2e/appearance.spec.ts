@@ -1,4 +1,4 @@
-import { ACCENT_PALETTE, THEME_BRAND } from "../src/lib/accent-palettes";
+import { ACCENT_PALETTE, THEME_BRAND } from "../src/lib/preferences/accent-palettes";
 import { expect, test } from "./fixtures";
 
 /**

@@ -7,7 +7,7 @@ import {
   nestsForBranch,
   UNFILED_NEST_LABEL,
   type WorkspaceSnapshot,
-} from "@/lib/workspace-tree";
+} from "@/lib/hierarchy/workspace-tree";
 
 export type NestGroup = {
   /** Null for the Unfiled group, which is a placeholder rather than a stored nest. */

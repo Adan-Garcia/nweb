@@ -1,7 +1,7 @@
 import type { BinaryFileData } from "@excalidraw/excalidraw/types";
 
 import type { SceneAppState, SceneElements, SceneFiles } from "@/components/notes/types";
-import type { LoadedSceneFile } from "@/lib/notes-model";
+import type { LoadedSceneFile } from "@/lib/notes/notes-model";
 
 // The only place that talks to Excalidraw's opaque/branded persistence types.
 

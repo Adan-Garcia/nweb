@@ -1,7 +1,7 @@
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 
-import { DEFAULT_PREFERENCES } from "@/lib/preferences-model";
+import { DEFAULT_PREFERENCES } from "@/lib/preferences/preferences-model";
 import { useCommandPaletteStore } from "@/stores/use-command-palette-store";
 import { usePreferencesStore } from "@/stores/use-preferences-store";
 

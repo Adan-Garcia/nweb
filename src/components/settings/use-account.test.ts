@@ -4,11 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { readAccountRecord } from "@/lib/account/account-record";
 import { setApiSession } from "@/lib/api/session-store";
-import { cipherForRow, getActiveCipher, resetActiveCipher } from "@/lib/cipher";
-import { createBranch, listBranches } from "@/lib/entity-storage";
+import { cipherForRow, getActiveCipher, resetActiveCipher } from "@/lib/crypto/cipher";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { createBranch, listBranches } from "@/lib/hierarchy/entity-storage";
 import { createObjectKey, wrapForRecipient } from "@/lib/keys/key-graph";
 import { cipherForObject } from "@/lib/keys/object-keys";
-import { getNotesDb } from "@/lib/notes-db";
 import { resetSyncState } from "@/lib/sync/sync-service";
 import { server } from "@/test/server";
 
@@ -29,8 +29,8 @@ vi.mock("@/lib/toast", () => toast);
 const build = vi.hoisted(() => ({ baseUrl: "https://cuervo.example.com" as string | null }));
 
 // Argon2id at its real cost is a second a call, and signing in derives twice.
-vi.mock("@/lib/kdf", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/kdf")>()),
+vi.mock("@/lib/crypto/kdf", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/crypto/kdf")>()),
   createKdfParams: () => ({
     name: "Argon2id" as const,
     memorySize: 1024,

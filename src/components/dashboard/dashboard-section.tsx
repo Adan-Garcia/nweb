@@ -3,7 +3,7 @@ import { NextPriorityCard } from "@/components/dashboard/next-priority-card";
 import { RecentNotesCard } from "@/components/dashboard/recent-notes-card";
 import { UpcomingDeadlinesCard } from "@/components/dashboard/upcoming-deadlines-card";
 import type { useDashboardData } from "@/components/dashboard/use-dashboard-data";
-import type { DashboardCardId } from "@/lib/preferences-model";
+import type { DashboardCardId } from "@/lib/preferences/preferences-model";
 
 type DashboardSectionProps = {
   id: DashboardCardId;

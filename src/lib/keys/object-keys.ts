@@ -1,7 +1,7 @@
 import type { KeyGraph, KeyKind } from "@shared/sharing-contract";
 
-import { type Cipher, getActiveCipher, registerCipher } from "../cipher";
-import { createAesGcmCipher } from "../cipher";
+import { type Cipher, getActiveCipher, registerCipher } from "../crypto/cipher";
+import { createAesGcmCipher } from "../crypto/cipher";
 import { createObjectKey, type Keyring, wrapUnderParent } from "./key-graph";
 
 /**

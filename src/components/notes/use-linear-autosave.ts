@@ -2,8 +2,8 @@ import { useCallback, useEffect } from "react";
 
 import type { NotesDocumentMode } from "@/components/notes/types";
 import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
-import type { MediaWorkerClient } from "@/lib/media-worker-client";
-import { saveLinearDocumentPayload } from "@/lib/notes-document-storage";
+import type { MediaWorkerClient } from "@/lib/media/media-worker-client";
+import { saveLinearDocumentPayload } from "@/lib/notes/notes-document-storage";
 
 type UseLinearAutosaveOptions = {
   refs: NotesSessionRefs;

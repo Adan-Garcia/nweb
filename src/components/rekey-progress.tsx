@@ -1,4 +1,4 @@
-import type { RekeyProgress } from "@/lib/workspace-rekey";
+import type { RekeyProgress } from "@/lib/lock/workspace-rekey";
 
 type RekeyProgressBarProps = {
   progress: RekeyProgress | null;

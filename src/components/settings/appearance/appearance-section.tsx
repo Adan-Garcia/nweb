@@ -14,7 +14,7 @@ import { OrderList } from "@/components/settings/appearance/order-list";
 import { Button } from "@/components/ui/button";
 import { orderNavItems } from "@/components/workspace-nav";
 import { useAppearance } from "@/hooks/use-appearance";
-import { DENSITIES, FONT_SIZES, SIDEBAR_MODES } from "@/lib/preferences-model";
+import { DENSITIES, FONT_SIZES, SIDEBAR_MODES } from "@/lib/preferences/preferences-model";
 
 const choicesOf = <Value extends string>(values: readonly Value[], labels: Record<Value, string>) =>
   values.map((value) => ({ value, label: labels[value] }));

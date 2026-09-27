@@ -10,7 +10,7 @@ import { WorkspaceSidebar } from "@/components/workspace-sidebar";
 import { useAppearance } from "@/hooks/use-appearance";
 import { useBackgroundSync } from "@/hooks/use-background-sync";
 import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
-import { collectTombstonesOnce } from "@/lib/tombstones";
+import { collectTombstonesOnce } from "@/lib/db/tombstones";
 
 type WorkspaceShellProps = {
   children: React.ReactNode;

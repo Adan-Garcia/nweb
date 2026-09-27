@@ -1,11 +1,11 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from "vitest";
 
-import { type Cipher, createAesGcmCipher, decryptWith, plaintextCipher } from "../cipher";
+import { type Cipher, createAesGcmCipher, decryptWith, plaintextCipher } from "../crypto/cipher";
+import { openText, sealText } from "../crypto/sealed-text";
 import { createObjectKey } from "../keys/key-graph";
 import { forgetKeyring, holdKeyring } from "../keys/object-keys";
-import { openText, sealText } from "../sealed-text";
-import { compressText, decompressText } from "../text-compression";
+import { compressText, decompressText } from "../media/text-compression";
 import { mergeStoredRows, type StoredRecord } from "./merge-row";
 
 afterEach(() => {

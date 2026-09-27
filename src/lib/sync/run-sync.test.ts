@@ -4,12 +4,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { server } from "@/test/server";
 
-import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "../cipher";
-import { createBranch } from "../entity-storage";
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "../crypto/cipher";
+import { getNotesDb } from "../db/notes-db";
+import { createBranch } from "../hierarchy/entity-storage";
 import { forgetKeyring, holdKeyring } from "../keys/object-keys";
-import { getNotesDb } from "../notes-db";
-import { twigSchema } from "../twig-model";
-import { createTwig, listTwigs, updateTwig } from "../twig-storage";
+import { twigSchema } from "../twigs/twig-model";
+import { createTwig, listTwigs, updateTwig } from "../twigs/twig-storage";
 import { EMPTY_SYNC_STATE, runSync, syncUntilSettled } from "./run-sync";
 import { fromSyncRow, toSyncRow } from "./wire";
 

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
-import { loadWorkspaceSnapshot } from "@/lib/workspace-storage";
-import { emptyWorkspaceSnapshot, type WorkspaceSnapshot } from "@/lib/workspace-tree";
+import { loadWorkspaceSnapshot } from "@/lib/hierarchy/workspace-storage";
+import { emptyWorkspaceSnapshot, type WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 
 /**
  * The wings, flights, branches and nests, held once and re-read after anything changes

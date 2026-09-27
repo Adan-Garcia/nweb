@@ -5,8 +5,8 @@ import { NotesNoteButton } from "@/components/notes/notes-note-button";
 import { buildTree, getActivePathKeys } from "@/components/notes/notes-tree";
 import { NotesTreeGroup } from "@/components/notes/notes-tree-group";
 import type { NotesDirectoryEntry } from "@/components/notes/types";
-import { readExpandedGroups, writeExpandedGroups } from "@/lib/notes-navigation";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import { readExpandedGroups, writeExpandedGroups } from "@/lib/notes/notes-navigation";
 
 type NotesTreeViewProps = {
   snapshot: WorkspaceSnapshot;

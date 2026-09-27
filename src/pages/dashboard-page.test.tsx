@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getNotesDb } from "@/lib/notes-db";
-import { createTwig } from "@/lib/twig-storage";
-import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
+import { createTwig } from "@/lib/twigs/twig-storage";
 import { usePreferencesStore } from "@/stores/use-preferences-store";
 
 import { DashboardPage } from "./dashboard";

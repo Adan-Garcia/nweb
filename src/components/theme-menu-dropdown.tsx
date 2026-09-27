@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAppearance } from "@/hooks/use-appearance";
-import { THEME_MODES } from "@/lib/preferences-model";
+import { THEME_MODES } from "@/lib/preferences/preferences-model";
 import { cn } from "@/lib/utils";
 
 /** The theme menu itself; `theme-menu.tsx` loads it on demand. */

@@ -3,11 +3,11 @@ import type { ShareRole } from "@shared/sharing-contract";
 
 import { listShares, lookupPublicKey, revokeKey, shareKey } from "@/lib/api/account-api";
 import type { ApiSession } from "@/lib/api/client";
+import { writeSharePath } from "@/lib/hierarchy/share-path-storage";
 import { wrapForRecipient } from "@/lib/keys/key-graph";
 import { heldKeyring } from "@/lib/keys/object-keys";
 import { rotateSharedKey } from "@/lib/keys/rotate-shared";
 import { listShareable, type Shareable } from "@/lib/keys/shareable";
-import { writeSharePath } from "@/lib/share-path-storage";
 import { notifySuccess } from "@/lib/toast";
 
 /**

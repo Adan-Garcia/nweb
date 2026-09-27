@@ -1,6 +1,6 @@
-import { type Cipher, decryptWith } from "../cipher";
-import { getNotesDb } from "../notes-db";
-import { openRow, type SealedRow, sealRow } from "../sealed-text";
+import { type Cipher, decryptWith } from "../crypto/cipher";
+import { openRow, type SealedRow, sealRow } from "../crypto/sealed-text";
+import { getNotesDb } from "../db/notes-db";
 
 /**
  * Moving the rows one key sealed onto a new key, and nothing else.

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
-import { listNotesDirectoryEntries } from "@/lib/notes-directory-storage";
-import { listTwigs } from "@/lib/twig-storage";
-import { loadWorkspaceSnapshot } from "@/lib/workspace-storage";
+import { loadWorkspaceSnapshot } from "@/lib/hierarchy/workspace-storage";
+import { listNotesDirectoryEntries } from "@/lib/notes/notes-directory-storage";
+import { listTwigs } from "@/lib/twigs/twig-storage";
 
 import { noteEntries, type PaletteEntry, taskEntries } from "./palette-entries";
 

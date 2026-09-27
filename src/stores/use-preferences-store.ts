@@ -1,7 +1,11 @@
 import { create } from "zustand";
 
-import { readCachedPreferences, writeCachedPreferences } from "@/lib/preferences-cache";
-import { type Preferences, type PreferencesPatch, stampPreferences } from "@/lib/preferences-model";
+import { readCachedPreferences, writeCachedPreferences } from "@/lib/preferences/preferences-cache";
+import {
+  type Preferences,
+  type PreferencesPatch,
+  stampPreferences,
+} from "@/lib/preferences/preferences-model";
 
 /**
  * The preferences, shared by every tree that shows or changes them: the sidebar, the
@@ -24,7 +28,7 @@ type PreferencesState = {
  * IndexedDB, loaded on first use. The store is in the entry chunk because the first paint
  * reads it; the database layer behind it is not, and has no reason to be.
  */
-const storage = () => import("@/lib/preferences-storage");
+const storage = () => import("@/lib/preferences/preferences-storage");
 
 function persistRecord(preferences: Preferences) {
   // The cache already holds the change, so a failed write costs the sync of it, not the look.

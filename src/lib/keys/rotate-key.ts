@@ -1,6 +1,6 @@
 import type { Grant, KeyGraph, PutKeysRequest } from "@shared/sharing-contract";
 
-import { type Cipher, createAesGcmCipher } from "../cipher";
+import { type Cipher, createAesGcmCipher } from "../crypto/cipher";
 import { createObjectKey, type Keyring, wrapForRecipient, wrapUnderParent } from "./key-graph";
 
 /**

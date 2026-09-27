@@ -1,9 +1,9 @@
 import { useDroppable } from "@dnd-kit/core";
 
 import { branchLabelFor, type DatedTwig } from "@/components/calendar/calendar-shared";
-import { dayId } from "@/lib/calendar-drop";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import { dayId } from "@/lib/twigs/calendar-drop";
 import { cn } from "@/lib/utils";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type CalendarDayCellProps = {
   snapshot: WorkspaceSnapshot;

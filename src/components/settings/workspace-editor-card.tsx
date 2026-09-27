@@ -2,7 +2,7 @@ import { BranchColorPicker } from "@/components/settings/branch-color-picker";
 import type { useWorkspaceEditor } from "@/components/settings/use-workspace-editor";
 import { WorkspaceEntityRow } from "@/components/settings/workspace-entity-row";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { branchesForFlight, flightsForWing, nestsForBranch } from "@/lib/workspace-tree";
+import { branchesForFlight, flightsForWing, nestsForBranch } from "@/lib/hierarchy/workspace-tree";
 
 type WorkspaceEditorCardProps = ReturnType<typeof useWorkspaceEditor>;
 

@@ -5,8 +5,8 @@ import { BackupPassphraseField } from "@/components/settings/backup-passphrase-f
 import { ChangePassphraseField } from "@/components/settings/change-passphrase-field";
 import { type LockAction, LockActions } from "@/components/settings/lock-actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { WorkspaceLockState } from "@/lib/workspace-lock-model";
-import type { RekeyProgress } from "@/lib/workspace-rekey";
+import type { WorkspaceLockState } from "@/lib/lock/workspace-lock-model";
+import type { RekeyProgress } from "@/lib/lock/workspace-rekey";
 
 type LockCardProps = {
   state: WorkspaceLockState;

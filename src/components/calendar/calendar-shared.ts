@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import type { BranchColor } from "@/lib/entity-model";
-import { type Twig, TWIG_KINDS, TWIG_STATUSES } from "@/lib/twig-model";
-import { findBranch, type WorkspaceSnapshot } from "@/lib/workspace-tree";
+import type { BranchColor } from "@/lib/hierarchy/entity-model";
+import { findBranch, type WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import { type Twig, TWIG_KINDS, TWIG_STATUSES } from "@/lib/twigs/twig-model";
 
 /** The dot beside a task takes its colour from the branch the task belongs to. */
 const BRANCH_COLOR_CLASSES: Record<BranchColor, string> = {

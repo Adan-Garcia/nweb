@@ -7,7 +7,7 @@ import type {
   FontSize,
   SidebarMode,
   ThemeMode,
-} from "@/lib/preferences-model";
+} from "@/lib/preferences/preferences-model";
 
 /** What each preference is called on screen. The values themselves are `preferences-model`'s. */
 export type ThemeOption = { value: ThemeMode; label: string; icon: LucideIcon };

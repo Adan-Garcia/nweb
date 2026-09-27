@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
 import { expect } from "vitest";
 
-import { readCachedPreferences } from "@/lib/preferences-cache";
+import { readCachedPreferences } from "@/lib/preferences/preferences-cache";
 
 /**
  * A menu button once its menu has loaded. The menus are loaded on demand, and until then a

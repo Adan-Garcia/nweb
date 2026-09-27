@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { withSharePaths } from "@/lib/workspace-tree";
+import { withSharePaths } from "@/lib/hierarchy/workspace-tree";
 import {
   makeBranch,
   makeFlight,

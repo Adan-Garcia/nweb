@@ -1,7 +1,7 @@
 import { ListTree, Route } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { NotesNavigationMode } from "@/lib/notes-navigation";
+import type { NotesNavigationMode } from "@/lib/notes/notes-navigation";
 
 type NotesNavigationToggleProps = {
   navigationMode: NotesNavigationMode;

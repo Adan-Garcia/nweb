@@ -5,7 +5,7 @@ import type { NotesDirectoryEntry, NotesDocumentMode } from "@/components/notes/
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatLocationPath, type WorkspaceSnapshot } from "@/lib/workspace-tree";
+import { formatLocationPath, type WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 
 type NotesFileViewerProps = {
   snapshot: WorkspaceSnapshot;

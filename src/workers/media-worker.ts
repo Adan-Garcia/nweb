@@ -2,8 +2,8 @@ import type {
   OptimizeImageRequest,
   WorkerRequest,
   WorkerResponse,
-} from "@/lib/media-worker-protocol";
-import { compressText, decompressText } from "@/lib/text-compression";
+} from "@/lib/media/media-worker-protocol";
+import { compressText, decompressText } from "@/lib/media/text-compression";
 
 type WorkerScope = {
   postMessage: (message: WorkerResponse, transfer?: Transferable[]) => void;

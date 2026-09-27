@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { DatedTwig } from "@/components/calendar/calendar-shared";
-import type { NotesDirectoryEntry } from "@/lib/notes-model";
+import type { NotesDirectoryEntry } from "@/lib/notes/notes-model";
 import { makeEntry, makeSnapshot, makeTwig } from "@/test/workspace-fixtures";
 
 import { computeDashboardMetrics, formatLastUpdated, toLocationLabel } from "./dashboard-metrics";

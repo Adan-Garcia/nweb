@@ -4,17 +4,17 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Toaster } from "@/components/toaster";
-import { resetActiveCipher } from "@/lib/cipher";
-import { getNotesDb } from "@/lib/notes-db";
-import { unlockWorkspace } from "@/lib/workspace-lock";
-import { createWorkspaceLock } from "@/lib/workspace-passphrase";
+import { resetActiveCipher } from "@/lib/crypto/cipher";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { unlockWorkspace } from "@/lib/lock/workspace-lock";
+import { createWorkspaceLock } from "@/lib/lock/workspace-passphrase";
 
 import { SettingsPage } from "./settings";
 
 // 64 MiB and three passes is what ships. The parameters travel in the lock record, so the
 // cheap ones are used to unlock as well.
-vi.mock("@/lib/kdf", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/kdf")>()),
+vi.mock("@/lib/crypto/kdf", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/crypto/kdf")>()),
   createKdfParams: () => ({
     name: "Argon2id",
     memorySize: 1024,

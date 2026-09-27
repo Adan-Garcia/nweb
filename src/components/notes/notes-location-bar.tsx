@@ -6,8 +6,8 @@ import { NotesNavigationToggle } from "@/components/notes/notes-navigation-toggl
 import { SEGMENT_CONFIGS } from "@/components/notes/notes-segment-config";
 import type { NotesDirectoryEntry } from "@/components/notes/types";
 import type { NotesLocationPicker } from "@/components/notes/use-notes-location-picker";
-import type { NotesNavigationMode } from "@/lib/notes-navigation";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import type { NotesNavigationMode } from "@/lib/notes/notes-navigation";
 
 type NotesLocationBarProps = {
   picker: NotesLocationPicker;

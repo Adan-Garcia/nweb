@@ -3,7 +3,7 @@
  *
  * The client stores a date, minutes past midnight and an IANA zone rather than a
  * timestamp, because the conversion needs real timezone data and has no right answer for
- * the hour DST repeats or skips (`src/lib/due-time.ts` says why). This is where that
+ * the hour DST repeats or skips (`src/lib/twigs/due-time.ts` says why). This is where that
  * conversion happens, because this is where the data is.
  *
  * No dependency: `Intl` knows every zone, and what it will not do directly — give the

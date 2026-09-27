@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
-import { buildNotifications, countUrgent } from "@/lib/notifications";
-import type { Twig } from "@/lib/twig-model";
-import { listTwigs } from "@/lib/twig-storage";
-import { loadWorkspaceSnapshot } from "@/lib/workspace-storage";
+import { loadWorkspaceSnapshot } from "@/lib/hierarchy/workspace-storage";
+import { buildNotifications, countUrgent } from "@/lib/twigs/notifications";
+import type { Twig } from "@/lib/twigs/twig-model";
+import { listTwigs } from "@/lib/twigs/twig-storage";
 
 /**
  * What is late or coming up, for the bell in the sidebar. This is the in-app half of

@@ -9,7 +9,7 @@
  * The design system.
  *
  * Every colour is a token, and every token is decided by four attributes the app puts on
- * <html> (src/lib/preferences-cache.ts, and the boot script in index.html before it):
+ * <html> (src/lib/preferences/preferences-cache.ts, and the boot script in index.html before it):
  *
  *   data-theme      light | paper | dark | oled   the neutral surfaces
  *   data-accent     rose | orange | … | violet    the one colour, as a hue and a chroma
@@ -19,7 +19,7 @@
  * The accent is split from the theme on purpose: a theme sets how light the accent is
  * (`--brand-l`) and an accent sets which colour it is (`--brand-h`, `--brand-c`), so eight
  * accents times four themes is twelve rules rather than thirty-two. Those numbers are
- * mirrored in `src/lib/accent-palettes.ts`, where a unit test checks every pair clears WCAG
+ * mirrored in `src/lib/preferences/accent-palettes.ts`, where a unit test checks every pair clears WCAG
  * AA; `e2e/appearance.spec.ts` checks in a real browser that this file still agrees.
  */
 

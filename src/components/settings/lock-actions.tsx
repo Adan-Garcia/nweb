@@ -1,7 +1,7 @@
 import { KeyRound, Lock, LockOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { WorkspaceLockState } from "@/lib/workspace-lock-model";
+import type { WorkspaceLockState } from "@/lib/lock/workspace-lock-model";
 
 /** Which passphrase form the card is showing, or none. */
 export type LockAction = "create" | "change" | "remove";

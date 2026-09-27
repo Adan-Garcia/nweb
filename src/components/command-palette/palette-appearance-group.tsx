@@ -3,7 +3,7 @@ import { Circle } from "lucide-react";
 import { ACCENT_LABELS, THEME_OPTIONS } from "@/components/appearance-options";
 import { CommandGroup, CommandItem } from "@/components/ui/command";
 import { useAppearance } from "@/hooks/use-appearance";
-import { ACCENTS } from "@/lib/preferences-model";
+import { ACCENTS } from "@/lib/preferences/preferences-model";
 
 /** Theme and accent, switchable without leaving the keyboard. */
 export function PaletteAppearanceGroup({ onDone }: { onDone: () => void }) {

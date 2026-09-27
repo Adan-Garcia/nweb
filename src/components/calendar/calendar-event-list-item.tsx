@@ -8,9 +8,9 @@ import {
 } from "@/components/calendar/calendar-shared";
 import { StatusSlider } from "@/components/calendar/status-slider";
 import { Button } from "@/components/ui/button";
-import { TWIG_KIND_LABELS, type TwigStatus } from "@/lib/twig-model";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import { TWIG_KIND_LABELS, type TwigStatus } from "@/lib/twigs/twig-model";
 import { cn } from "@/lib/utils";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type CalendarEventListItemProps = {
   snapshot: WorkspaceSnapshot;

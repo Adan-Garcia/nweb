@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getNotesDb } from "@/lib/notes-db";
-import { createTwig, listTwigs } from "@/lib/twig-storage";
-import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
+import { createTwig, listTwigs } from "@/lib/twigs/twig-storage";
 
 import { CalendarPage } from "./calendar";
 

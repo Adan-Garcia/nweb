@@ -19,14 +19,14 @@ import type { NoteDraftPlacement } from "@/components/notes/use-notes-location-p
 import { useNotesSession } from "@/components/notes/use-notes-session";
 import { useSpatialAutosave } from "@/components/notes/use-spatial-autosave";
 import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
+import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 import {
   createNotesDirectoryEntry,
   findNotesDirectoryEntry,
   listNotesDirectoryEntries,
   renameNotesDirectoryEntry,
-} from "@/lib/notes-directory-storage";
-import { ensureDefaultWorkspace } from "@/lib/workspace-storage";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
+} from "@/lib/notes/notes-directory-storage";
 
 export function useNotesWorkspace() {
   const { mediaWorker, refs } = useNotesSession();

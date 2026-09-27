@@ -1,16 +1,16 @@
 import { useCallback, useState } from "react";
 
-import { downloadTextFile } from "@/lib/blob-utils";
-import type { EncryptedEnvelope } from "@/lib/crypto-envelope";
-import { notifySuccess } from "@/lib/toast";
 import {
   createWorkspaceBackup,
   decryptWorkspaceBackup,
   encryptWorkspaceBackup,
   type ParsedBackupFile,
   parseWorkspaceBackup,
-} from "@/lib/workspace-backup";
-import { type RestoreMode, restoreWorkspaceBackup } from "@/lib/workspace-restore";
+} from "@/lib/backup/workspace-backup";
+import { type RestoreMode, restoreWorkspaceBackup } from "@/lib/backup/workspace-restore";
+import type { EncryptedEnvelope } from "@/lib/crypto/crypto-envelope";
+import { downloadTextFile } from "@/lib/media/blob-utils";
+import { notifySuccess } from "@/lib/toast";
 
 export type BackupStatus =
   | { kind: "idle" }

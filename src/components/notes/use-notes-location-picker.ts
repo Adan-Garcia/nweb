@@ -11,9 +11,9 @@ import {
   type WorkspaceSelection,
 } from "@/components/notes/location-hierarchy";
 import type { NotesDirectoryEntry, NotesDocumentMode, NotesMode } from "@/components/notes/types";
-import { createBranch, createFlight, createNest, createWing } from "@/lib/entity-storage";
+import { createBranch, createFlight, createNest, createWing } from "@/lib/hierarchy/entity-storage";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 import { ReadOnlyError } from "@/lib/keys/access";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 export type NoteDraftPlacement = {
   branchId: string | null;

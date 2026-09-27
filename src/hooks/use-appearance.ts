@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-import { isDarkTheme, type ResolvedTheme, resolveTheme } from "@/lib/preferences-model";
+import { isDarkTheme, type ResolvedTheme, resolveTheme } from "@/lib/preferences/preferences-model";
 import { usePreferencesStore } from "@/stores/use-preferences-store";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";

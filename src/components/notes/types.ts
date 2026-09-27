@@ -4,7 +4,7 @@ import type {
   NotesDirectoryEntry,
   NotesDocumentMode,
   NotesHierarchyLocation,
-} from "@/lib/notes-model";
+} from "@/lib/notes/notes-model";
 
 export type NotesMode = NotesDocumentMode;
 

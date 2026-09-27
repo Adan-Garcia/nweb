@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWorkspaceNotifications } from "@/hooks/use-workspace-notifications";
-import { NOTIFICATION_LABELS, type WorkspaceNotification } from "@/lib/notifications";
+import { NOTIFICATION_LABELS, type WorkspaceNotification } from "@/lib/twigs/notifications";
 import { cn } from "@/lib/utils";
 
 const KIND_TEXT: Record<WorkspaceNotification["kind"], string> = {

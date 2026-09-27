@@ -1,4 +1,4 @@
-import type { RestoreMode } from "@/lib/workspace-restore";
+import type { RestoreMode } from "@/lib/backup/workspace-restore";
 
 type RestoreModeFieldProps = {
   restoreMode: RestoreMode;

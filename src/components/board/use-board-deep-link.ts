@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import type { Twig } from "@/lib/twig-model";
+import type { Twig } from "@/lib/twigs/twig-model";
 
 type BoardDeepLink = {
   isLoading: boolean;

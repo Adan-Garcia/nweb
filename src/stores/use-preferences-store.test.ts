@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getNotesDb } from "@/lib/notes-db";
-import { readCachedPreferences, writeCachedPreferences } from "@/lib/preferences-cache";
-import { DEFAULT_PREFERENCES } from "@/lib/preferences-model";
-import { readPreferences, writePreferences } from "@/lib/preferences-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { readCachedPreferences, writeCachedPreferences } from "@/lib/preferences/preferences-cache";
+import { DEFAULT_PREFERENCES } from "@/lib/preferences/preferences-model";
+import { readPreferences, writePreferences } from "@/lib/preferences/preferences-storage";
 
 import { usePreferencesStore } from "./use-preferences-store";
 

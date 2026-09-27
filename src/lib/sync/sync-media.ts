@@ -2,7 +2,7 @@ import { cipherNameSchema } from "@shared/cipher-name";
 import { mediaListSchema, type MediaMeta } from "@shared/sync-contract";
 
 import { apiFetchBytes, apiRequest, apiSendBytes, type ApiSession } from "../api/client";
-import { getNotesDb } from "../notes-db";
+import { getNotesDb } from "../db/notes-db";
 
 /**
  * Media, which syncs on its own because it is the one thing here that is not small.

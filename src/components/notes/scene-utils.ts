@@ -1,6 +1,6 @@
 import type { SceneFiles } from "@/components/notes/types";
-import type { PersistedSceneFile } from "@/lib/notes-model";
-import { notesTrace, notesTraceError } from "@/lib/notes-trace";
+import type { PersistedSceneFile } from "@/lib/notes/notes-model";
+import { notesTrace, notesTraceError } from "@/lib/notes/notes-trace";
 
 export function isImageFile(file: File): boolean {
   return file.type.startsWith("image/");

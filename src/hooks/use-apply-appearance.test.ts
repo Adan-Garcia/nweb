@@ -1,9 +1,9 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getNotesDb } from "@/lib/notes-db";
-import { DEFAULT_PREFERENCES } from "@/lib/preferences-model";
-import { readPreferences, writePreferences } from "@/lib/preferences-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { DEFAULT_PREFERENCES } from "@/lib/preferences/preferences-model";
+import { readPreferences, writePreferences } from "@/lib/preferences/preferences-storage";
 import type { SyncListener } from "@/lib/sync/sync-service";
 import { usePreferencesStore } from "@/stores/use-preferences-store";
 

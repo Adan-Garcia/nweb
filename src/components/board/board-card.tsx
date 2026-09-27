@@ -4,9 +4,9 @@ import { GripVertical, Pencil, Trash2 } from "lucide-react";
 
 import { branchLabelFor, formatShortDate } from "@/components/calendar/calendar-shared";
 import { Button } from "@/components/ui/button";
-import { type Twig, TWIG_KIND_LABELS } from "@/lib/twig-model";
+import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
+import { type Twig, TWIG_KIND_LABELS } from "@/lib/twigs/twig-model";
 import { cn } from "@/lib/utils";
-import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type BoardCardProps = {
   snapshot: WorkspaceSnapshot;

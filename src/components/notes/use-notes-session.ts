@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { defaultLinearContent } from "@/components/notes/constants";
 import type { SpatialSnapshot } from "@/components/notes/types";
-import { revokeObjectUrls } from "@/lib/blob-utils";
-import { createMediaWorkerClient } from "@/lib/media-worker-client";
+import { revokeObjectUrls } from "@/lib/media/blob-utils";
+import { createMediaWorkerClient } from "@/lib/media/media-worker-client";
 
 /**
  * Mutable, non-rendering state shared by the notes hooks (timers, latest

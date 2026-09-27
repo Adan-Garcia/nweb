@@ -2,10 +2,10 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { NotesDirectoryEntry } from "@/components/notes/types";
-import { createBranch, createFlight, createNest, createWing } from "@/lib/entity-storage";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { createBranch, createFlight, createNest, createWing } from "@/lib/hierarchy/entity-storage";
+import { loadWorkspaceSnapshot } from "@/lib/hierarchy/workspace-storage";
 import { ReadOnlyError } from "@/lib/keys/access";
-import { getNotesDb } from "@/lib/notes-db";
-import { loadWorkspaceSnapshot } from "@/lib/workspace-storage";
 import { sharedToRead } from "@/test/read-only";
 
 import { selectionForEntry } from "./location-hierarchy";

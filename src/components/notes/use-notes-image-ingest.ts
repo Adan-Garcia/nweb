@@ -3,7 +3,7 @@ import type { ExcalidrawProps } from "@excalidraw/excalidraw/types";
 
 import { isImageFile } from "@/components/notes/scene-utils";
 import type { NotesMode } from "@/components/notes/types";
-import type { MediaWorkerClient } from "@/lib/media-worker-client";
+import type { MediaWorkerClient } from "@/lib/media/media-worker-client";
 
 type HandleSpatialPaste = NonNullable<ExcalidrawProps["onPaste"]>;
 

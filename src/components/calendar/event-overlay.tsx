@@ -5,7 +5,7 @@ import { EventSelectField, EventTextField } from "@/components/calendar/event-se
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldGroup } from "@/components/ui/field";
-import { TWIG_KIND_LABELS, TWIG_KINDS } from "@/lib/twig-model";
+import { TWIG_KIND_LABELS, TWIG_KINDS } from "@/lib/twigs/twig-model";
 
 const SELECT_CLASS = "h-9 rounded-md border border-input bg-background px-3 text-sm";
 

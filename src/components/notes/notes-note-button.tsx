@@ -5,8 +5,12 @@ import { NotesNoteActions } from "@/components/notes/notes-note-actions";
 import { NotesNoteRename } from "@/components/notes/notes-note-rename";
 import { formatUpdatedAt } from "@/components/notes/notes-tree";
 import type { NotesDirectoryEntry } from "@/components/notes/types";
+import {
+  displayLocation,
+  formatLocationPath,
+  type WorkspaceSnapshot,
+} from "@/lib/hierarchy/workspace-tree";
 import { cn } from "@/lib/utils";
-import { displayLocation, formatLocationPath, type WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type NotesNoteButtonProps = {
   snapshot: WorkspaceSnapshot;

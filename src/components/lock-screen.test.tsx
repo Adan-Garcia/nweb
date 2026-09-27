@@ -4,17 +4,17 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WorkspaceShell } from "@/components/workspace-shell";
-import { resetActiveCipher } from "@/lib/cipher";
-import { getNotesDb } from "@/lib/notes-db";
-import { lockWorkspace } from "@/lib/workspace-lock";
-import { createWorkspaceLock } from "@/lib/workspace-passphrase";
+import { resetActiveCipher } from "@/lib/crypto/cipher";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { lockWorkspace } from "@/lib/lock/workspace-lock";
+import { createWorkspaceLock } from "@/lib/lock/workspace-passphrase";
 
 import { LockScreen } from "./lock-screen";
 
 // The shipped Argon2id cost — 64 MiB, three passes — would make the shell test take a
 // second. The parameters travel in the lock record, so unlocking uses the cheap ones too.
-vi.mock("@/lib/kdf", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/kdf")>()),
+vi.mock("@/lib/crypto/kdf", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/crypto/kdf")>()),
   createKdfParams: () => ({
     name: "Argon2id",
     memorySize: 1024,

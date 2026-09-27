@@ -2,10 +2,10 @@
 import type { SyncRow } from "@shared/sync-contract";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { getNotesDb } from "../db/notes-db";
 import { createObjectKey } from "../keys/key-graph";
 import { forgetKeyring, holdKeyring } from "../keys/object-keys";
-import { getNotesDb } from "../notes-db";
-import { twigSchema } from "../twig-model";
+import { twigSchema } from "../twigs/twig-model";
 import { reconcileRow } from "./reconcile";
 import { type StoredRow, toSyncRow } from "./wire";
 

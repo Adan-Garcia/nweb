@@ -3,11 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { isDatedTwig } from "@/components/calendar/calendar-shared";
 import { computeDashboardMetrics } from "@/components/dashboard/dashboard-metrics";
 import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
-import { isLockedError } from "@/lib/cipher";
-import { listNotesDirectoryEntries } from "@/lib/notes-directory-storage";
-import type { NotesDirectoryEntry } from "@/lib/notes-model";
-import type { Twig } from "@/lib/twig-model";
-import { listTwigs } from "@/lib/twig-storage";
+import { isLockedError } from "@/lib/crypto/cipher";
+import { listNotesDirectoryEntries } from "@/lib/notes/notes-directory-storage";
+import type { NotesDirectoryEntry } from "@/lib/notes/notes-model";
+import type { Twig } from "@/lib/twigs/twig-model";
+import { listTwigs } from "@/lib/twigs/twig-storage";
 
 /** Loads the twigs and notes and derives the dashboard's numbers. */
 export function useDashboardData() {

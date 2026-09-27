@@ -6,16 +6,16 @@ import {
   softDeleteFlight,
   softDeleteNest,
   softDeleteWing,
-} from "@/lib/entity-delete";
-import type { BranchColor } from "@/lib/entity-model";
+} from "@/lib/hierarchy/entity-delete";
+import type { BranchColor } from "@/lib/hierarchy/entity-model";
 import {
   renameBranch,
   renameFlight,
   renameNest,
   renameWing,
   setBranchColor,
-} from "@/lib/entity-storage";
-import { ownRows } from "@/lib/workspace-tree";
+} from "@/lib/hierarchy/entity-storage";
+import { ownRows } from "@/lib/hierarchy/workspace-tree";
 
 /** Which level a row belongs to. The storage call differs; nothing else about it does. */
 export type WorkspaceLevel = "wing" | "flight" | "branch" | "nest";

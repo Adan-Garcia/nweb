@@ -10,7 +10,7 @@ import {
   sharedBranches,
   UNFILED_NEST_LABEL,
   type WorkspaceSnapshot,
-} from "@/lib/workspace-tree";
+} from "@/lib/hierarchy/workspace-tree";
 
 export type LocationSegment = "wing" | "flight" | "branch" | "nest" | "feather";
 

@@ -6,7 +6,7 @@ import {
   Notebook,
 } from "lucide-react";
 
-import type { NavId } from "@/lib/preferences-model";
+import type { NavId } from "@/lib/preferences/preferences-model";
 
 export type WorkspaceNavItem = {
   id: NavId;

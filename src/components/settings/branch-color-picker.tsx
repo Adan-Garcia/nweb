@@ -1,4 +1,4 @@
-import { BRANCH_COLORS, type BranchColor } from "@/lib/entity-model";
+import { BRANCH_COLORS, type BranchColor } from "@/lib/hierarchy/entity-model";
 import { cn } from "@/lib/utils";
 
 type BranchColorPickerProps = {
