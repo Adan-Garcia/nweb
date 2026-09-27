@@ -19,6 +19,9 @@ services:
       retries: 15
 
   server:
+    # Built here with `--build`; otherwise the image CI publishes, which `docker compose
+    # pull` fetches (docs/deploy.md). ENGINE_IMAGE pins a version, e.g. :sha-<commit>.
+    image: ${ENGINE_IMAGE:-ghcr.io/adan-garcia/nweb:latest}
     build: .
     depends_on:
       db:

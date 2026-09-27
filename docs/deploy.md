@@ -69,6 +69,26 @@ Open `https://planner.example.com`, create your account, and tick *Also create a
 account* — the server address is already filled in, because this image's app looks for its
 server wherever it was loaded from (`VITE_API_URL=same-origin`).
 
+### Or run the published image instead of building
+
+Every push to `master` publishes the image to the GitHub Container Registry
+(`.github/workflows/docker.yml`) as `ghcr.io/adan-garcia/nweb:latest`, plus a
+`sha-<commit>` tag for each commit and `1.2.3` / `1.2` for a `v1.2.3` git tag. To run that
+rather than building on the server:
+
+```sh
+docker compose pull server
+docker compose --profile tunnel up -d
+```
+
+Updating later is the same two commands. To stay on one version, set
+`ENGINE_IMAGE=ghcr.io/adan-garcia/nweb:sha-<commit>` in `.env`.
+
+A package published from a private repository is private too. Either sign the server in
+once with a GitHub token that has `read:packages`
+(`echo <token> | docker login ghcr.io -u <user> --password-stdin`), or make the package
+public under the repository's **Packages → Package settings**.
+
 ## 4b. App on your own site, API through the tunnel
 
 Point the tunnel's public hostname at something like `api.example.com`, set
