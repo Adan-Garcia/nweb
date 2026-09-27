@@ -24,7 +24,7 @@ export type StoredRecord = Record<string, unknown>;
  * The one sealed field each store is listed by. A document has two bodies instead, and the
  * preferences have none: nothing in them is sealed at rest.
  */
-export const DISPLAY_FIELDS: Record<Exclude<SyncStore, "notes-documents">, string | null> = {
+const DISPLAY_FIELDS: Record<Exclude<SyncStore, "notes-documents">, string | null> = {
   "notes-directory": "feather",
   wings: "name",
   flights: "name",

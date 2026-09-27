@@ -13,7 +13,7 @@
  */
 const TIME_PATTERN = /^(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?$|^(\d{1,2}):(\d{2})$/i;
 
-export const MINUTES_IN_DAY = 24 * 60;
+const MINUTES_IN_DAY = 24 * 60;
 
 /** Minutes since local midnight, or null for anything that is not a time. */
 export function parseDueTime(text: string): number | null {

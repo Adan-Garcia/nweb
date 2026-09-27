@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 
 import {
   formatSelectionSummary,
-  LOCATION_SEGMENTS,
   type LocationSegment,
   resolveCascade,
   segmentLabels,
@@ -235,7 +234,5 @@ async function createSegmentEntity(
 
   return selection.branchId ? (await createNest({ branchId: selection.branchId, name })).id : null;
 }
-
-export { LOCATION_SEGMENTS };
 
 export type NotesLocationPicker = ReturnType<typeof useNotesLocationPicker>;

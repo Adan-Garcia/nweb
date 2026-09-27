@@ -106,7 +106,7 @@ export async function runSync(
 }
 
 /** Applies pulled rows one by one, and says which of them changed something here. */
-export async function applyRows(rows: SyncRow[]): Promise<ChangedRow[]> {
+async function applyRows(rows: SyncRow[]): Promise<ChangedRow[]> {
   const changed: ChangedRow[] = [];
 
   for (const row of rows) {

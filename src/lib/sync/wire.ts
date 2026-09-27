@@ -49,7 +49,7 @@ const directoryPayloadSchema = z.object({
 });
 
 /** What a row of each store must look like once it is opened. Nothing is taken on trust. */
-export const PAYLOAD_SCHEMAS = {
+const PAYLOAD_SCHEMAS = {
   "notes-directory": directoryPayloadSchema,
   "notes-documents": documentPayloadSchema,
   wings: wingSchema,

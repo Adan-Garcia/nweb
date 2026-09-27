@@ -91,13 +91,6 @@ export type EntityStoreName = keyof EntityByStore;
 
 export const ENTITY_STORE_NAMES: EntityStoreName[] = ["wings", "flights", "branches", "nests"];
 
-export const ENTITY_SCHEMAS = {
-  wings: wingSchema,
-  flights: flightSchema,
-  branches: branchSchema,
-  nests: nestSchema,
-} as const;
-
 /** The term a date falls in, matching the month ranges the note defaults already used. */
 export function termForMonth(monthIndex: number): FlightTerm {
   if (monthIndex <= 4) {

@@ -13,7 +13,7 @@ export const NOTES_NAVIGATION_MODES = ["path", "tree"] as const;
 
 export type NotesNavigationMode = (typeof NOTES_NAVIGATION_MODES)[number];
 
-export const DEFAULT_NOTES_NAVIGATION: NotesNavigationMode = "path";
+const DEFAULT_NOTES_NAVIGATION: NotesNavigationMode = "path";
 
 const STORAGE_KEY = "cuervo-notes-navigation";
 

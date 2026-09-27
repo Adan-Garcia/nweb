@@ -2,7 +2,7 @@ import type { Twig } from "./twig-model";
 import { branchPath, type WorkspaceSnapshot } from "./workspace-tree";
 
 /** How urgent an item is. The order here is the order they are listed in. */
-export const NOTIFICATION_KINDS = ["overdue", "today", "soon"] as const;
+const NOTIFICATION_KINDS = ["overdue", "today", "soon"] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 

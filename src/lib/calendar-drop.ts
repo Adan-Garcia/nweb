@@ -1,5 +1,5 @@
 /** Day droppable ids have to be distinct from twig ids, which are UUIDs. */
-export const DAY_ID_PREFIX = "day:";
+const DAY_ID_PREFIX = "day:";
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 

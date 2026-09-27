@@ -17,7 +17,7 @@ import { getNotesDb } from "../notes-db";
  * The key graph is cached for the same reason. It is wraps and ids, which are meaningless
  * without a key, and having it means a plane journey still opens every shared course.
  */
-export const ACCOUNT_RECORD_ID = "account";
+const ACCOUNT_RECORD_ID = "account";
 
 export const accountRecordSchema = z.object({
   id: z.literal(ACCOUNT_RECORD_ID),

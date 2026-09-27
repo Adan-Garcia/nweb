@@ -117,11 +117,11 @@ export function isPathOnly(snapshot: WorkspaceSnapshot, id: string): boolean {
   return snapshot.pathOnly?.has(id) ?? false;
 }
 
-export function findWing(snapshot: WorkspaceSnapshot, id: string | null) {
+function findWing(snapshot: WorkspaceSnapshot, id: string | null) {
   return snapshot.wings.find((wing) => wing.id === id) ?? null;
 }
 
-export function findFlight(snapshot: WorkspaceSnapshot, id: string | null) {
+function findFlight(snapshot: WorkspaceSnapshot, id: string | null) {
   return snapshot.flights.find((flight) => flight.id === id) ?? null;
 }
 

@@ -171,8 +171,3 @@ export function getNotesDb() {
 
   return dbPromise;
 }
-
-/** Test seam: the next `getNotesDb` reopens, so a suite can rebuild the database. */
-export function resetNotesDbForTests() {
-  dbPromise = null;
-}

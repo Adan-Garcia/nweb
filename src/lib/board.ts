@@ -13,7 +13,7 @@ export type BoardColumn = {
 };
 
 /** Droppable ids have to be distinct from twig ids, which are UUIDs. */
-export const COLUMN_ID_PREFIX = "column:";
+const COLUMN_ID_PREFIX = "column:";
 
 export function columnId(status: TwigStatus) {
   return `${COLUMN_ID_PREFIX}${status}`;
