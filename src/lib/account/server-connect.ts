@@ -10,7 +10,7 @@ import { lockCipherFor, resetLockRecord } from "../lock/lock-record";
 import { readLockRecord, writeLockHint } from "../lock/workspace-lock";
 import { resetSyncState, runSyncRound } from "../sync/sync-service";
 import { deriveAuthKey, openAccountKeys } from "./account-keys";
-import { readAccountRecord, writeAccountRecord } from "./account-record";
+import { forgetAccountRecord, readAccountRecord, writeAccountRecord } from "./account-record";
 import { adoptAccount, adoptKeyring } from "./adopt-account";
 import { wrapWingKey } from "./wing-key";
 import { clearWorkspaceData } from "./workspace-data";
@@ -223,11 +223,25 @@ export async function signInToServer(options: {
     graph: served.value,
   });
 
-  if (mode === "replace") {
-    await clearWorkspaceData();
-  } else {
-    // Stamped, so the next round sends every moved row up under the account's key.
-    await rotateRowsToKey(from, to, Date.now());
+  try {
+    if (mode === "replace") {
+      await clearWorkspaceData();
+    } else {
+      // Stamped, so the next round sends every moved row up under the account's key.
+      await rotateRowsToKey(from, to, Date.now());
+    }
+  } catch (error) {
+    // Both rewrites go row by row, so a failure can stop one partway. Left on the account,
+    // this device would open only the account's key and every row still under its own lock
+    // would be unreadable. So it goes back to the local account it was: rows moved so far
+    // are moved back, and the record is forgotten. Should the undo fail as well, nothing is
+    // lost: signing in again moves the rest, since it is the same account's key.
+    if (mode === "merge") {
+      await rotateRowsToKey(to, from).catch(() => undefined);
+    }
+
+    await forgetAccountRecord();
+    throw error;
   }
 
   setActiveCipher(to);

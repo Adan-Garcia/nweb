@@ -12,6 +12,7 @@ import {
   listNotesDirectoryEntries,
 } from "../notes/notes-directory-storage";
 import { resetSyncState, runSyncRound } from "../sync/sync-service";
+import { readAccountRecord } from "./account-record";
 import { createLocalAccount } from "./device-account";
 import { enrolServerAccount, signInToServer } from "./server-connect";
 
@@ -28,8 +29,39 @@ vi.mock("../crypto/kdf", async (importOriginal) => ({
   assertAccountKdf: () => undefined,
 }));
 
-/** Flipped to make recording the account fail, the way a full disk or a closed tab would. */
-const failures = vi.hoisted(() => ({ record: false }));
+/** Flipped to make one step fail, the way a full disk or a closed tab would. */
+const failures = vi.hoisted(() => ({ record: false, rewrite: false }));
+
+// The rewrite fails after doing its work, the hardest case to undo: every row has moved.
+vi.mock("../keys/rotate-rows", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../keys/rotate-rows")>();
+
+  return {
+    ...actual,
+    rotateRowsToKey: async (...args: Parameters<typeof actual.rotateRowsToKey>) => {
+      const summary = await actual.rotateRowsToKey(...args);
+
+      if (failures.rewrite) {
+        failures.rewrite = false;
+        throw new Error("QuotaExceededError");
+      }
+
+      return summary;
+    },
+  };
+});
+
+vi.mock("./workspace-data", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./workspace-data")>();
+
+  return {
+    ...actual,
+    clearWorkspaceData: () =>
+      failures.rewrite
+        ? Promise.reject(new Error("QuotaExceededError"))
+        : actual.clearWorkspaceData(),
+  };
+});
 
 vi.mock("./account-record", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./account-record")>();
@@ -64,6 +96,7 @@ async function writeNote(title: string) {
 
 beforeEach(async () => {
   failures.record = false;
+  failures.rewrite = false;
   await freshDevice();
 });
 
@@ -90,6 +123,39 @@ describe("signing in when the device cannot record the account", () => {
       expect((await listNotesDirectoryEntries()).map((entry) => entry.feather)).toEqual([
         "Only on this laptop",
       ]);
+    },
+  );
+});
+
+describe("signing in when rewriting this device's notes fails partway", () => {
+  it.each(["replace", "merge"] as const)(
+    "goes back to the local account, notes readable, and can try again (%s)",
+    async (mode) => {
+      const fake = startFakeSyncServer();
+      await createLocalAccount({ name: "Ada", email: EMAIL, passphrase: PASSPHRASE });
+      await writeNote("Mitosis");
+      await enrolServerAccount({ email: EMAIL, passphrase: PASSPHRASE, baseUrl: fake.baseUrl });
+      await runSyncRound();
+      await freshDevice();
+
+      await createLocalAccount({ name: "Ada", email: EMAIL, passphrase: PASSPHRASE });
+      await writeNote("Only on this laptop");
+      failures.rewrite = true;
+
+      await expect(
+        signInToServer({ email: EMAIL, passphrase: PASSPHRASE, baseUrl: fake.baseUrl, mode }),
+      ).rejects.toThrow();
+
+      // Not left on an account whose key opens only some of the rows.
+      expect(await readAccountRecord()).toBeNull();
+      expect((await listNotesDirectoryEntries()).map((entry) => entry.feather)).toEqual([
+        "Only on this laptop",
+      ]);
+
+      failures.rewrite = false;
+      expect(
+        await signInToServer({ email: EMAIL, passphrase: PASSPHRASE, baseUrl: fake.baseUrl, mode }),
+      ).toEqual({ ok: true });
     },
   );
 });
