@@ -204,13 +204,9 @@ export async function signInToServer(options: {
 
   const to = createAesGcmCipher(wingKey, wing.id);
 
-  if (mode === "replace") {
-    await clearWorkspaceData();
-  } else {
-    // Stamped, so the next round sends every moved row up under the account's key.
-    await rotateRowsToKey(from, to, Date.now());
-  }
-
+  // The account is recorded before anything here is erased or moved. If this write fails,
+  // nothing has happened to the notes on this device; if what follows fails, the device
+  // already knows the account that the moved rows are now under.
   const record = await writeAccountRecord({
     email,
     baseUrl,
@@ -219,6 +215,13 @@ export async function signInToServer(options: {
     wrappedWingKey: await wrapWingKey(wingKey, keys.accountKey),
     graph: served.value,
   });
+
+  if (mode === "replace") {
+    await clearWorkspaceData();
+  } else {
+    // Stamped, so the next round sends every moved row up under the account's key.
+    await rotateRowsToKey(from, to, Date.now());
+  }
 
   setActiveCipher(to);
   await adoptKeyring(wing.id, wingKey, record.graph, keys.privateKey);
