@@ -504,6 +504,35 @@ describe("rate limiting", () => {
   });
 });
 
+describe("requests too large to be real", () => {
+  const sized = (path: string, bytes: number, method = "POST", token?: string) =>
+    app.request(path, {
+      method,
+      headers: {
+        "content-type": "application/json",
+        "content-length": String(bytes),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: "x".repeat(bytes),
+    });
+
+  it("are refused before they are read, whatever the route", async () => {
+    // Nothing on these routes is more than a few kilobytes. A megabyte is somebody filling
+    // the server's memory one request at a time.
+    expect((await sized("/v1/auth/prelogin", 2 * 1024 * 1024)).status).toBe(413);
+    expect((await sized("/v1/auth/session", 2 * 1024 * 1024)).status).toBe(413);
+  });
+
+  it("allow a sync page and a file their own, larger, room", async () => {
+    const { token } = await registerAndSignIn();
+
+    // Big enough to be refused anywhere else; well inside what a page of notes may be.
+    expect((await sized("/v1/sync", 2 * 1024 * 1024, "POST", token)).status).toBe(400);
+    expect((await sized("/v1/sync", 65 * 1024 * 1024, "POST", token)).status).toBe(413);
+    expect((await sized("/v1/media/file-1", 26 * 1024 * 1024, "PUT", token)).status).toBe(413);
+  });
+});
+
 describe("requests that are not requests", () => {
   const malformed = (path: string, token?: string) =>
     app.request(path, {

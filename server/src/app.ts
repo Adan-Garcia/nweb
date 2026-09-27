@@ -1,15 +1,34 @@
 import type { upgradeWebSocket } from "@hono/node-server";
+import { MEDIA_MAX_BYTES } from "@shared/sync-contract";
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 
 import { authRoutes } from "./auth-routes";
 import type { Sql } from "./db";
-import type { RouteDeps } from "./http";
+import { fail, type RouteDeps } from "./http";
 import { createLiveHub, type LiveHub } from "./live";
 import { liveRoutes } from "./live-routes";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
 import { sharingRoutes } from "./sharing-routes";
 import { syncRoutes } from "./sync-routes";
+
+/**
+ * The most a request body may be, by route. A page of synced rows can be large — a sealed
+ * drawing is a few megabytes and a page holds up to two hundred rows — and a file has its
+ * own cap. Nothing else here is more than a few kilobytes. The limit is enforced while the
+ * body streams in, so an oversized request is refused before it is held in memory.
+ */
+const SYNC_MAX_BYTES = 64 * 1024 * 1024;
+const DEFAULT_MAX_BYTES = 1024 * 1024;
+
+function maxBodyFor(path: string): number {
+  if (path.startsWith("/v1/media/")) {
+    return MEDIA_MAX_BYTES;
+  }
+
+  return path === "/v1/sync" ? SYNC_MAX_BYTES : DEFAULT_MAX_BYTES;
+}
 
 export type AppOptions = {
   sql: Sql;
@@ -57,6 +76,12 @@ export function createApp({
   const app = new Hono();
 
   app.use("/v1/*", cors({ origin: allowedOrigins, credentials: false }));
+  app.use("/v1/*", (context, next) =>
+    bodyLimit({ maxSize: maxBodyFor(context.req.path), onError: () => fail("too_large") })(
+      context,
+      next,
+    ),
+  );
 
   app.route("/", authRoutes(deps));
   app.route("/", syncRoutes(deps));
