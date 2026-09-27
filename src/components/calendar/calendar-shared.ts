@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { BranchColor } from "@/lib/hierarchy/entity-model";
 import { findBranch, type WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 import { type Twig, TWIG_KINDS, TWIG_STATUSES } from "@/lib/twigs/twig-model";
-import { TWIG_REPEATS } from "@/lib/twigs/twig-series";
+import { seriesDates, TWIG_REPEATS } from "@/lib/twigs/twig-series";
 
 /** The dot beside a task takes its colour from the branch the task belongs to. */
 const BRANCH_COLOR_CLASSES: Record<BranchColor, string> = {
@@ -55,6 +55,13 @@ export const twigFormSchema = z
         code: "custom",
         path: ["repeatUntil"],
         message: "Pick the last date, after the first one",
+      });
+    } else if (!seriesDates(values.date, values.repeat, values.repeatUntil).length) {
+      // Every weekday from a Saturday to the Sunday after it is a range with nothing in it.
+      context.addIssue({
+        code: "custom",
+        path: ["repeatUntil"],
+        message: "No day in that range fits the repeat",
       });
     }
   });
