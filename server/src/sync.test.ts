@@ -15,7 +15,7 @@ const ENROLMENT = {
     memorySize: 65_536,
     iterations: 3,
     parallelism: 1,
-    salt: "c2FsdHktc2FsdC1oZXJl",
+    salt: "c2FsdHktc2FsdC1oZXJlIQ==",
   },
   sealedAccountKey: "c2VhbGVkLWFjY291bnQta2V5LWJ5dGVz",
   publicKey: "cHVibGljLWtleS1zcGtpLWJ5dGVz",

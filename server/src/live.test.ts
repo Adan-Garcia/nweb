@@ -18,7 +18,7 @@ const BASE = {
     memorySize: 65_536,
     iterations: 3,
     parallelism: 1,
-    salt: "c2FsdHktc2FsdC1oZXJl",
+    salt: "c2FsdHktc2FsdC1oZXJlIQ==",
   },
   sealedAccountKey: "c2VhbGVkLWFjY291bnQta2V5LWJ5dGVz",
   sealedPrivateKey: "c2VhbGVkLXByaXZhdGUta2V5LWJ5dGVz",

@@ -35,15 +35,8 @@ export class UntrustedKdfError extends Error {
  * are checked here, before anything is derived, and not trusted to the server.
  */
 export function assertAccountKdf(params: KdfParams): void {
-  let saltBytes = 0;
-
-  try {
-    saltBytes = base64ToBytes(params.salt).byteLength;
-  } catch {
-    // Not base64 at all: counted as no salt.
-  }
-
-  if (!accountKdfSchema.safeParse(params).success || saltBytes < SALT_BYTES) {
+  // The salt's length is part of the schema, so the server refuses the same salts.
+  if (!accountKdfSchema.safeParse(params).success) {
     throw new UntrustedKdfError();
   }
 }

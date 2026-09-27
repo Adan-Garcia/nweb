@@ -40,7 +40,13 @@ describe("a sign-in", () => {
     await register(database, {
       email: "student@example.com",
       authKey: "YXV0aC1rZXk",
-      kdf: { name: "Argon2id", memorySize: 65_536, iterations: 3, parallelism: 1, salt: "c2FsdA" },
+      kdf: {
+        name: "Argon2id",
+        memorySize: 65_536,
+        iterations: 3,
+        parallelism: 1,
+        salt: "c2FsdHktc2FsdC1oZXJlIQ==",
+      },
       sealedAccountKey: "c2VhbGVkLWFjY291bnQta2V5LWJ5dGVz",
       publicKey: "cHVibGlj",
       sealedPrivateKey: "c2VhbGVkLXByaXZhdGUta2V5LWJ5dGVz",

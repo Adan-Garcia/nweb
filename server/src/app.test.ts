@@ -20,7 +20,7 @@ const ENROLMENT = {
     memorySize: 65_536,
     iterations: 3,
     parallelism: 1,
-    salt: "c2FsdHktc2FsdC1oZXJl",
+    salt: "c2FsdHktc2FsdC1oZXJlIQ==",
   },
   sealedAccountKey: "c2VhbGVkLWFjY291bnQta2V5LWJ5dGVz",
   publicKey: "cHVibGljLWtleS1zcGtpLWJ5dGVz",
@@ -325,6 +325,9 @@ describe("what an account may be made with", () => {
       { ...ENROLMENT.kdf, memorySize: 8 },
       { ...ENROLMENT.kdf, iterations: 1 },
       { ...ENROLMENT.kdf, memorySize: 4_194_304 },
+      // A salt the client's own floor would refuse later: the account could never sign in.
+      { ...ENROLMENT.kdf, salt: "c2FsdA" },
+      { ...ENROLMENT.kdf, salt: "not base64 at all!" },
       { name: "PBKDF2", hash: "SHA-256", iterations: 1, salt: "c2FsdA" },
     ]) {
       const response = await post("/v1/auth/register", { ...ENROLMENT, kdf });
