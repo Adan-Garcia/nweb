@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { entityBaseSchema } from "../hierarchy/entity-model";
 
-/** Homework types. `Heirarchy.md` names the first three; the rest cover what a term needs. */
+/** Homework types. `docs/hierarchy.md` names the first three; the rest cover what a term needs. */
 export const TWIG_KINDS = ["homework", "exam", "essay", "project", "reading", "other"] as const;
 
 export type TwigKind = (typeof TWIG_KINDS)[number];

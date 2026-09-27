@@ -41,7 +41,7 @@ This document defines the architectural, stylistic, and operational rules for th
 
 The app is **local-first**: it works with no server, and it reads its own notes with no server even when it has one. Persistence is IndexedDB (`idb`); `localStorage` holds only what the first paint needs before an async read could answer — a cache of the appearance preferences, the workspace-lock hint, and which way the notes page is navigated — and never user content. Heavy work runs in a Web Worker.
 
-There *is* a backend now, in `server/`, and it is optional in the strongest sense: a build with no `VITE_API_URL` never calls it, and a build with one still opens the workspace from the passphrase alone. It is a row store that holds ciphertext it cannot read. `BACKEND.md` is the design and `server/CLAUDE.md` the rules for writing it; requests go through `src/lib/api/`, responses are Zod-validated, and no component calls `fetch`. The workspace hierarchy is a set of entity stores (`wings`, `flights`, `branches`, `nests`, `twigs`, `pebbles`) alongside the note stores, all keyed by UUID and carrying `createdAt` / `updatedAt` / `deletedAt`. One more store syncs beside them: `preferences`, a single row (`lib/preferences/preferences-model.ts`) holding the theme, accent, density, text size and the order of the nav and dashboard.
+There *is* a backend now, in `server/`, and it is optional in the strongest sense: a build with no `VITE_API_URL` never calls it, and a build with one still opens the workspace from the passphrase alone. It is a row store that holds ciphertext it cannot read. `docs/backend.md` is the design and `server/CLAUDE.md` the rules for writing it; requests go through `src/lib/api/`, responses are Zod-validated, and no component calls `fetch`. The workspace hierarchy is a set of entity stores (`wings`, `flights`, `branches`, `nests`, `twigs`, `pebbles`) alongside the note stores, all keyed by UUID and carrying `createdAt` / `updatedAt` / `deletedAt`. One more store syncs beside them: `preferences`, a single row (`lib/preferences/preferences-model.ts`) holding the theme, accent, density, text size and the order of the nav and dashboard.
 
 ### 2.1 Layers and dependency direction
 Imports flow **downward only**. A layer never imports from a layer above it. `[REQUIRED]`
@@ -58,6 +58,10 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | Workers | `src/workers/` | Web Worker entry points. No DOM, no React. | `lib/` types only |
 
 *   **Feature-specific hooks are co-located** in their feature folder (e.g. `components/notes/use-notes-workspace.ts`). Move a hook to `src/hooks/` only when a second feature needs it.
+*   **Where a new file goes.** `[REQUIRED]` Nothing new lands loose at the root of `components/` or `lib/`; put it in the folder for what it is about, and start a folder when none fits.
+    *   `components/`: `layout/` (page scaffolding every page shares), `shell/` (the workspace frame), `theme/`, `auth/`, `lock/`, `command-palette/`, and one folder per feature (`calendar/`, `board/`, `dashboard/`, `notes/`, `settings/`, `marketing/`, `onboarding/`). A feature that outgrows one folder splits by area, as `notes/` (`spatial/`, `linear/`, `location/`, `tree/`) and `settings/` (one folder per card) do; the hooks that tie the areas together stay at the feature's root.
+    *   `lib/`: by domain. `crypto/` (ciphers, envelopes, KDF, sealed text), `db/` (the IndexedDB schema, upgrades, tombstones), `hierarchy/` (wings, flights, branches, nests, pebbles, share paths), `twigs/` (tasks, due times, board and calendar maths), `notes/`, `media/` (worker client and protocol, images, compression), `lock/`, `backup/`, `preferences/`, `account/`, `api/`, `keys/`, `push/`, `sync/`. Only app-wide helpers stay at the root (`utils.ts`, `toast.ts`, `reorder.ts`, `route-warmup.ts`, `service-worker.ts`).
+    *   Inside `lib/`, imports within one domain are `./x`; across domains they are `../<domain>/x` (never `../..`).
 *   Check: `grep -rnE 'from "@/(pages|components)' src/lib src/hooks` and `grep -rn 'from "@/pages' src/components`. Both must return nothing.
 
 ### 2.2 Presentational vs. logic
@@ -66,10 +70,10 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 *   Pure functions (formatting, hierarchy math, parsing) live in `*-utils.ts` / `lib/` so they are testable without React.
 
 ### 2.3 Data access and persistence
-*   Components **never** touch `indexedDB`, `localStorage`, `Worker`, or `fetch` directly. `[REQUIRED]` Go through a `lib/*-storage.ts` module or a `lib/*-client.ts` worker client (`lib/notes/notes-navigation.ts`, `lib/preferences/preferences-cache.ts` and `lib/lock/workspace-lock.ts`'s hint are the `localStorage` seams).
+*   Components **never** touch `indexedDB`, `localStorage`, `Worker`, or `fetch` directly. `[REQUIRED]` Go through a `lib/<domain>/*-storage.ts` module or a `lib/<domain>/*-client.ts` worker client (`lib/notes/notes-navigation.ts`, `lib/preferences/preferences-cache.ts` and `lib/lock/workspace-lock.ts`'s hint are the `localStorage` seams).
 *   **IndexedDB schema changes** must bump `NOTES_DB_VERSION` (or the relevant version constant) and add a migration in the `upgrade` callback. Never edit a shipped store shape in place. `[REQUIRED]`
 *   **Data read from storage is untrusted.** Validate with a Zod schema before use; do not trust a cast. `[REQUIRED]` Define the schema once in `lib/` and infer the type from it (`lib/hierarchy/entity-model.ts` → `Wing`, `Flight`, `Branch`, `Nest`; `lib/twigs/twig-model.ts` → `Twig`).
-*   **Workers** are constructed via `new Worker(new URL("../workers/x.ts", import.meta.url), { type: "module" })` inside a `lib/*-client.ts` file, so Vite bundles them. Move CPU-heavy work (image optimization, compression, PDF processing) off the main thread. The request/response contract lives once in `lib/media/media-worker-protocol.ts` (types only) and is imported by both the client and the worker; never redeclare it.
+*   **Workers** are constructed via `new Worker(new URL("../workers/x.ts", import.meta.url), { type: "module" })` inside a `lib/<domain>/*-client.ts` file, so Vite bundles them (the URL is relative to that file). Move CPU-heavy work (image optimization, compression, PDF processing) off the main thread. The request/response contract lives once in `lib/media/media-worker-protocol.ts` (types only) and is imported by both the client and the worker; never redeclare it.
 *   **Network access goes through `src/lib/api/`.** `[REQUIRED]` `client.ts` is the only place that calls `fetch`; every response is parsed with the schema `shared/` declares, because a server is trusted no more than a file is. Components consume it through a hook. TanStack Query is **not** installed; adding it needs approval.
 *   **An account never gates reading.** `[REQUIRED]` The keys are on disk, sealed: `unlockAccount` opens the workspace from the passphrase with no network at all, and a failed session is not a failed sign-in. Anything that makes the notes unreadable when the server is unreachable is a bug.
 *   **A session token lives in memory and nowhere else.** `[REQUIRED]` `lib/api/session-store.ts` holds it; writing one to IndexedDB would leave a working credential on disk beside the ciphertext it is meant to be separate from.
@@ -156,7 +160,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
     and dropping its own name along with them would lose the one thing that *is* readable.
     Say `SHARED_SEGMENT_LABEL` where a name cannot be read; never invent one, and never
     show a blank where the reason is knowable.
-*   **The lock covers content and names, and deliberately not dates.** `lib/crypto/sealed-text.ts` is the seam for the one display field a row is listed by (`feather`, `name`, `title`); `lib/crypto/cipher.ts` is the seam for payloads. A twig's `dueDate`, `dueTime`, `status` and every timestamp stay in the clear on purpose, so a future server holding nothing but ciphertext can still drive a reminder. `[REQUIRED]` Storage modules seal on write and open on read: a row leaves `lib/*-storage.ts` in plaintext and with no `encryption` marker, and a row that cannot be opened is an error, never its ciphertext.
+*   **The lock covers content and names, and deliberately not dates.** `lib/crypto/sealed-text.ts` is the seam for the one display field a row is listed by (`feather`, `name`, `title`); `lib/crypto/cipher.ts` is the seam for payloads. A twig's `dueDate`, `dueTime`, `status` and every timestamp stay in the clear on purpose, so a future server holding nothing but ciphertext can still drive a reminder. `[REQUIRED]` Storage modules seal on write and open on read: a row leaves `lib/<domain>/*-storage.ts` in plaintext and with no `encryption` marker, and a row that cannot be opened is an error, never its ciphertext.
 *   **Vite assets:** import static assets (images, SVGs) through Vite's module system; do not reference `public/` paths directly from components. The exception is what the browser fetches by URL rather than the bundler: `manifest.webmanifest`, `sw.js` and the PWA icons live in `public/` and are referenced from `index.html`.
 *   **The service worker (`public/sw.js`) is hand-written and takes no build step.** `[REQUIRED]` It needs no precache manifest because everything under `/assets/` is content-hashed (cached forever, served cache-first) while the HTML document is not (network-first, so a deploy is picked up). Do not add `vite-plugin-pwa` to replace it without a reason; it would be a new dependency for something that already works. Registration goes through `lib/service-worker.ts`, production only — in dev a cache would serve yesterday's modules back after an edit.
 *   **Bundle weight:** every route except the landing page is loaded on demand through `lazyPage()` in `App.tsx`, which kept the entry chunk at ~230 kB instead of ~2.1 MB. New pages must be added the same way; do not import a page eagerly into `App.tsx`. `[REQUIRED]`
@@ -174,7 +178,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | Build | `npm run build` | `tsc -b && vite build` |
 | Build the server | `npm run build:server` | Bundles `server/src/main.ts`; Node cannot resolve `./app` or `@shared/…` on its own. |
 | Run the server | `npm run start:server` | Needs `DATABASE_URL` and `SERVER_SECRET`; see `server/CLAUDE.md` §5. |
-| Server + Postgres in Docker | `docker compose up --build` | Needs `POSTGRES_PASSWORD` and `SERVER_SECRET` in a git-ignored `.env`; see `BACKEND.md` ("Running it"). |
+| Server + Postgres in Docker | `docker compose up --build` | Needs `POSTGRES_PASSWORD` and `SERVER_SECRET` in a git-ignored `.env`; see `docs/backend.md` ("Running it"). |
 | Test | `npm run test` | Vitest; see §4. |
 
 *   **Before reporting completion run:** `npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build`. All pass on a clean tree today; keep them clean.
@@ -183,7 +187,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 
 ## 7. Domain Model
 
-The data hierarchy is defined in `Heirarchy.md` (sic). That file is the source of truth; if code and doc diverge, update the doc in the same change.
+The data hierarchy is defined in `docs/hierarchy.md`. That file is the source of truth; if code and doc diverge, update the doc in the same change.
 
 | Term | Meaning | Notes |
 | --- | --- | --- |
@@ -244,7 +248,7 @@ A change is done only when:
 3.  No leftover `console.*`, commented-out code, or unowned TODOs.
 4.  Any new storage shape has a version bump and migration; any new external input has a Zod schema.
 5.  New or changed behaviour has tests (§4). If you changed the notes canvas, PDF import, image drop, fullscreen or a page flow, `npm run test:e2e` passes too. UI changes were also exercised in the running app, or you state that they were not.
-6.  Docs stay true: if you changed the domain model, commands, or structure, this file or `Heirarchy.md` is updated in the same change.
+6.  Docs stay true: if you changed the domain model, commands, or structure, this file or `docs/hierarchy.md` is updated in the same change.
 
 ## 12. Working Agreement for AI Agents
 
@@ -256,7 +260,7 @@ A change is done only when:
 
 ## 13. Known Gaps & Backlog (audited 2026-09-21)
 
-Pre-existing; not blockers for unrelated work (§0). `BACKEND.md` ("What is still missing")
+Pre-existing; not blockers for unrelated work (§0). `docs/backend.md` ("What is still missing")
 has the server-side list and the reasoning; this is the short form for someone editing the code. Everything buildable
 without a server has shipped, so what is left here is inherent or waiting on the backend.
 

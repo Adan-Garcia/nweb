@@ -39,22 +39,30 @@ src/
   pages/               One file per route, composition only (lazy-loaded from App.tsx)
   components/
     ui/                shadcn/ui primitives (generated, do not hand-edit)
-    calendar/          Calendar feature: components, hooks, pure date logic
-    dashboard/         Dashboard cards and metrics
-    marketing/         Public pages: header, cards, page copy
-    notes/             Notes feature: editors, hooks, IndexedDB-facing helpers
-    onboarding/        Onboarding steps
+    layout/            Page header, container, skeleton, empty state, brand icon
+    shell/             The workspace shell: sidebar, phone tab bar, notifications, toasts
+    theme/             Theme menu and the appearance option labels
+    command-palette/   ⌘K palette
+    auth/  lock/       Sign-in and sign-up screens; the lock and rekey screens
+    calendar/ board/ dashboard/ onboarding/ marketing/
+    notes/             Notes workspace hooks, with spatial/, linear/, location/ and tree/
+    settings/          One folder per settings card (appearance, account, backup, …)
   hooks/               Hooks shared by more than one feature
-  lib/                 Storage modules, worker client, pure utilities (no React)
+  stores/              Zustand stores for state shared across unrelated trees
+  lib/                 No React. Grouped by domain: crypto, db, hierarchy, twigs, notes,
+                       media, lock, backup, preferences, account, api, keys, push, sync
   workers/             Web Worker entry points
   test/                Shared test setup (jsdom, fake-indexeddb, MSW)
+server/                The optional sync server (see docs/backend.md)
+shared/                Wire contracts both sides import
+docs/                  Backend design, the data hierarchy, the feature checklist
 ```
 
 Browser-level tests live in `e2e/` at the repo root (Playwright: the real canvas, PDF import, drag-and-drop, fullscreen).
 
 ## Domain model
 
-Notes are organised as **Wing** (workspace) > **Flight** (term) > **Branch** (course) > **Nest** (tag/unit) > **Feather** (note), with **Twigs** (tasks) and **Pebbles** (files). See [`Heirarchy.md`](./Heirarchy.md).
+Notes are organised as **Wing** (workspace) > **Flight** (term) > **Branch** (course) > **Nest** (tag/unit) > **Feather** (note), with **Twigs** (tasks) and **Pebbles** (files). See [`docs/hierarchy.md`](./docs/hierarchy.md).
 
 ## Licence
 

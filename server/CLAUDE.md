@@ -8,7 +8,7 @@ definition of done, and every §1 Absolute Directive.
 ## 1. What this server is
 
 A row store with a scheduler, and nothing more. It holds ciphertext it cannot open and the
-few plaintext columns it needs to do its job. `BACKEND.md` is the design; this is how to
+few plaintext columns it needs to do its job. `docs/backend.md` is the design; this is how to
 write it.
 
 *   **It never sees a passphrase, a content key, or a note.** `[REQUIRED]` If a change
@@ -99,5 +99,5 @@ the three.
     outlasts its period must not have a second one started behind it, or the same reminder
     goes out twice.
 
-Phases 1 to 4 of `BACKEND.md` — accounts, sync, reminders and sharing — are written and
+Phases 1 to 4 of `docs/backend.md` — accounts, sync, reminders and sharing — are written and
 tested; what is left is listed at the end of that file.

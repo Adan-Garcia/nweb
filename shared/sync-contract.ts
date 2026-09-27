@@ -124,7 +124,7 @@ export const mediaListSchema = z.object({
  *
  * The subscription is the browser's own: an endpoint at a push service and the two keys
  * that service needs to encrypt to it. The server keeps it and nothing else — it cannot
- * say what is due, only that something is (see `BACKEND.md`, "what it costs").
+ * say what is due, only that something is (see `docs/backend.md`, "what it costs").
  */
 export const pushSubscriptionSchema = z.object({
   endpoint: z.url(),
