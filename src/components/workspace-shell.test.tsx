@@ -3,6 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { usePreferencesStore } from "@/stores/use-preferences-store";
+import { chooseTheme } from "@/test/theme";
+
 import { WorkspaceShell } from "./workspace-shell";
 
 beforeEach(() => {
@@ -11,16 +14,20 @@ beforeEach(() => {
     .mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} });
 });
 
-function setup(path = "/dashboard", onToggleTheme = vi.fn(), isDark = false) {
+function setup(path = "/dashboard") {
   render(
     <MemoryRouter initialEntries={[path]}>
-      <WorkspaceShell isDark={isDark} onToggleTheme={onToggleTheme}>
+      <WorkspaceShell>
         <p>Page content</p>
       </WorkspaceShell>
     </MemoryRouter>,
   );
-  return { onToggleTheme };
 }
+
+const sidebarNav = () =>
+  screen
+    .getByText("Workspace", { selector: "[data-sidebar='group-label']" })
+    .closest("[data-sidebar='group']") as HTMLElement;
 
 describe("WorkspaceShell", () => {
   it("renders the page inside the shell", () => {
@@ -28,31 +35,60 @@ describe("WorkspaceShell", () => {
     expect(screen.getByText("Page content")).toBeInTheDocument();
   });
 
-  it("links to the dashboard, calendar and notes", () => {
+  it("links to every workspace page, in the sidebar and in the phone tab bar", () => {
     setup();
-    const nav = screen.getByText("Navigate").closest("[data-sidebar='group']") as HTMLElement;
+    const tabs = screen.getByRole("navigation", { name: "Workspace" });
 
-    expect(within(nav).getByRole("link", { name: "Dashboard" })).toHaveAttribute(
+    for (const [name, href] of [
+      ["Dashboard", "/dashboard"],
+      ["Calendar", "/calendar"],
+      ["Board", "/board"],
+      ["Notes", "/notes"],
+    ]) {
+      expect(within(sidebarNav()).getByRole("link", { name })).toHaveAttribute("href", href);
+      expect(within(tabs).getByRole("link", { name })).toHaveAttribute("href", href);
+    }
+    expect(screen.getAllByRole("link", { name: "Settings" })[0]).toHaveAttribute(
       "href",
-      "/dashboard",
+      "/settings",
     );
-    expect(within(nav).getByRole("link", { name: "Calendar" })).toHaveAttribute(
-      "href",
-      "/calendar",
-    );
-    expect(within(nav).getByRole("link", { name: "Notes" })).toHaveAttribute("href", "/notes");
+  });
+
+  it("orders the nav the way the preferences say", () => {
+    usePreferencesStore
+      .getState()
+      .update({ navOrder: ["notes", "board", "calendar", "dashboard"] });
+    setup();
+
+    expect(
+      within(sidebarNav())
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["Notes", "Board", "Calendar", "Dashboard"]);
   });
 
   it.each([
     ["/dashboard", "Dashboard"],
     ["/calendar", "Calendar"],
     ["/notes", "Notes"],
-  ])("marks only the current route's link as active at %s", (path, label) => {
+    ["/settings", "Settings"],
+  ])("marks only the current route's sidebar link as active at %s", (path, label) => {
     setup(path);
     const active = screen.getAllByRole("link").filter((link) => link.hasAttribute("data-active"));
 
     expect(active).toHaveLength(1);
     expect(active[0]).toHaveTextContent(label);
+  });
+
+  it("marks the current page in the tab bar", () => {
+    setup("/board");
+    const tabs = screen.getByRole("navigation", { name: "Workspace" });
+
+    expect(within(tabs).getByRole("link", { name: "Board" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(within(tabs).getByRole("link", { name: "Notes" })).not.toHaveAttribute("aria-current");
   });
 
   it("marks nothing active on an unknown route", () => {
@@ -62,12 +98,31 @@ describe("WorkspaceShell", () => {
     ).toHaveLength(0);
   });
 
-  it("asks to toggle the theme, and labels the button for the mode it would switch to", async () => {
+  it("collapses the sidebar to icons and remembers it", async () => {
     const user = userEvent.setup();
-    const { onToggleTheme } = setup("/dashboard", vi.fn(), true);
+    setup();
 
-    await user.click(screen.getByRole("button", { name: "Switch to light mode" }));
+    await user.click(screen.getAllByRole("button", { name: "Toggle Sidebar" })[0]);
 
-    expect(onToggleTheme).toHaveBeenCalledOnce();
+    expect(usePreferencesStore.getState().preferences.sidebar).toBe("icons");
+    expect(document.querySelector("[data-state='collapsed']")).not.toBeNull();
+  });
+
+  it("switches the theme from the sidebar's theme menu", async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await chooseTheme(user, "Dark");
+
+    expect(usePreferencesStore.getState().preferences.theme).toBe("dark");
+  });
+
+  it("opens the command palette from Search", async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await user.click(screen.getByRole("button", { name: /Search/ }));
+
+    expect(await screen.findByPlaceholderText("Search or type a command…")).toBeInTheDocument();
   });
 });

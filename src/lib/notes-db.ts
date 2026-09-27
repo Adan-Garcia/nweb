@@ -5,6 +5,7 @@ import type { Branch, Flight, Nest, Wing } from "./entity-model";
 import { migrateStringPathsToEntities } from "./notes-db-upgrade";
 import type { NotesDirectoryEntry, NotesDocumentRecord, NotesMediaRecord } from "./notes-model";
 import type { Pebble } from "./pebble-model";
+import type { Preferences } from "./preferences-model";
 import type { RekeyJournal } from "./rekey-journal";
 import type { SharePathRecord } from "./share-path-model";
 import type { SyncBaseRecord } from "./sync/reconcile";
@@ -60,8 +61,13 @@ const NOTES_DB_NAME = "cuervo-notes";
  * `share-paths` holds the names above something shared — the course, term and wing a note
  * sits in — sealed under the shared thing's own key, so a recipient can show where it lives
  * without being handed a key that would open its siblings.
+ *
+ * 12 added `preferences`: one row holding how someone has arranged the app — theme, accent,
+ * density, the order of the sidebar. It syncs, so it lives here and not only in the
+ * `localStorage` cache the first paint reads. Rewrites no rows: with no row, the cache (or
+ * the old `theme` key it falls back to) is written here the first time the app loads.
  */
-export const NOTES_DB_VERSION = 11;
+export const NOTES_DB_VERSION = 12;
 
 export interface NotesDbSchema extends DBSchema {
   "notes-documents": {
@@ -120,6 +126,10 @@ export interface NotesDbSchema extends DBSchema {
     key: string;
     value: SharePathRecord;
   };
+  preferences: {
+    key: string;
+    value: Preferences;
+  };
 }
 
 const STORE_NAMES = [
@@ -137,6 +147,7 @@ const STORE_NAMES = [
   "account",
   "sync-bases",
   "share-paths",
+  "preferences",
 ] as const;
 
 let dbPromise: Promise<IDBPDatabase<NotesDbSchema>> | null = null;

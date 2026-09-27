@@ -20,8 +20,11 @@ import { mergeFields, mergeHtml, type Side } from "./three-way";
  */
 export type StoredRecord = Record<string, unknown>;
 
-/** The one sealed field each store is listed by. A document has two bodies instead. */
-export const DISPLAY_FIELDS: Record<Exclude<SyncStore, "notes-documents">, string> = {
+/**
+ * The one sealed field each store is listed by. A document has two bodies instead, and the
+ * preferences have none: nothing in them is sealed at rest.
+ */
+export const DISPLAY_FIELDS: Record<Exclude<SyncStore, "notes-documents">, string | null> = {
   "notes-directory": "feather",
   wings: "name",
   flights: "name",
@@ -30,6 +33,7 @@ export const DISPLAY_FIELDS: Record<Exclude<SyncStore, "notes-documents">, strin
   twigs: "title",
   pebbles: "name",
   "share-paths": "path",
+  preferences: null,
 };
 
 /** Never merged as content: they say how and when a row was written, not what is in it. */
@@ -134,13 +138,14 @@ async function mergeDocument(
   };
 }
 
-async function openFields(row: StoredRecord, field: string): Promise<StoredRecord> {
-  const value = row[field];
-  const opened = typeof value === "string" ? await openText(value, markerOf(row)) : value;
+async function openFields(row: StoredRecord, field: string | null): Promise<StoredRecord> {
+  const value = field === null ? undefined : row[field];
+  const opened =
+    field !== null && typeof value === "string"
+      ? { ...row, [field]: await openText(value, markerOf(row)) }
+      : row;
 
-  return Object.fromEntries(
-    Object.entries({ ...row, [field]: opened }).filter(([key]) => !BOOKKEEPING.has(key)),
-  );
+  return Object.fromEntries(Object.entries(opened).filter(([key]) => !BOOKKEEPING.has(key)));
 }
 
 async function mergeRecord(
@@ -156,11 +161,13 @@ async function mergeRecord(
     await openFields(rows.remote, field),
     prefer,
   );
-  const value = merged[field];
+  const value = field === null ? undefined : merged[field];
 
   return {
     ...merged,
-    [field]: typeof value === "string" ? await sealText(value, cipher) : value,
+    ...(field !== null && typeof value === "string"
+      ? { [field]: await sealText(value, cipher) }
+      : {}),
     encryption: cipher.name === "none" ? undefined : cipher.name,
     keyId: cipher.keyId || undefined,
   };

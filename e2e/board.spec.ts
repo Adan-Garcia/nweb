@@ -112,10 +112,9 @@ test.describe("the calendar", () => {
 
     await page.goto("/calendar");
 
-    const add = page.getByRole("button", { name: "Add" });
+    const add = page.getByRole("button", { name: "Add Event" });
     await expect(add).toBeEnabled();
     await add.click();
-    await page.getByRole("menuitem", { name: "Add Event" }).click();
     await page.getByLabel("Title").fill("Quiz");
     await page.getByRole("button", { name: "Create event" }).click();
 

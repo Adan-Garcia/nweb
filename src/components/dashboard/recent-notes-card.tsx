@@ -1,4 +1,5 @@
 import { CircleCheck } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { formatLastUpdated, toLocationLabel } from "@/components/dashboard/dashboard-metrics";
 import { Button } from "@/components/ui/button";
@@ -19,12 +20,15 @@ export function RecentNotesCard({ snapshot, notes, isLoading }: RecentNotesCardP
         <CardTitle>Recent Notes</CardTitle>
         <CardDescription>Your latest note activity from saved workspace documents.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="grid gap-1">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading saved notes...</p>
         ) : notes.length ? (
           notes.map((entry) => (
-            <div key={entry.id} className="rounded-lg border border-border/70 bg-muted/20 p-3">
+            <div
+              key={entry.id}
+              className="rounded-md px-2 py-2 transition-colors hover:bg-muted/60"
+            >
               <p className="line-clamp-1 text-sm font-semibold">
                 {toLocationLabel(snapshot, entry)}
               </p>
@@ -35,16 +39,16 @@ export function RecentNotesCard({ snapshot, notes, isLoading }: RecentNotesCardP
             </div>
           ))
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="px-2 py-4 text-sm text-muted-foreground">
             No saved notes yet. Create one in Notes to start building your library.
           </p>
         )}
 
         <Button
           variant="outline"
-          className="w-full"
+          className="mt-2 w-full"
           nativeButton={false}
-          render={<a href="/notes" />}
+          render={<Link to="/notes" />}
         >
           <CircleCheck className="size-4" />
           Open notes workspace

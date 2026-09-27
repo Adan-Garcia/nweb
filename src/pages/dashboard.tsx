@@ -1,67 +1,37 @@
-import { AlertTriangle, BookOpenText, CalendarClock, ListChecks } from "lucide-react";
+import { useState } from "react";
 
-import { DashboardStatCard } from "@/components/dashboard/dashboard-stat-card";
-import { NextPriorityCard } from "@/components/dashboard/next-priority-card";
-import { RecentNotesCard } from "@/components/dashboard/recent-notes-card";
-import { UpcomingDeadlinesCard } from "@/components/dashboard/upcoming-deadlines-card";
+import { dashboardGreeting } from "@/components/dashboard/dashboard-greeting";
+import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { useDashboardData } from "@/components/dashboard/use-dashboard-data";
-import { WorkspaceShell } from "@/components/workspace-shell";
-import { useThemeMode } from "@/hooks/use-theme-mode";
+import { PageContainer } from "@/components/page-container";
+import { PageHeader } from "@/components/page-header";
+import { useAppearance } from "@/hooks/use-appearance";
+import { cn } from "@/lib/utils";
+
+/** The two list cards sit side by side on a wide screen; the rest take the full row. */
+const HALF_WIDTH = new Set(["upcoming", "recent-notes"]);
 
 export function DashboardPage() {
-  const { isDark, toggleTheme } = useThemeMode();
   const dashboard = useDashboardData();
+  const { preferences } = useAppearance();
+  const [greeting] = useState(() => dashboardGreeting(new Date()));
+  const cards = preferences.dashboardCards.filter((card) => card.visible);
 
   return (
-    <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-4 flex flex-wrap items-center justify-center gap-4">
-          <div>
-            <h1 className="text-4xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">
-              Your overview of upcoming events and recent notes.
-            </p>
+    <PageContainer>
+      <PageHeader
+        eyebrow={greeting}
+        title="Dashboard"
+        description="Your overview of upcoming events and recent notes."
+      />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {cards.map((card) => (
+          <div key={card.id} className={cn("min-w-0", !HALF_WIDTH.has(card.id) && "lg:col-span-2")}>
+            <DashboardSection id={card.id} dashboard={dashboard} />
           </div>
-        </div>
-
-        <NextPriorityCard event={dashboard.nextPriority} />
-
-        <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <DashboardStatCard
-            title="Due Today"
-            icon={CalendarClock}
-            value={dashboard.dueToday.length}
-            caption="Events on today's date"
-          />
-          <DashboardStatCard
-            title="Upcoming (7 days)"
-            icon={ListChecks}
-            value={dashboard.upcomingEvents.length}
-            caption="Incomplete items scheduled soon"
-          />
-          <DashboardStatCard
-            title="Overdue"
-            icon={AlertTriangle}
-            value={dashboard.overdueCount}
-            caption="Incomplete events before today"
-          />
-          <DashboardStatCard
-            title="Notes Updated"
-            icon={BookOpenText}
-            value={dashboard.notesUpdatedThisWeekCount}
-            caption="Edited in the last 7 days"
-          />
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <UpcomingDeadlinesCard snapshot={dashboard.snapshot} events={dashboard.upcomingPreview} />
-          <RecentNotesCard
-            snapshot={dashboard.snapshot}
-            notes={dashboard.recentNotes}
-            isLoading={dashboard.isNotesLoading}
-          />
-        </div>
+        ))}
       </div>
-    </WorkspaceShell>
+    </PageContainer>
   );
 }

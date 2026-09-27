@@ -1,5 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { notifySuccess } from "@/lib/toast";
+import { usePreferencesStore } from "@/stores/use-preferences-store";
 
 import App from "./App";
 
@@ -44,5 +47,29 @@ describe("App routing", () => {
 
     expect(window.location.pathname).toBe("/");
     expect(screen.getByRole("heading", { level: 1, name: "Cuervo Planner" })).toBeInTheDocument();
+  });
+
+  it("renders a workspace page inside the shell", async () => {
+    renderAt("/board");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Board" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Workspace" })).toBeInTheDocument();
+  });
+
+  it("dresses the document in the saved look from the first render", () => {
+    usePreferencesStore.getState().update({ theme: "oled", accent: "teal" });
+    renderAt("/");
+
+    expect(document.documentElement.dataset).toMatchObject({ theme: "oled", accent: "teal" });
+    expect(document.documentElement).toHaveClass("dark");
+  });
+
+  it("shows toasts sent from anywhere", async () => {
+    renderAt("/");
+
+    act(() => notifySuccess("Backup saved", "cuervo-backup.json"));
+
+    expect(await screen.findByText("Backup saved")).toBeInTheDocument();
+    expect(screen.getByText("cuervo-backup.json")).toBeInTheDocument();
   });
 });

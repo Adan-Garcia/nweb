@@ -8,6 +8,7 @@ import { heldKeyring } from "@/lib/keys/object-keys";
 import { rotateSharedKey } from "@/lib/keys/rotate-shared";
 import { listShareable, type Shareable } from "@/lib/keys/shareable";
 import { writeSharePath } from "@/lib/share-path-storage";
+import { notifySuccess } from "@/lib/toast";
 
 /**
  * Sharing, as a screen sees it.
@@ -100,6 +101,7 @@ export function useSharing(sessionFor: () => ApiSession | null, publicKey: strin
         await writeSharePath(keyId);
 
         await loadShares(keyId);
+        notifySuccess(`Shared with ${email}`);
         return true;
       } finally {
         setIsWorking(false);
@@ -138,6 +140,7 @@ export function useSharing(sessionFor: () => ApiSession | null, publicKey: strin
 
         await rotateSharedKey({ session, keyId, publicKey, recipients: remaining });
         await loadShares(keyId);
+        notifySuccess(`Stopped sharing with ${email}`);
 
         return true;
       } finally {

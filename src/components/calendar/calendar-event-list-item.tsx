@@ -9,6 +9,7 @@ import {
 import { StatusSlider } from "@/components/calendar/status-slider";
 import { Button } from "@/components/ui/button";
 import { TWIG_KIND_LABELS, type TwigStatus } from "@/lib/twig-model";
+import { cn } from "@/lib/utils";
 import type { WorkspaceSnapshot } from "@/lib/workspace-tree";
 
 type CalendarEventListItemProps = {
@@ -32,69 +33,67 @@ export function CalendarEventListItem({
     id: event.id,
   });
 
+  const isComplete = event.status === "complete";
+
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg border border-border p-3 transition-opacity duration-300 ${
-        event.status === "complete" ? "opacity-60" : "opacity-90 hover:opacity-100"
-      } ${isDragging ? "opacity-40" : ""}`}
+      className={cn(
+        "group/event grid gap-2 rounded-lg border bg-card p-3 transition-colors hover:border-foreground/15",
+        isComplete && "opacity-60",
+        isDragging && "opacity-40",
+      )}
     >
-      <div className="mb-2 flex items-start justify-between gap-2 flex-col">
-        <div className="flex flex-row items-center min-w-full justify-between">
-          <StatusSlider
-            status={event.status}
-            onChangeStatus={(nextStatus) => onSetStatus(event.id, nextStatus)}
-            eventTitle={event.title}
-          />
+      <div className="flex items-center justify-between gap-2">
+        <StatusSlider
+          status={event.status}
+          onChangeStatus={(nextStatus) => onSetStatus(event.id, nextStatus)}
+          eventTitle={event.title}
+        />
 
-          <div className="flex items-center">
-            <button
-              type="button"
-              ref={setActivatorNodeRef}
-              aria-label={`Move ${event.title} to another day`}
-              className="cursor-grab rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-              {...attributes}
-              {...listeners}
-            >
-              <GripVertical className="size-4" />
-            </button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => onEdit(event)}
-              aria-label={`Edit ${event.title}`}
-            >
-              <Pencil className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => onDelete(event)}
-              aria-label={`Delete ${event.title}`}
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
-        </div>
-        <div className="flex flex-row gap-2 items-center justify-center">
-          <span className={`inline-block size-2.5 rounded-full ${branch.colorClass}`} />
-          <p
-            className={`truncate font-medium ${event.status === "complete" ? "line-through text-muted-foreground" : ""}`}
+        <div className="flex items-center text-muted-foreground">
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            aria-label={`Move ${event.title} to another day`}
+            className="cursor-grab rounded-md p-1.5 hover:bg-muted hover:text-foreground"
+            {...attributes}
+            {...listeners}
           >
-            {event.title}
-          </p>
+            <GripVertical className="size-4" />
+          </button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onEdit(event)}
+            aria-label={`Edit ${event.title}`}
+          >
+            <Pencil className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onDelete(event)}
+            aria-label={`Delete ${event.title}`}
+          >
+            <Trash2 className="size-4" />
+          </Button>
         </div>
       </div>
 
-      <div className="space-y-1 text-sm text-muted-foreground flex flex-row justify-between">
-        <p className="flex items-center gap-2">
+      <p className={cn("truncate font-medium", isComplete && "text-muted-foreground line-through")}>
+        {event.title}
+      </p>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
           <Clock3 className="size-3.5" />
           {formatShortDate(event.dueDate)} at {event.dueTime}
-        </p>
-
-        <p className="flex items-center gap-2">
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className={cn("inline-block size-2 rounded-full", branch.colorClass)} />
           {branch.name} &middot; {TWIG_KIND_LABELS[event.kind]}
-        </p>
+        </span>
       </div>
     </div>
   );

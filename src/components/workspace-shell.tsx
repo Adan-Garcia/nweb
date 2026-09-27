@@ -1,20 +1,23 @@
 import * as React from "react";
 
+import { CommandPalette } from "@/components/command-palette/command-palette";
 import { LockScreen } from "@/components/lock-screen";
+import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { RekeyResumeScreen } from "@/components/rekey-resume-screen";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { WorkspaceSidebar } from "@/components/workspace-sidebar";
+import { useAppearance } from "@/hooks/use-appearance";
 import { useBackgroundSync } from "@/hooks/use-background-sync";
 import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
 import { collectTombstonesOnce } from "@/lib/tombstones";
 
 type WorkspaceShellProps = {
   children: React.ReactNode;
-  isDark: boolean;
-  onToggleTheme: () => void;
 };
 
-export function WorkspaceShell({ children, isDark, onToggleTheme }: WorkspaceShellProps) {
+export function WorkspaceShell({ children }: WorkspaceShellProps) {
+  const { preferences, update } = useAppearance();
   const lock = useWorkspaceLock();
 
   /**
@@ -60,21 +63,18 @@ export function WorkspaceShell({ children, isDark, onToggleTheme }: WorkspaceShe
   }
 
   return (
-    <SidebarProvider>
-      <WorkspaceSidebar isDark={isDark} onToggleTheme={onToggleTheme} />
-      <SidebarInset>
-        <div className="min-h-svh bg-background text-foreground">
-          <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/60 bg-background/85 px-4 py-3 backdrop-blur md:hidden sm:px-6 lg:px-8">
-            <SidebarTrigger />
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                Workspace
-              </p>
-            </div>
-          </div>
+    <TooltipProvider>
+      <SidebarProvider
+        open={preferences.sidebar === "expanded"}
+        onOpenChange={(isOpen) => update({ sidebar: isOpen ? "expanded" : "icons" })}
+      >
+        <WorkspaceSidebar />
+        <SidebarInset className="min-w-0 bg-background pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
           {children}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+        </SidebarInset>
+        <MobileTabBar />
+        <CommandPalette canLock={lock.state === "unlocked"} onLock={() => void lock.lock()} />
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }

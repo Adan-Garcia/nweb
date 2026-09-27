@@ -72,7 +72,7 @@ describe("the workspace behind the lock", () => {
   it("renders the workspace when no passphrase has been set", async () => {
     render(
       <MemoryRouter>
-        <WorkspaceShell isDark={false} onToggleTheme={vi.fn()}>
+        <WorkspaceShell>
           <p>Workspace contents</p>
         </WorkspaceShell>
       </MemoryRouter>,
@@ -88,7 +88,7 @@ describe("the workspace behind the lock", () => {
 
     render(
       <MemoryRouter>
-        <WorkspaceShell isDark={false} onToggleTheme={vi.fn()}>
+        <WorkspaceShell>
           <p>Workspace contents</p>
         </WorkspaceShell>
       </MemoryRouter>,
@@ -106,7 +106,7 @@ describe("the workspace behind the lock", () => {
 
     render(
       <MemoryRouter>
-        <WorkspaceShell isDark={false} onToggleTheme={vi.fn()}>
+        <WorkspaceShell>
           <p>Workspace contents</p>
         </WorkspaceShell>
       </MemoryRouter>,
@@ -125,7 +125,7 @@ describe("the workspace behind the lock", () => {
 
     render(
       <MemoryRouter>
-        <WorkspaceShell isDark={false} onToggleTheme={vi.fn()}>
+        <WorkspaceShell>
           <p>Workspace contents</p>
         </WorkspaceShell>
       </MemoryRouter>,

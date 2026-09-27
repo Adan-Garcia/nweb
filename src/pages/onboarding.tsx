@@ -1,33 +1,28 @@
 import { useState } from "react";
 
-import { BrandIcon } from "@/components/brand-icon";
-import { ThemeToggleButton } from "@/components/marketing/theme-toggle-button";
+import { AuthBrand } from "@/components/auth/auth-brand";
 import { OnboardingStepCard } from "@/components/onboarding/onboarding-step-card";
 import { OnboardingStepList } from "@/components/onboarding/onboarding-step-list";
 import { ONBOARDING_STEPS } from "@/components/onboarding/onboarding-steps";
-import { useThemeMode } from "@/hooks/use-theme-mode";
+import { ThemeMenu } from "@/components/theme-menu";
 
 export function OnboardingPage() {
-  const { isDark, toggleTheme } = useThemeMode();
   const [currentStep, setCurrentStep] = useState(0);
   const lastStep = ONBOARDING_STEPS.length - 1;
 
   return (
-    <main className="min-h-screen w-full bg-background text-foreground">
-      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 flex items-center justify-between">
-          <a href="/" className="inline-flex items-center gap-2 font-medium">
-            <BrandIcon className="size-8" />
-            <span>Cuervo Planner</span>
-          </a>
-          <ThemeToggleButton isDark={isDark} onToggle={toggleTheme} variant="outline" size="sm" />
+    <main className="min-h-svh w-full bg-background text-foreground">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-10 flex items-center justify-between">
+          <AuthBrand />
+          <ThemeMenu />
         </div>
 
         <div className="mb-12 grid gap-8 md:grid-cols-2">
           <div className="flex flex-col justify-between">
             <div>
-              <h1 className="mb-2 text-3xl font-bold">Getting Started</h1>
-              <p className="mb-8 text-muted-foreground">
+              <h1 className="mb-1 text-title">Getting Started</h1>
+              <p className="mb-6 text-body text-muted-foreground">
                 Step {currentStep + 1} of {ONBOARDING_STEPS.length}
               </p>
 
@@ -49,7 +44,7 @@ export function OnboardingPage() {
           />
         </div>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Guides are still being written. The{" "}
           <a href="/documentation" className="text-primary hover:underline">
             documentation page

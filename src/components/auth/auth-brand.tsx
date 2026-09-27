@@ -5,13 +5,13 @@ export function AuthBrand() {
   return (
     <a
       href="/auth"
-      className="inline-flex w-fit items-center gap-3 text-inherit no-underline"
+      className="inline-flex w-fit items-center gap-2.5 text-heading"
       aria-label="Cuervo Planner home"
     >
-      <span className="inline-flex size-8 items-center justify-center rounded-[0.65rem] bg-[oklch(0.6_0.18_18)] text-[oklch(0.99_0.01_18)]">
-        <BrandIcon className="size-[1.15rem]" />
+      <span className="inline-flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+        <BrandIcon className="size-4" />
       </span>
-      <span className="text-[0.96rem] font-semibold tracking-[0.04em]">Cuervo Planner</span>
+      Cuervo Planner
     </a>
   );
 }

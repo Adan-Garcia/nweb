@@ -1,44 +1,48 @@
+import { ArrowRight } from "lucide-react";
+
 import { LandingBenefits } from "@/components/marketing/landing-benefits";
-import { LandingHeader } from "@/components/marketing/landing-header";
-import { MarketingFooter } from "@/components/marketing/marketing-footer";
+import { MarketingPage } from "@/components/marketing/marketing-page";
 import { Button } from "@/components/ui/button";
-import { useThemeMode } from "@/hooks/use-theme-mode";
 
 export function IndexPage() {
-  const { isDark, toggleTheme } = useThemeMode();
-
   return (
-    <main className="min-h-screen w-full bg-background text-foreground">
-      <LandingHeader isDark={isDark} onToggleTheme={toggleTheme} />
-
-      <div className="mx-auto max-w-6xl px-4 pt-12 sm:px-6 lg:px-8">
-        <div className="mb-12">
-          <div className="mb-8">
-            <h1 className="mb-2 text-4xl font-bold">Cuervo Planner</h1>
-            <p className="text-lg text-muted-foreground">
-              A simple homework planner and note taking app built with privacy in mind. Everything
-              you write is stored locally in this browser and never leaves it. For more information,
-              see our{" "}
-              <a href="/privacy" className="text-primary hover:underline">
-                <b>privacy policy</b>
-              </a>
-            </p>
-          </div>
+    <MarketingPage>
+      <section className="mx-auto max-w-6xl px-4 pt-16 pb-12 sm:px-6 md:pt-24 lg:px-8">
+        <p className="mb-4 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-caption text-muted-foreground">
+          <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+          Free beta · Open source
+        </p>
+        <h1 className="max-w-[18ch] text-display">Cuervo Planner</h1>
+        <p className="mt-4 max-w-[60ch] text-lg text-muted-foreground">
+          A simple homework planner and note taking app built with privacy in mind. Everything you
+          write is stored locally in this browser and never leaves it. For more information, see our{" "}
+          <a
+            href="/privacy"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            privacy policy
+          </a>
+          .
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Button size="lg" onClick={() => (window.location.href = "/auth/")}>
+            Get Started Now
+            <ArrowRight className="size-4" />
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            nativeButton={false}
+            render={<a href="/documentation" />}
+          >
+            Read the docs
+          </Button>
         </div>
+      </section>
 
-        <Button
-          variant="default"
-          type="button"
-          className="mt-8 mb-8 min-h-12 max-h-32 min-w-48 max-w-64 shadow-lg ring-4 ring-primary/30 hover:ring-primary/50 focus:ring-primary/50 active:ring-primary/50"
-          onClick={() => (window.location.href = "/auth/")}
-        >
-          Get Started Now
-        </Button>
-
+      <section className="mx-auto max-w-6xl px-4 pb-8 sm:px-6 lg:px-8">
         <LandingBenefits />
-      </div>
-
-      <MarketingFooter />
-    </main>
+      </section>
+    </MarketingPage>
   );
 }

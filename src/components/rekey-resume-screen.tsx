@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { KeyRound } from "lucide-react";
 
-import { BrandIcon } from "@/components/brand-icon";
+import { CenteredScreen } from "@/components/centered-screen";
 import { RekeyProgressBar } from "@/components/rekey-progress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -54,15 +54,11 @@ export function RekeyResumeScreen({
   const canSubmit = needed.every((side) => entered[side].length > 0) && !isWorking;
 
   return (
-    <main className="grid min-h-svh place-items-center bg-background px-4 text-foreground">
-      <Card className="w-full max-w-md">
+    <CenteredScreen>
+      <Card>
         <CardHeader>
-          <BrandIcon className="size-8" />
-          {/*
-            A real h1: this screen stands in for the whole page. index.css styles h1
-            outside any layer, so its size and margin need the `!` modifier (section 8).
-          */}
-          <h1 className="m-0! flex items-center gap-2 font-heading text-base! font-medium leading-snug">
+          {/* A real h1: this screen stands in for the whole page. */}
+          <h1 className="flex items-center gap-2 text-heading">
             <KeyRound className="size-4" />
             Finish encrypting this workspace
           </h1>
@@ -103,7 +99,7 @@ export function RekeyResumeScreen({
             ))}
 
             {error ? (
-              <p role="alert" className="m-0 text-sm text-destructive">
+              <p role="alert" className="text-sm text-destructive">
                 {error}
               </p>
             ) : null}
@@ -114,13 +110,13 @@ export function RekeyResumeScreen({
               {isWorking ? "Finishing..." : "Finish the change"}
             </Button>
 
-            <p className="m-0 text-xs text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               Leave this open until it is done. Closing it early is safe — it will ask again — but
               the workspace cannot be used until the move finishes.
             </p>
           </form>
         </CardContent>
       </Card>
-    </main>
+    </CenteredScreen>
   );
 }

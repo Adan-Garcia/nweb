@@ -2,6 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { cachedTheme, chooseTheme, findLoadedButton } from "@/test/theme";
+
 import { IndexPage } from "./index";
 
 beforeEach(() => {
@@ -74,30 +76,38 @@ describe("IndexPage", () => {
     expect(benefits.textContent).not.toMatch(/Device level encryption/i);
   });
 
-  it("has the same links in the desktop nav and the mobile menu, including the calendar", () => {
+  it("has the same links in the desktop nav and the mobile menu", async () => {
+    const user = userEvent.setup();
     render(<IndexPage />);
-    const nav = screen.getByRole("navigation");
+    const nav = screen.getByRole("navigation", { name: "Site" });
     const expected = [
       ["Documentation", "/documentation"],
       ["Pricing", "/pricing"],
       ["Privacy", "/privacy"],
-      ["Calendar", "/calendar"],
     ];
 
     for (const [label, href] of expected) {
       expect(within(nav).getByRole("link", { name: label })).toHaveAttribute("href", href);
-      // The mobile menu repeats each link.
-      expect(screen.getAllByRole("link", { name: label }).length).toBeGreaterThanOrEqual(2);
     }
-    expect(screen.getByText("Open menu")).toBeInTheDocument();
+
+    await user.click(await findLoadedButton("Open menu"));
+
+    for (const [label, href] of expected) {
+      expect(await screen.findByRole("menuitem", { name: label })).toHaveAttribute("href", href);
+    }
+  });
+
+  it("offers a way straight into the app", () => {
+    render(<IndexPage />);
+    expect(screen.getByRole("button", { name: "Open app" })).toHaveAttribute("href", "/dashboard");
   });
 
   it("toggles the theme from the header", async () => {
     const user = userEvent.setup();
     render(<IndexPage />);
 
-    await user.click(screen.getByRole("button", { name: "Switch to dark mode" }));
+    await chooseTheme(user, "Dark");
 
-    expect(document.documentElement).toHaveClass("dark");
+    expect(cachedTheme()).toBe("dark");
   });
 });

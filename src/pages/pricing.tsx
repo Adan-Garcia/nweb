@@ -10,12 +10,12 @@ export function PricingPage() {
   return (
     <MarketingPage activeHref="/pricing">
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto mb-10 max-w-3xl text-center">
+        <div className="mb-10 max-w-3xl">
           <MarketingEyebrow icon={Sparkles}>Simple and transparent</MarketingEyebrow>
-          <h1 className="mb-3 text-4xl font-bold sm:text-5xl">
+          <h1 className="mb-3 text-display">
             Pricing that scales from solo study to team collaboration
           </h1>
-          <p className="text-base text-muted-foreground sm:text-lg">
+          <p className="text-lg text-muted-foreground">
             The current launch includes a free beta. Dependent on user feedback and demand, we may
             introduce paid plans in the future to support the project and provide access to faster
             servers and priority support, but the core planner and all features will remain free and

@@ -15,6 +15,7 @@ import type { ApiSession } from "@/lib/api/client";
 import { getApiSession, setApiSession } from "@/lib/api/session-store";
 import { refreshKeyGraph } from "@/lib/keys/refresh-graph";
 import { resetSyncState, runSyncRound, type SyncReport } from "@/lib/sync/sync-service";
+import { notifySuccess } from "@/lib/toast";
 
 /**
  * The account, as the settings screen sees it.
@@ -208,6 +209,7 @@ export function useAccount() {
       }
 
       setLastSync(report);
+      notifySuccess("Synced", `${report.pushed} sent · ${report.applied} received`);
 
       return true;
     } finally {

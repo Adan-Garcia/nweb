@@ -68,6 +68,7 @@ export function LandingBenefits() {
   return (
     <BenefitCards
       label="Features and benefits of using Cuervo Planner"
+      className="lg:grid-cols-3 xl:grid-cols-4"
       benefits={BENEFITS.map(({ icon: Icon, title, copy, comingSoon }) => ({
         icon: <Icon className="size-4" />,
         title,

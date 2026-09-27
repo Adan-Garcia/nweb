@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { bytesToBase64 } from "@/lib/base64";
 import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "@/lib/cipher";
@@ -12,6 +12,15 @@ import { createNotesDirectoryEntry } from "@/lib/notes-directory-storage";
 import { server } from "@/test/server";
 
 import { useSharing } from "./use-sharing";
+
+/** Success is reported as a toast; what is said is what is checked. */
+const toast = vi.hoisted(() => ({
+  notifySuccess: vi.fn(),
+  notifyError: vi.fn(),
+  notifyInfo: vi.fn(),
+}));
+
+vi.mock("@/lib/toast", () => toast);
 
 const BASE = "https://cuervo.example.com";
 const session = { baseUrl: BASE, token: "a-token" };
@@ -162,6 +171,7 @@ describe("useSharing", () => {
     await act(async () => {
       expect(await result.current.share(branchKeyId, "friend@example.com", "reader")).toBe(true);
     });
+    expect(toast.notifySuccess).toHaveBeenCalledWith("Shared with friend@example.com");
 
     // The wrap really opens for them: what the server stored is bytes it cannot read, and
     // the key inside is the course's.
@@ -245,6 +255,7 @@ describe("useSharing", () => {
     await act(async () => {
       expect(await result.current.revoke(branchKeyId, "friend@example.com")).toBe(true);
     });
+    expect(toast.notifySuccess).toHaveBeenCalledWith("Stopped sharing with friend@example.com");
 
     // A new key on the same edge, and the course's rows moved onto it: dropping the grant
     // stops the server serving those bytes, and only this stops a copy they kept opening.

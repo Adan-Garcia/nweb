@@ -14,7 +14,7 @@ export function BulletListCard({ title, icon: Icon, description, items }: Bullet
   return (
     <Card className="text-left">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xl">
+        <CardTitle className="flex items-center gap-2 text-heading">
           <Icon className="size-5 text-primary" />
           {title}
         </CardTitle>
@@ -23,7 +23,7 @@ export function BulletListCard({ title, icon: Icon, description, items }: Bullet
       <CardContent>
         <ul className="space-y-3 text-sm text-muted-foreground">
           {items.map((item) => (
-            <li key={item} className="rounded-md border border-border/70 bg-card/70 px-3 py-2">
+            <li key={item} className="rounded-md bg-muted/50 px-3 py-2">
               {item}
             </li>
           ))}

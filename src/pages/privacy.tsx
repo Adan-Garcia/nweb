@@ -11,10 +11,10 @@ export function PrivacyPage() {
   return (
     <MarketingPage activeHref="/privacy">
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto mb-10 max-w-3xl text-left">
+        <div className="mb-10 max-w-3xl">
           <MarketingEyebrow icon={ShieldCheck}>Privacy Policy</MarketingEyebrow>
-          <h1 className="mb-3 text-4xl font-bold sm:text-5xl">Your study data stays yours</h1>
-          <p className="text-base text-muted-foreground sm:text-lg">
+          <h1 className="mb-3 text-display">Your study data stays yours</h1>
+          <p className="text-lg text-muted-foreground">
             Cuervo Planner is an early beta that runs entirely in your browser. There is no server,
             no account, and nothing is collected. This page describes what the app does today, not
             what it is planned to do.

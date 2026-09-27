@@ -1,9 +1,9 @@
-import { MoonIcon, Settings, SunIcon } from "lucide-react";
+import { Search, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 import { BrandIcon } from "@/components/brand-icon";
 import { NotificationBell } from "@/components/notification-bell";
-import { Button } from "@/components/ui/button";
+import { ThemeMenu } from "@/components/theme-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -16,81 +16,100 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarSeparator,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
-import { NAVIGATION_ITEMS } from "@/components/workspace-nav";
+import { orderNavItems } from "@/components/workspace-nav";
+import { useAppearance } from "@/hooks/use-appearance";
+import { useCommandPaletteStore } from "@/stores/use-command-palette-store";
 
-export function WorkspaceSidebar({
-  isDark,
-  onToggleTheme,
-}: {
-  isDark: boolean;
-  onToggleTheme: () => void;
-}) {
-  const location = useLocation();
+/**
+ * The workspace's navigation: search, the pages in the order someone arranged them, and
+ * settings. Collapses to icons on a wide screen and opens as a sheet from the tab bar's
+ * "More" on a narrow one.
+ */
+export function WorkspaceSidebar() {
+  const { pathname } = useLocation();
+  const { preferences } = useAppearance();
+  const { setOpenMobile } = useSidebar();
+  const openPalette = useCommandPaletteStore((state) => state.setOpen);
+  const closeSheet = () => setOpenMobile(false);
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="gap-4 px-4 py-5">
-        <div className="flex items-start justify-between gap-2 group-data-[collapsible=icon]:justify-center flex-wrap">
-          <Link
-            to="/dashboard"
-            className="flex items-center justify-center text-sidebar-foreground group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:justify-center"
-          >
-            <BrandIcon className="size-7 shrink-0" />
-            <div className="min-w-4 group-data-[collapsible=icon]:hidden"></div>
-            <div className="grid gap-0.5 transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:overflow-hidden group-data-[collapsible=icon]:hidden">
-              <span className="text-sm font-semibold leading-none">Cuervo Planner</span>
-              <span className="text-xs text-sidebar-foreground/70">Dashboard workspace</span>
-            </div>
-          </Link>
-          <SidebarTrigger className="hidden md:inline-flex" />
-        </div>
+      <SidebarHeader className="flex-row items-center justify-between gap-2 p-3 group-data-[collapsible=icon]:justify-center">
+        <Link
+          to="/dashboard"
+          onClick={closeSheet}
+          className="flex min-w-0 items-center gap-2.5 rounded-md px-1 py-0.5 text-sidebar-foreground group-data-[collapsible=icon]:hidden"
+        >
+          <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <BrandIcon className="size-4" />
+          </span>
+          <span className="truncate text-heading">Cuervo Planner</span>
+        </Link>
+        <SidebarTrigger className="hidden md:inline-flex" />
       </SidebarHeader>
+
       <SidebarContent>
+        <SidebarGroup className="pt-0">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Search"
+                onClick={() => {
+                  closeSheet();
+                  openPalette(true);
+                }}
+                className="text-muted-foreground"
+              >
+                <Search />
+                <span>Search</span>
+                <kbd className="ml-auto rounded border border-sidebar-border px-1 font-sans text-caption text-muted-foreground">
+                  ⌘K
+                </kbd>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+
         <SidebarGroup>
-          <SidebarGroupLabel>Navigate</SidebarGroupLabel>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAVIGATION_ITEMS.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.url;
-
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton isActive={isActive} render={<Link to={item.url} />}>
-                      <Icon />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {orderNavItems(preferences.navOrder).map((item) => (
+                <SidebarMenuItem key={item.id}>
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    isActive={pathname === item.url}
+                    render={<Link to={item.url} onClick={closeSheet} />}
+                  >
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="gap-3 p-4 group-data-[collapsible=icon]:px-2 justify-items-center items-center">
-        <SidebarSeparator />
-        <div className=" max-w-fit flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sidebar-border/70 bg-sidebar-accent/40 text-sidebar-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:max-w-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleTheme}
-            aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
-            className="shrink-0 "
-          >
-            {isDark ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
-          </Button>
+
+      <SidebarFooter className="gap-1 p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Settings"
+              isActive={pathname === "/settings"}
+              render={<Link to="/settings" onClick={closeSheet} />}
+            >
+              <Settings />
+              <span>Settings</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <div className="flex items-center gap-1 px-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:px-0">
           <NotificationBell />
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Settings"
-            render={<Link to="/settings" />}
-          >
-            <Settings className="size-4" />
-          </Button>
+          <ThemeMenu settingsHref="/settings#appearance" />
         </div>
       </SidebarFooter>
       <SidebarRail />

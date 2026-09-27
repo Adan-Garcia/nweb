@@ -7,12 +7,10 @@ import { cn } from "@/lib/utils";
 
 export function PricingTierCard({ tier }: { tier: PricingTier }) {
   return (
-    <Card
-      className={cn("text-left", tier.highlight && "border-primary shadow-lg shadow-primary/10")}
-    >
+    <Card className={cn("text-left", tier.highlight && "ring-2 ring-primary")}>
       <CardHeader>
         <div className="mb-2 flex items-center justify-between">
-          <CardTitle className="text-2xl">{tier.name}</CardTitle>
+          <CardTitle className="text-title">{tier.name}</CardTitle>
           {tier.highlight ? (
             <span className="inline-flex items-center rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary">
               <Zap className="mr-1 size-3.5" />
@@ -20,7 +18,7 @@ export function PricingTierCard({ tier }: { tier: PricingTier }) {
             </span>
           ) : null}
         </div>
-        <p className="mb-1 text-3xl font-bold text-foreground">{tier.price}</p>
+        <p className="mb-1 text-display text-foreground">{tier.price}</p>
         <CardDescription>{tier.description}</CardDescription>
       </CardHeader>
       <CardContent>

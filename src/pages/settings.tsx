@@ -1,20 +1,25 @@
+import { PageContainer } from "@/components/page-container";
+import { PageHeader } from "@/components/page-header";
 import { AccountCard } from "@/components/settings/account-card";
+import { AppearanceSection } from "@/components/settings/appearance/appearance-section";
 import { BackupCard } from "@/components/settings/backup-card";
 import { LockCard } from "@/components/settings/lock-card";
 import { RemindersCard } from "@/components/settings/reminders-card";
+import { SettingsBlock } from "@/components/settings/settings-block";
+import { SettingsNav } from "@/components/settings/settings-nav";
 import { SharingCard } from "@/components/settings/sharing-card";
 import { useAccount } from "@/components/settings/use-account";
 import { useReminders } from "@/components/settings/use-reminders";
+import { useSettingsAnchor } from "@/components/settings/use-settings-anchor";
 import { useSharing } from "@/components/settings/use-sharing";
 import { useWorkspaceBackup } from "@/components/settings/use-workspace-backup";
 import { useWorkspaceEditor } from "@/components/settings/use-workspace-editor";
 import { WorkspaceEditorCard } from "@/components/settings/workspace-editor-card";
-import { WorkspaceShell } from "@/components/workspace-shell";
-import { useThemeMode } from "@/hooks/use-theme-mode";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
 
 export function SettingsPage() {
-  const { isDark, toggleTheme } = useThemeMode();
+  const activeId = useSettingsAnchor();
   const backup = useWorkspaceBackup();
   const lock = useWorkspaceLock();
   const editor = useWorkspaceEditor();
@@ -23,77 +28,101 @@ export function SettingsPage() {
   const sharing = useSharing(account.sessionFor, account.record?.material.publicKey ?? null);
 
   return (
-    <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <h1 className="text-4xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">
-            Everything here applies to this browser on this device.
-          </p>
-        </div>
+    <PageContainer>
+      <PageHeader
+        title="Settings"
+        description="Appearance follows your account to every device. Everything else applies to this browser."
+      />
 
-        <div className="grid gap-6">
-          <LockCard
-            state={lock.state}
-            error={lock.error}
-            isWorking={lock.isWorking}
-            progress={lock.progress}
-            onCreate={(passphrase) => void lock.create(passphrase)}
-            onChange={(current, next) => void lock.change(current, next)}
-            onRemove={(passphrase) => void lock.remove(passphrase)}
-            onLock={() => void lock.lock()}
-          />
+      <div className="grid gap-6 md:grid-cols-[12rem_1fr] md:gap-10">
+        <SettingsNav activeId={activeId} />
 
-          <WorkspaceEditorCard {...editor} />
+        <div className="grid min-w-0 gap-6">
+          <SettingsBlock id="appearance">
+            <Card>
+              <CardHeader>
+                <CardTitle>Appearance</CardTitle>
+                <CardDescription>Theme, colour, spacing and the order of things.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AppearanceSection />
+              </CardContent>
+            </Card>
+          </SettingsBlock>
 
-          <BackupCard
-            status={backup.status}
-            needsPassphrase={backup.needsPassphrase}
-            isLockSet={lock.state !== "unset"}
-            restoreMode={backup.restoreMode}
-            onChooseRestoreMode={backup.chooseRestoreMode}
-            onExport={(passphrase) => void backup.exportWorkspace(passphrase)}
-            onImport={(file) => void backup.importWorkspace(file)}
-            onUnlock={(passphrase) => void backup.unlockImport(passphrase)}
-            onCancelUnlock={backup.cancelImport}
-          />
+          <SettingsBlock id="workspace">
+            <WorkspaceEditorCard {...editor} />
+          </SettingsBlock>
 
-          <AccountCard
-            status={account.status}
-            email={account.record?.email ?? null}
-            hasServer={account.hasServer}
-            isWorking={account.isWorking}
-            isLockSet={lock.state !== "unset"}
-            error={account.error}
-            lastSync={account.lastSync}
-            onCreate={(email, passphrase, current) =>
-              void account.createAccount(email, passphrase, current)
-            }
-            onSignIn={(passphrase) => void account.signIn(passphrase)}
-            onSignOut={() => void account.signOut()}
-            onSync={() => void account.sync()}
-          />
+          <SettingsBlock id="security">
+            <LockCard
+              state={lock.state}
+              error={lock.error}
+              isWorking={lock.isWorking}
+              progress={lock.progress}
+              onCreate={(passphrase) => void lock.create(passphrase)}
+              onChange={(current, next) => void lock.change(current, next)}
+              onRemove={(passphrase) => void lock.remove(passphrase)}
+              onLock={() => void lock.lock()}
+            />
+          </SettingsBlock>
 
-          <SharingCard
-            isConnected={account.isConnected}
-            shareable={sharing.shareable}
-            shares={sharing.shares}
-            selected={sharing.selected}
-            error={sharing.error}
-            isWorking={sharing.isWorking}
-            onSelect={sharing.select}
-            onShare={(keyId, email, role) => void sharing.share(keyId, email, role)}
-            onRevoke={(keyId, email) => void sharing.revoke(keyId, email)}
-          />
+          <SettingsBlock id="backup">
+            <BackupCard
+              status={backup.status}
+              needsPassphrase={backup.needsPassphrase}
+              isLockSet={lock.state !== "unset"}
+              restoreMode={backup.restoreMode}
+              onChooseRestoreMode={backup.chooseRestoreMode}
+              onExport={(passphrase) => void backup.exportWorkspace(passphrase)}
+              onImport={(file) => void backup.importWorkspace(file)}
+              onUnlock={(passphrase) => void backup.unlockImport(passphrase)}
+              onCancelUnlock={backup.cancelImport}
+            />
+          </SettingsBlock>
 
-          <RemindersCard
-            state={reminders.state}
-            isWorking={reminders.isWorking}
-            onEnable={() => void reminders.enable()}
-            onDisable={() => void reminders.disable()}
-          />
+          <SettingsBlock id="account">
+            <AccountCard
+              status={account.status}
+              email={account.record?.email ?? null}
+              hasServer={account.hasServer}
+              isWorking={account.isWorking}
+              isLockSet={lock.state !== "unset"}
+              error={account.error}
+              lastSync={account.lastSync}
+              onCreate={(email, passphrase, current) =>
+                void account.createAccount(email, passphrase, current)
+              }
+              onSignIn={(passphrase) => void account.signIn(passphrase)}
+              onSignOut={() => void account.signOut()}
+              onSync={() => void account.sync()}
+            />
+          </SettingsBlock>
+
+          <SettingsBlock id="sharing">
+            <SharingCard
+              isConnected={account.isConnected}
+              shareable={sharing.shareable}
+              shares={sharing.shares}
+              selected={sharing.selected}
+              error={sharing.error}
+              isWorking={sharing.isWorking}
+              onSelect={sharing.select}
+              onShare={(keyId, email, role) => void sharing.share(keyId, email, role)}
+              onRevoke={(keyId, email) => void sharing.revoke(keyId, email)}
+            />
+          </SettingsBlock>
+
+          <SettingsBlock id="reminders">
+            <RemindersCard
+              state={reminders.state}
+              isWorking={reminders.isWorking}
+              onEnable={() => void reminders.enable()}
+              onDisable={() => void reminders.disable()}
+            />
+          </SettingsBlock>
         </div>
       </div>
-    </WorkspaceShell>
+    </PageContainer>
   );
 }

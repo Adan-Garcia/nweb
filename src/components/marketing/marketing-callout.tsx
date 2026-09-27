@@ -18,12 +18,12 @@ export function MarketingCallout({
   children,
 }: MarketingCalloutProps) {
   return (
-    <div className={cn("rounded-xl border border-border bg-card/70 p-5 sm:p-6", className)}>
-      <h2 className={cn("mb-2 text-xl font-semibold", Icon && "flex items-center gap-2")}>
+    <div className={cn("rounded-lg border bg-card p-5 sm:p-6", className)}>
+      <h2 className={cn("mb-2 text-heading", Icon && "flex items-center gap-2")}>
         {Icon ? <Icon className="size-5 text-primary" /> : null}
         {title}
       </h2>
-      <p className="text-sm text-muted-foreground sm:text-base">{children}</p>
+      <p className="text-body text-muted-foreground">{children}</p>
     </div>
   );
 }

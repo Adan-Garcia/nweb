@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ONBOARDING_STEPS } from "@/components/onboarding/onboarding-steps";
+import { cachedTheme, chooseTheme } from "@/test/theme";
 
 import { OnboardingPage } from "./onboarding";
 
@@ -73,8 +74,8 @@ describe("OnboardingPage", () => {
     const user = userEvent.setup();
     render(<OnboardingPage />);
 
-    await user.click(screen.getByRole("button", { name: "Switch to dark mode" }));
+    await chooseTheme(user, "Dark");
 
-    expect(document.documentElement).toHaveClass("dark");
+    expect(cachedTheme()).toBe("dark");
   });
 });

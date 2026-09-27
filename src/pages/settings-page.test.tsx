@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { Toaster } from "@/components/toaster";
 import { resetActiveCipher } from "@/lib/cipher";
 import { getNotesDb } from "@/lib/notes-db";
 import { unlockWorkspace } from "@/lib/workspace-lock";
@@ -23,10 +24,11 @@ vi.mock("@/lib/kdf", async (importOriginal) => ({
   }),
 }));
 
-function renderPage() {
+function renderPage(entry = "/settings") {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <SettingsPage />
+      <Toaster />
     </MemoryRouter>,
   );
 }
@@ -99,7 +101,8 @@ describe("SettingsPage", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Download backup/ }));
 
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Saved 1 notes"));
+    expect(await screen.findByText("Backup downloaded")).toBeInTheDocument();
+    expect(screen.getByText("1 notes and 0 tasks, unencrypted.")).toBeInTheDocument();
     expect(downloaded?.name).toMatch(/^cuervo-planner-backup-\d{4}-\d{2}-\d{2}\.json$/);
   });
 
@@ -241,5 +244,53 @@ describe("SettingsPage", () => {
     await waitFor(() =>
       expect(screen.getByRole("status")).toHaveTextContent("Could not read that file."),
     );
+  });
+});
+
+describe("SettingsPage layout", () => {
+  it("lists its sections and puts each one under its anchor", () => {
+    renderPage();
+    const nav = screen.getByRole("navigation", { name: "Settings sections" });
+
+    for (const [name, id] of [
+      ["Appearance", "appearance"],
+      ["Workspace", "workspace"],
+      ["Security", "security"],
+      ["Backup", "backup"],
+      ["Account & sync", "account"],
+      ["Sharing", "sharing"],
+      ["Reminders", "reminders"],
+    ]) {
+      expect(within(nav).getByRole("link", { name })).toHaveAttribute("href", `#${id}`);
+      expect(screen.getByRole("region", { name })).toHaveAttribute("id", id);
+    }
+  });
+
+  it("opens at the section the link names, and marks it in the nav", () => {
+    const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+    renderPage("/settings#backup");
+
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole("region", { name: "Backup" }));
+    expect(screen.getByRole("link", { name: "Backup" })).toHaveAttribute(
+      "aria-current",
+      "location",
+    );
+  });
+
+  it("marks the first section when the link names none it knows", () => {
+    renderPage("/settings#nowhere");
+
+    expect(screen.getByRole("link", { name: "Appearance" })).toHaveAttribute(
+      "aria-current",
+      "location",
+    );
+  });
+
+  it("holds the appearance settings", () => {
+    renderPage();
+
+    expect(screen.getByRole("group", { name: "Theme" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Accent colour" })).toBeInTheDocument();
   });
 });

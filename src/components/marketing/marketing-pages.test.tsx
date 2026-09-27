@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentationPage } from "@/pages/documentation";
 import { PricingPage } from "@/pages/pricing";
 import { PrivacyPage } from "@/pages/privacy";
+import { cachedTheme, chooseTheme } from "@/test/theme";
 
 beforeEach(() => {
   window.matchMedia = vi
@@ -35,10 +36,7 @@ describe.each([
     const nav = screen.getByRole("navigation");
     const highlighted = within(nav)
       .getAllByRole("link")
-      .filter(
-        (link) =>
-          link.className.includes("text-primary") && !link.className.includes("hover:text-primary"),
-      );
+      .filter((link) => link.getAttribute("aria-current") === "page");
 
     expect(highlighted).toHaveLength(1);
     expect(highlighted[0]).toHaveAttribute("href", href);
@@ -48,11 +46,9 @@ describe.each([
     const user = userEvent.setup();
     render(<Page />);
 
-    await user.click(screen.getByRole("button", { name: "Switch to dark mode" }));
+    await chooseTheme(user, "Dark");
 
-    expect(document.documentElement).toHaveClass("dark");
-    expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeInTheDocument();
-    expect(window.localStorage.getItem("theme")).toBe("dark");
+    expect(cachedTheme()).toBe("dark");
   });
 
   it("has a single main landmark and page heading", () => {

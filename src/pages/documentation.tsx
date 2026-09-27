@@ -12,10 +12,8 @@ export function DocumentationPage() {
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-10 text-left">
           <MarketingEyebrow icon={BookOpen}>Product Documentation</MarketingEyebrow>
-          <h1 className="mb-3 text-4xl font-bold sm:text-5xl">
-            Build with the same structure as your study flow
-          </h1>
-          <p className="max-w-3xl text-base text-muted-foreground sm:text-lg">
+          <h1 className="mb-3 text-display">Build with the same structure as your study flow</h1>
+          <p className="max-w-3xl text-lg text-muted-foreground">
             This guide mirrors the planner model shown in the app and combines your current
             implementation roadmap so new contributors can onboard quickly.
           </p>

@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 
 import { downloadTextFile } from "@/lib/blob-utils";
 import type { EncryptedEnvelope } from "@/lib/crypto-envelope";
+import { notifySuccess } from "@/lib/toast";
 import {
   createWorkspaceBackup,
   decryptWorkspaceBackup,
@@ -44,12 +45,14 @@ export function useWorkspaceBackup() {
         backupFileName(now, isEncrypted),
         "application/json",
       );
-      setStatus({
-        kind: "done",
-        message: `Saved ${backup.notes.directory.length} notes and ${backup.twigs.length} tasks, ${
+      // A download is its own confirmation; the toast says what went into it.
+      setStatus({ kind: "idle" });
+      notifySuccess(
+        "Backup downloaded",
+        `${backup.notes.directory.length} notes and ${backup.twigs.length} tasks, ${
           isEncrypted ? "encrypted" : "unencrypted"
         }.`,
-      });
+      );
     } catch {
       setStatus({ kind: "error", message: "Could not read your workspace. Nothing was exported." });
     }

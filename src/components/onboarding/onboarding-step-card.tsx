@@ -27,14 +27,14 @@ export function OnboardingStepCard({
   return (
     <Card>
       <CardHeader>
-        <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-primary/10">
-          <StepIcon className="size-6 text-primary" />
+        <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-brand-soft">
+          <StepIcon className="size-5 text-primary" />
         </div>
-        <CardTitle>{step.title}</CardTitle>
+        <CardTitle className="text-heading">{step.title}</CardTitle>
         <CardDescription>{step.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <p className="text-foreground">{step.content}</p>
+        <p className="text-body text-foreground">{step.content}</p>
 
         <div className="flex gap-3">
           <Button variant="outline" onClick={onBack} disabled={isFirst} className="flex-1">
@@ -43,12 +43,12 @@ export function OnboardingStepCard({
           {isLast ? (
             <Button className="flex-1" onClick={onFinish}>
               Go to Dashboard
-              <ArrowRight className="ml-2 size-4" />
+              <ArrowRight className="size-4" />
             </Button>
           ) : (
             <Button className="flex-1" onClick={onNext}>
               Next
-              <ArrowRight className="ml-2 size-4" />
+              <ArrowRight className="size-4" />
             </Button>
           )}
         </div>

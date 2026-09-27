@@ -2,6 +2,7 @@ import { type ComponentType, lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { RouteFallback } from "@/components/route-fallback";
+import { useApplyAppearance } from "@/hooks/use-apply-appearance";
 import { type RouteLoader, warmRoutes } from "@/lib/route-warmup";
 import { IndexPage } from "@/pages/index";
 
@@ -42,11 +43,19 @@ const CalendarPage = lazyPage(() => import("@/pages/calendar"), "CalendarPage", 
 });
 const BoardPage = lazyPage(() => import("@/pages/board"), "BoardPage", { isWorkspace: true });
 const NotesPage = lazyPage(() => import("@/pages/notes"), "NotesPage", { isWorkspace: true });
+// Toasts only ever follow something someone did, so the toaster can arrive after the page.
+const Toaster = lazyPage(() => import("@/components/toaster"), "Toaster");
+// The shell every workspace page renders inside; see `workspace-layout.tsx`.
+const WorkspaceLayout = lazyPage(() => import("@/components/workspace-layout"), "WorkspaceLayout", {
+  isWorkspace: true,
+});
 const SettingsPage = lazyPage(() => import("@/pages/settings"), "SettingsPage", {
   isWorkspace: true,
 });
 
 export default function App() {
+  useApplyAppearance();
+
   useEffect(() => {
     warmRoutes([...workspaceLoaders, ...marketingLoaders]);
   }, []);
@@ -60,16 +69,21 @@ export default function App() {
           <Route path="/auth/signup" element={<SignupPage />} />
           <Route path="/auth/signin" element={<SignInPage />} />
           <Route path="/auth/onboarding" element={<OnboardingPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/documentation" element={<DocumentationPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/board" element={<BoardPage />} />
-          <Route path="/notes" element={<NotesPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route element={<WorkspaceLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/board" element={<BoardPage />} />
+            <Route path="/notes" element={<NotesPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+      </Suspense>
+      <Suspense fallback={null}>
+        <Toaster />
       </Suspense>
     </BrowserRouter>
   );

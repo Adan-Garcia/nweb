@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Lock } from "lucide-react";
 
-import { BrandIcon } from "@/components/brand-icon";
+import { CenteredScreen } from "@/components/centered-screen";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,16 +28,11 @@ export function LockScreen({ error, isWorking, onUnlock }: LockScreenProps) {
   };
 
   return (
-    <main className="grid min-h-svh place-items-center bg-background px-4 text-foreground">
-      <Card className="w-full max-w-md">
+    <CenteredScreen>
+      <Card>
         <CardHeader>
-          <BrandIcon className="size-8" />
-          {/*
-            A real h1: this screen stands in for the whole page. index.css styles h1
-            outside any layer, so its size and margin need the `!` modifier to be brought
-            back to the card title it is standing in for (CLAUDE.md section 8).
-          */}
-          <h1 className="m-0! flex items-center gap-2 font-heading text-base! font-medium leading-snug">
+          {/* A real h1: this screen stands in for the whole page. */}
+          <h1 className="flex items-center gap-2 text-heading">
             <Lock className="size-4" />
             This workspace is locked
           </h1>
@@ -69,7 +64,7 @@ export function LockScreen({ error, isWorking, onUnlock }: LockScreenProps) {
             </div>
 
             {error ? (
-              <p role="alert" className="m-0 text-sm text-destructive">
+              <p role="alert" className="text-sm text-destructive">
                 {error}
               </p>
             ) : null}
@@ -78,13 +73,13 @@ export function LockScreen({ error, isWorking, onUnlock }: LockScreenProps) {
               {isWorking ? "Unlocking..." : "Unlock"}
             </Button>
 
-            <p className="m-0 text-xs text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               There is no account and no server, so nothing can reset this. Without the passphrase
               the notes cannot be recovered.
             </p>
           </form>
         </CardContent>
       </Card>
-    </main>
+    </CenteredScreen>
   );
 }

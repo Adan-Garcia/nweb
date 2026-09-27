@@ -38,7 +38,9 @@ test.describe("an encrypted backup", () => {
       kdf: { name: "Argon2id", memorySize: 65536, iterations: 3, parallelism: 1 },
     });
 
-    await expect(page.getByRole("status")).toContainText("encrypted");
+    // The download is confirmed by a toast, which says what went into the file.
+    await expect(page.getByText("Backup downloaded")).toBeVisible();
+    await expect(page.getByText(/tasks, encrypted\./)).toBeVisible();
 
     // Restoring it asks for the passphrase rather than calling it an invalid file.
     await page.getByRole("button", { name: "Restore from file" }).click();

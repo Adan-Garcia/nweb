@@ -36,7 +36,7 @@ export function BoardCard({ snapshot, twig, onEdit, onDelete }: BoardCardProps) 
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "grid gap-1 rounded-lg border border-border/70 bg-card p-2.5",
+        "group/card grid gap-1.5 rounded-lg border bg-card p-2.5 transition-colors hover:border-foreground/15",
         isDragging && "opacity-50",
       )}
     >
@@ -45,7 +45,7 @@ export function BoardCard({ snapshot, twig, onEdit, onDelete }: BoardCardProps) 
           type="button"
           ref={setActivatorNodeRef}
           aria-label={`Reorder ${twig.title}`}
-          className="mt-0.5 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          className="mt-0.5 cursor-grab rounded text-muted-foreground hover:text-foreground"
           {...attributes}
           {...listeners}
         >
@@ -72,7 +72,7 @@ export function BoardCard({ snapshot, twig, onEdit, onDelete }: BoardCardProps) 
         </Button>
       </div>
 
-      <p className="flex items-center gap-1.5 pl-6 text-[0.68rem] text-muted-foreground">
+      <p className="flex flex-wrap items-center gap-1.5 pl-6 text-caption text-muted-foreground">
         <span
           aria-hidden="true"
           className={cn("inline-block size-2 rounded-full", branch.colorClass)}

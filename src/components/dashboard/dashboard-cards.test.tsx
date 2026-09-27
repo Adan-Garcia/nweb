@@ -1,5 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { render as renderElement, screen } from "@testing-library/react";
 import { CalendarClock } from "lucide-react";
+import type { ReactElement } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import type { DatedTwig } from "@/components/calendar/calendar-shared";
@@ -12,6 +14,9 @@ import { RecentNotesCard } from "./recent-notes-card";
 import { UpcomingDeadlinesCard } from "./upcoming-deadlines-card";
 
 const snapshot = makeSnapshot();
+
+/** The list cards link with the router's `Link`, so they need one around them. */
+const render = (element: ReactElement) => renderElement(<MemoryRouter>{element}</MemoryRouter>);
 
 const event: DatedTwig = {
   ...makeTwig({ id: "1", title: "Physics Lab", dueTime: "9:00 AM" }),

@@ -2,22 +2,19 @@ import type { ReactNode } from "react";
 
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
-import { useThemeMode } from "@/hooks/use-theme-mode";
 
 type MarketingPageProps = {
   activeHref?: string;
   children: ReactNode;
 };
 
-/** Page chrome for the public information pages: header, theme and background. */
+/** Page chrome for the public pages: header, content and footer. */
 export function MarketingPage({ activeHref, children }: MarketingPageProps) {
-  const { isDark, toggleTheme } = useThemeMode();
-
   return (
-    <main className="min-h-screen w-full bg-background text-foreground">
-      <MarketingHeader activeHref={activeHref} isDark={isDark} onToggleTheme={toggleTheme} />
-      {children}
+    <div className="flex min-h-svh w-full flex-col bg-background text-foreground">
+      <MarketingHeader activeHref={activeHref} />
+      <main className="flex-1">{children}</main>
       <MarketingFooter />
-    </main>
+    </div>
   );
 }

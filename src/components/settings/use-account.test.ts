@@ -16,6 +16,15 @@ import { useAccount } from "./use-account";
 
 const BASE = "https://cuervo.example.com";
 
+/** Success is reported as a toast; what is said is what is checked. */
+const toast = vi.hoisted(() => ({
+  notifySuccess: vi.fn(),
+  notifyError: vi.fn(),
+  notifyInfo: vi.fn(),
+}));
+
+vi.mock("@/lib/toast", () => toast);
+
 /** Hoisted, because `vi.mock` runs before the file's own bindings exist. */
 const build = vi.hoisted(() => ({ baseUrl: "https://cuervo.example.com" as string | null }));
 
@@ -279,6 +288,7 @@ describe("useAccount", () => {
     });
 
     expect(result.current.lastSync).toMatchObject({ pushed: 0, applied: 0, media: 0 });
+    expect(toast.notifySuccess).toHaveBeenCalledWith("Synced", "0 sent · 0 received");
   });
 
   it("reports a server it cannot reach without losing anything local", async () => {

@@ -11,15 +11,22 @@ import { Plus } from "lucide-react";
 
 import { BoardColumn } from "@/components/board/board-column";
 import { useBoard } from "@/components/board/use-board";
+import { useBoardDeepLink } from "@/components/board/use-board-deep-link";
 import { EventOverlay } from "@/components/calendar/event-overlay";
+import { PageContainer } from "@/components/page-container";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { WorkspaceShell } from "@/components/workspace-shell";
-import { useThemeMode } from "@/hooks/use-theme-mode";
 
 export function BoardPage() {
-  const { isDark, toggleTheme } = useThemeMode();
   const board = useBoard();
   const { editor } = board;
+
+  useBoardDeepLink({
+    isLoading: board.isLoading,
+    twigs: board.columns.flatMap((column) => column.twigs),
+    openAdd: editor.openAdd,
+    openEdit: editor.openEdit,
+  });
 
   // A small distance before a drag starts, so the buttons on a card still take a click.
   const sensors = useSensors(
@@ -28,26 +35,23 @@ export function BoardPage() {
   );
 
   return (
-    <WorkspaceShell isDark={isDark} onToggleTheme={toggleTheme}>
-      <div className="mx-auto max-w-8xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-bold">Board</h1>
-            <p className="text-base text-muted-foreground">
-              Every task, dated or not. Drag a card to reorder it or to change what it is.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            disabled={board.isLoading}
-            onClick={() => {
-              editor.openAdd();
-            }}
-          >
-            <Plus className="size-4" />
-            Add Task
-          </Button>
-        </div>
+    <>
+      <PageContainer width="wide">
+        <PageHeader
+          title="Board"
+          description="Every task, dated or not. Drag a card to reorder it or to change what it is."
+          actions={
+            <Button
+              disabled={board.isLoading}
+              onClick={() => {
+                editor.openAdd();
+              }}
+            >
+              <Plus className="size-4" />
+              Add Task
+            </Button>
+          }
+        />
 
         <DndContext
           sensors={sensors}
@@ -58,7 +62,7 @@ export function BoardPage() {
           }}
           onDragCancel={board.handleDragCancel}
         >
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0">
             {board.columns.map((column) => (
               <BoardColumn
                 key={column.status}
@@ -72,7 +76,7 @@ export function BoardPage() {
             ))}
           </div>
         </DndContext>
-      </div>
+      </PageContainer>
 
       <EventOverlay
         isOpen={editor.isOpen}
@@ -86,6 +90,6 @@ export function BoardPage() {
         }}
         onClose={editor.close}
       />
-    </WorkspaceShell>
+    </>
   );
 }

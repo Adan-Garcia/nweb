@@ -25,6 +25,8 @@ export const SYNC_STORES = [
   "pebbles",
   /** The names above something shared: see `src/lib/share-path-model.ts`. */
   "share-paths",
+  /** How someone has arranged the app: see `src/lib/preferences-model.ts`. */
+  "preferences",
 ] as const;
 
 export type SyncStore = (typeof SYNC_STORES)[number];

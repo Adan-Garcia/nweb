@@ -129,8 +129,7 @@ test.describe("the workspace lock", () => {
     page,
   }) => {
     await page.goto("/calendar");
-    await page.getByRole("button", { name: "Add" }).click();
-    await page.getByRole("menuitem", { name: "Add Event" }).click();
+    await page.getByRole("button", { name: "Add Event" }).click();
     await page.getByLabel("Title").fill("SECRET-TASK problem set");
     await page.getByLabel("Date").fill("2026-10-01");
     await page.getByRole("button", { name: "Create event" }).click();

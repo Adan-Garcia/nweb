@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { cachedTheme, chooseTheme } from "@/test/theme";
+
 import { SignInPage } from "./signin";
 import { SignupPage } from "./signup";
 import { UnloggedPage } from "./unlogged";
@@ -32,10 +34,9 @@ describe.each([
     const user = userEvent.setup();
     render(<Page />);
 
-    await user.click(screen.getByRole("button", { name: "Switch to dark mode" }));
+    await chooseTheme(user, "Dark");
 
-    expect(document.documentElement).toHaveClass("dark");
-    expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeInTheDocument();
+    expect(cachedTheme()).toBe("dark");
   });
 });
 

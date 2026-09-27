@@ -4,8 +4,7 @@ test("an event added on the calendar shows up on the dashboard and survives a re
   page,
 }) => {
   await page.goto("/calendar");
-  await page.getByRole("button", { name: "Add" }).click();
-  await page.getByRole("menuitem", { name: "Add Event" }).click();
+  await page.getByRole("button", { name: "Add Event" }).click();
   await page.getByLabel("Title").fill("Chemistry lab report");
   await page.getByRole("button", { name: "Create event" }).click();
 

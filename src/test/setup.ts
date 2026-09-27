@@ -1,6 +1,10 @@
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 
+import { DEFAULT_PREFERENCES } from "@/lib/preferences-model";
+import { useCommandPaletteStore } from "@/stores/use-command-palette-store";
+import { usePreferencesStore } from "@/stores/use-preferences-store";
+
 import { server } from "./server";
 
 import "@testing-library/jest-dom/vitest";
@@ -31,8 +35,28 @@ class InertWebSocket {
   addEventListener() {}
 }
 
+/** jsdom lays nothing out, so there is nothing to observe; cmdk only needs the API to exist. */
+class InertResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 beforeEach(() => {
   vi.stubGlobal("WebSocket", InertWebSocket);
+
+  // Checked by `Element` rather than `window`: a node suite may stub a partial window.
+  if (typeof Element !== "undefined") {
+    vi.stubGlobal("ResizeObserver", InertResizeObserver);
+    // cmdk scrolls the highlighted item into view; jsdom has no layout to scroll.
+    if (!("scrollIntoView" in Element.prototype)) {
+      Object.defineProperty(Element.prototype, "scrollIntoView", {
+        value: () => undefined,
+        configurable: true,
+        writable: true,
+      });
+    }
+  }
 });
 
 afterEach(() => {
@@ -48,7 +72,20 @@ afterEach(() => {
 
   if (typeof document !== "undefined") {
     document.documentElement.className = "";
+    document.documentElement.removeAttribute("style");
+
+    for (const name of ["theme", "accent", "density", "fontSize"]) {
+      delete document.documentElement.dataset[name];
+    }
   }
+
+  // The stores are module state, so they would otherwise carry one test's theme (or a
+  // stubbed action) into the next test of the same file.
+  usePreferencesStore.setState({
+    ...usePreferencesStore.getInitialState(),
+    preferences: DEFAULT_PREFERENCES,
+  });
+  useCommandPaletteStore.setState(useCommandPaletteStore.getInitialState());
 });
 
 afterAll(() => server.close());
