@@ -681,3 +681,62 @@ describe("a writer's edit to somebody else's course", () => {
     expect(rows).toEqual([{ key_id: "branch-key", payload: "sealed-bytes" }]);
   });
 });
+
+describe("a new row under somebody else's key", () => {
+  it("cannot be planted by a reader, and reaches nobody", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const friend = await signUp("friend@example.com");
+    const other = await signUp("other@example.com");
+
+    for (const email of ["friend@example.com", "other@example.com"]) {
+      await post(owner, "/v1/keys/share", {
+        keyId: "branch-key",
+        email,
+        role: "reader",
+        wrapped: `branch-for-${email}`,
+      });
+    }
+
+    // A reader holds the key, so they could seal a note that opens for everyone. The
+    // server is what makes "read-only" mean it: the row is not theirs to add.
+    await syncAs(friend, [
+      row({ id: "planted", store: "notes-directory", keyId: "note-key", payload: "planted" }),
+    ]);
+
+    expect((await syncAs(other)).rows.map((each) => each.id)).not.toContain("planted");
+    expect((await syncAs(owner)).rows.map((each) => each.id)).not.toContain("planted");
+  });
+
+  it("cannot be planted by somebody who only knows the key's id", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const stranger = await signUp("stranger@example.com");
+
+    await syncAs(stranger, [row({ id: "planted", keyId: "branch-key", payload: "planted" })]);
+
+    expect((await syncAs(owner)).rows.map((each) => each.id)).not.toContain("planted");
+  });
+
+  it("is still taken from a writer, and under a key nobody has registered yet", async () => {
+    const owner = await signUp("owner@example.com");
+    await seedCourse(owner);
+    const friend = await signUp("friend@example.com");
+
+    await post(owner, "/v1/keys/share", {
+      keyId: "branch-key",
+      email: "friend@example.com",
+      role: "writer",
+      wrapped: "branch-for-friend",
+    });
+
+    await syncAs(friend, [
+      row({ id: "their-note", store: "notes-directory", keyId: "note-key" }),
+      // A device may sync a row a moment before the key it names reaches the server.
+      row({ id: "early", store: "notes-directory", keyId: "not-yet-registered" }),
+    ]);
+
+    expect((await syncAs(owner)).rows.map((each) => each.id)).toContain("their-note");
+    expect((await syncAs(friend)).rows.map((each) => each.id)).toContain("early");
+  });
+});

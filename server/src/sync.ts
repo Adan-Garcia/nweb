@@ -178,17 +178,47 @@ async function applyRow(sql: Sql, userId: string, row: SyncRow): Promise<void> {
   );
 }
 
+/**
+ * The keys among these that belong to somebody else and that this caller may not write
+ * under. A new row sealed under one of them would be served to everyone who can read that
+ * key: a reader holds the key, so they could seal a note that opens for the whole course,
+ * and "read-only" would mean nothing. A key nobody has registered yet is let through — a
+ * device may sync a row a moment before its key reaches the server — and cannot be claimed
+ * afterwards by anyone else, because `putKeys` keeps the first owner.
+ */
+async function foreignKeyIds(
+  sql: Sql,
+  userId: string,
+  writable: string[],
+  keyIds: string[],
+): Promise<Set<string>> {
+  if (!keyIds.length) {
+    return new Set();
+  }
+
+  const { rows } = await sql.query<{ id: string }>(
+    "select id from keys where id = any($1) and owner_id <> $2 and not (id = any($3))",
+    [keyIds, userId, writable],
+  );
+
+  return new Set(rows.map((row) => row.id));
+}
+
 export async function sync(sql: Sql, userId: string, request: SyncRequest): Promise<SyncResponse> {
   // Rows this caller owns, plus rows sealed with a key they can derive. Serving anything
   // else would be handing over bytes they cannot open, which is pointless, and publishing
   // a fact about somebody else's workspace, which is worse.
   const readable = await reachableKeyIds(sql, userId);
   const writable = await reachableKeyIds(sql, userId, "writer");
+  const foreign = await foreignKeyIds(sql, userId, writable, [
+    ...new Set(request.rows.map((row) => row.keyId).filter(Boolean)),
+  ]);
 
   for (const row of request.rows) {
     // An edit to something shared with this caller lands on the owner's row. Only a row
-    // that is not in the shared world at all becomes one of their own.
-    if (!(await applySharedRow(sql, readable, writable, row))) {
+    // that is not in the shared world at all becomes one of their own — and only under a
+    // key they may write with.
+    if (!(await applySharedRow(sql, readable, writable, row)) && !foreign.has(row.keyId)) {
       await applyRow(sql, userId, row);
     }
   }
