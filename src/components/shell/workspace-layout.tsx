@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 
 import { PageSkeleton } from "@/components/layout/page-skeleton";
+import { RequireLocalAccount } from "@/components/shell/require-local-account";
 import { WorkspaceShell } from "@/components/shell/workspace-shell";
 
 /**
@@ -14,10 +15,12 @@ import { WorkspaceShell } from "@/components/shell/workspace-shell";
  */
 export function WorkspaceLayout() {
   return (
-    <WorkspaceShell>
-      <Suspense fallback={<PageSkeleton />}>
-        <Outlet />
-      </Suspense>
-    </WorkspaceShell>
+    <RequireLocalAccount>
+      <WorkspaceShell>
+        <Suspense fallback={<PageSkeleton />}>
+          <Outlet />
+        </Suspense>
+      </WorkspaceShell>
+    </RequireLocalAccount>
   );
 }

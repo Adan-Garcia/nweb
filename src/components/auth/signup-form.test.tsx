@@ -11,61 +11,108 @@ async function fill(user: ReturnType<typeof userEvent.setup>, values: Record<str
 }
 
 const valid = {
-  "Full Name": "Ada Lovelace",
+  Name: "Ada Lovelace",
   Email: "ada@example.com",
-  Password: "correct-horse",
-  "Confirm Password": "correct-horse",
+  Passphrase: "correct-horse",
+  "Confirm passphrase": "correct-horse",
 };
+
+function setup(overrides: Partial<Parameters<typeof SignupForm>[0]> = {}) {
+  const props = {
+    hasPassphrase: false,
+    defaultServerUrl: "",
+    isWorking: false,
+    progress: null,
+    error: null,
+    onSubmit: vi.fn(),
+    ...overrides,
+  };
+
+  render(<SignupForm {...props} />);
+
+  return { user: userEvent.setup(), onSubmit: props.onSubmit };
+}
+
+const submit = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(screen.getByRole("button", { name: "Create account" }));
 
 describe("SignupForm", () => {
   it("asks for every field when submitted empty", async () => {
-    const user = userEvent.setup();
-    render(<SignupForm />);
+    const { user, onSubmit } = setup();
 
-    await user.click(screen.getByRole("button", { name: /create account/i }));
+    await submit(user);
 
-    expect(await screen.findByText("Full name is required")).toBeInTheDocument();
-    expect(screen.getByText("Email is required")).toBeInTheDocument();
-    expect(screen.getByText("Password must be at least 8 characters long")).toBeInTheDocument();
-    expect(screen.getByText("Please confirm your password")).toBeInTheDocument();
-  });
-
-  it("rejects a one-letter name, a malformed email and a short password", async () => {
-    const user = userEvent.setup();
-    render(<SignupForm />);
-
-    await fill(user, { "Full Name": "A", Email: "nope", Password: "short" });
-    await user.click(screen.getByRole("button", { name: /create account/i }));
-
-    expect(await screen.findByText("Enter your full name")).toBeInTheDocument();
+    expect(await screen.findByText("Enter your name")).toBeInTheDocument();
     expect(screen.getByText("Enter a valid email address")).toBeInTheDocument();
-    expect(screen.getByText("Password must be at least 8 characters long")).toBeInTheDocument();
+    expect(screen.getByText("Use at least 8 characters")).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("requires the two passwords to match", async () => {
-    const user = userEvent.setup();
-    render(<SignupForm />);
+  it("requires the two passphrases to match", async () => {
+    const { user } = setup();
 
-    await fill(user, { ...valid, "Confirm Password": "something-else" });
-    await user.click(screen.getByRole("button", { name: /create account/i }));
+    await fill(user, { ...valid, "Confirm passphrase": "something-else" });
+    await submit(user);
 
-    expect(await screen.findByText("Passwords do not match")).toBeInTheDocument();
+    expect(await screen.findByText("The passphrases do not match")).toBeInTheDocument();
   });
 
-  it("accepts a valid form without showing errors or logging what was typed", async () => {
-    const user = userEvent.setup();
+  it("asks a device that already has a passphrase for it once, with no length rule", async () => {
+    const { user, onSubmit } = setup({ hasPassphrase: true });
+
+    expect(screen.queryByLabelText("Confirm passphrase")).not.toBeInTheDocument();
+    await fill(user, { Name: "Ada", Email: "ada@example.com", "This device's passphrase": "old" });
+    await submit(user);
+
+    await vi.waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ passphrase: "old" }),
+        expect.anything(),
+      ),
+    );
+  });
+
+  it("asks for a server's address only when a sync account is wanted", async () => {
+    const { user, onSubmit } = setup();
+
+    expect(screen.queryByLabelText("Server address")).not.toBeInTheDocument();
+    await fill(user, valid);
+    await user.click(screen.getByRole("checkbox", { name: /sync account/ }));
+    await submit(user);
+
+    expect(await screen.findByText(/Enter the server's address/)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Server address"), "https://sync.example.org");
+    await submit(user);
+
+    await vi.waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ withServer: true, serverUrl: "https://sync.example.org" }),
+        expect.anything(),
+      ),
+    );
+  });
+
+  it("hands a valid form over without logging what was typed", async () => {
     const spies = (["log", "info", "debug", "warn"] as const).map((method) =>
       vi.spyOn(console, method).mockImplementation(() => {}),
     );
-    render(<SignupForm />);
+    const { user, onSubmit } = setup();
 
     await fill(user, valid);
-    await user.click(screen.getByRole("button", { name: /create account/i }));
+    await submit(user);
 
-    await vi.waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
-    expect(screen.queryByText("Passwords do not match")).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     for (const spy of spies) {
       expect(spy).not.toHaveBeenCalled();
     }
+  });
+
+  it("shows what went wrong, and holds the button while it works", () => {
+    setup({ error: "That is not the passphrase.", isWorking: true });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("That is not the passphrase.");
+    expect(screen.getByRole("button", { name: "Setting up…" })).toBeDisabled();
   });
 });

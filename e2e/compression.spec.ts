@@ -1,3 +1,4 @@
+import { reload } from "./account";
 import { expect, test } from "./fixtures";
 import { createNote, openNotes, waitForAutosave } from "./helpers";
 
@@ -48,7 +49,7 @@ test.describe("stored notes are compressed with brotli", () => {
     expect(stored).not.toContain("gzip");
 
     // And it is really readable: the worker decompresses it back after a reload.
-    await page.reload();
+    await reload(page);
     await openNotes(page);
     await expect(page.locator(".ProseMirror")).toContainText("Brotli compresses repeated prose");
   });

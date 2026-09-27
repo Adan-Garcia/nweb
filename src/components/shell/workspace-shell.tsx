@@ -9,6 +9,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAppearance } from "@/hooks/use-appearance";
 import { useBackgroundSync } from "@/hooks/use-background-sync";
+import { useLocalAccount } from "@/hooks/use-local-account";
 import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
 import { collectTombstonesOnce } from "@/lib/db/tombstones";
 
@@ -19,6 +20,7 @@ type WorkspaceShellProps = {
 export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const { preferences, update } = useAppearance();
   const lock = useWorkspaceLock();
+  const { account } = useLocalAccount();
 
   /**
    * Housekeeping, once a load: tombstones past the retention window are dropped.
@@ -55,6 +57,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   if (lock.state === "locked") {
     return (
       <LockScreen
+        name={account?.name ?? null}
         error={lock.error}
         isWorking={lock.isWorking}
         onUnlock={(passphrase) => void lock.unlock(passphrase)}

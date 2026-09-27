@@ -1,3 +1,4 @@
+import { reload } from "./account";
 import { expect, test } from "./fixtures";
 import { createNote, drawStroke, inkPixels, openNotes, waitForAutosave } from "./helpers";
 
@@ -12,7 +13,7 @@ test.describe("the spatial canvas (real Excalidraw)", () => {
     await waitForAutosave(page);
     const drawn = await inkPixels(page);
 
-    await page.reload();
+    await reload(page);
 
     // The app reopens the most recently updated note, which is this one.
     await expect(page.getByRole("button", { name: "Canvas E2E" })).toBeVisible();

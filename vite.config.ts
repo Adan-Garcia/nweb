@@ -44,10 +44,10 @@ export default defineConfig({
       ],
       // CLAUDE.md section 4. Set just below what is measured, so coverage can only go up.
       thresholds: {
-        lines: 97.5,
-        statements: 97.5,
-        functions: 96,
-        branches: 93,
+        lines: 98,
+        statements: 98,
+        functions: 97.5,
+        branches: 94,
         // Hooks require 100% logic coverage.
         "src/hooks/**": { lines: 100, functions: 100, branches: 100, statements: 100 },
         // Feature hooks live next to their components; a few defensive branches remain.

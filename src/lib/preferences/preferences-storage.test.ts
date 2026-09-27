@@ -8,7 +8,7 @@ describe("preferences storage", () => {
   it("has a store of its own from version 12", async () => {
     const database = await getNotesDb();
 
-    expect(NOTES_DB_VERSION).toBe(12);
+    expect(NOTES_DB_VERSION).toBeGreaterThanOrEqual(12);
     expect(database.objectStoreNames.contains("preferences")).toBe(true);
   });
 

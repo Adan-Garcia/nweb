@@ -1,6 +1,7 @@
 import { type DBSchema, type IDBPDatabase, openDB } from "idb";
 
 import type { AccountRecord } from "../account/account-record";
+import type { LocalAccount } from "../account/local-account";
 import type { Branch, Flight, Nest, Wing } from "../hierarchy/entity-model";
 import type { Pebble } from "../hierarchy/pebble-model";
 import type { SharePathRecord } from "../hierarchy/share-path-model";
@@ -70,8 +71,13 @@ const NOTES_DB_NAME = "cuervo-notes";
  * density, the order of the sidebar. It syncs, so it lives here and not only in the
  * `localStorage` cache the first paint reads. Rewrites no rows: with no row, the cache (or
  * the old `theme` key it falls back to) is written here the first time the app loads.
+ *
+ * 13 added `local-account`: who this device belongs to — a name and an email — beside the
+ * passphrase the lock record already holds. A local account is now required to open the
+ * workspace; a server account stays optional. Rewrites no rows: a database without one is
+ * asked to set one up, keeping the passphrase it already has.
  */
-export const NOTES_DB_VERSION = 12;
+export const NOTES_DB_VERSION = 13;
 
 export interface NotesDbSchema extends DBSchema {
   "notes-documents": {
@@ -134,6 +140,10 @@ export interface NotesDbSchema extends DBSchema {
     key: string;
     value: Preferences;
   };
+  "local-account": {
+    key: string;
+    value: LocalAccount;
+  };
 }
 
 const STORE_NAMES = [
@@ -152,6 +162,7 @@ const STORE_NAMES = [
   "sync-bases",
   "share-paths",
   "preferences",
+  "local-account",
 ] as const;
 
 let dbPromise: Promise<IDBPDatabase<NotesDbSchema>> | null = null;
@@ -170,8 +181,36 @@ export function getNotesDb() {
           void migrateStringPathsToEntities(transaction);
         }
       },
+      // Another tab is upgrading or erasing the database: step aside rather than block it.
+      // The next `getNotesDb` reopens.
+      blocking() {
+        void dbPromise?.then((database) => database.close());
+        dbPromise = null;
+      },
     });
   }
 
   return dbPromise;
+}
+
+/**
+ * Deletes the whole database: every note, task, file, key and setting on this device.
+ *
+ * The open connection is closed first, or the delete waits on it forever ("blocked"). What
+ * a server holds is untouched; this is the device forgetting, not the account.
+ */
+export async function eraseNotesDb(): Promise<void> {
+  if (dbPromise) {
+    (await dbPromise).close();
+    dbPromise = null;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(NOTES_DB_NAME);
+
+    // Resolved on success only. "Blocked" means another tab still has it open; every
+    // connection closes itself when asked (`blocking` above), and the delete then completes.
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error ?? new Error("Could not erase the database."));
+  });
 }

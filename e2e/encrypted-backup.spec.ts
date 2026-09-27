@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 
+import { visit } from "./account";
 import { expect, test } from "./fixtures";
 import { createNote, openNotes } from "./helpers";
 
@@ -14,7 +15,7 @@ test.describe("an encrypted backup", () => {
     await openNotes(page);
     await createNote(page, "Secret Lecture", "linear");
 
-    await page.goto("/settings");
+    await visit(page, "/settings");
     await page.getByRole("button", { name: "Encrypt a backup" }).click();
     await page.getByLabel("Passphrase for this backup").fill("correct horse battery");
 
@@ -56,7 +57,6 @@ test.describe("an encrypted backup", () => {
     await expect(page.getByRole("status")).toContainText("Restored");
 
     // And the note really came back.
-    await page.goto("/notes");
     await openNotes(page);
     await expect(page.getByRole("button", { name: "Secret Lecture" })).toBeVisible();
   });

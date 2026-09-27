@@ -1,3 +1,4 @@
+import { reload } from "./account";
 import { expect, test } from "./fixtures";
 import { createNote, openNotes } from "./helpers";
 
@@ -21,7 +22,7 @@ test.describe("deleting a note", () => {
     await expect(page.getByRole("button", { name: "Keep This" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Delete This" })).toBeHidden();
 
-    await page.reload();
+    await reload(page);
     await openNotes(page);
 
     await expect(page.getByRole("button", { name: "Keep This" })).toBeVisible();

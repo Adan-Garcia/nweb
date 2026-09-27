@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 
 import { BackupActions } from "@/components/settings/backup/backup-actions";
-import { BackupPassphraseField } from "@/components/settings/backup/backup-passphrase-field";
 import { RestoreModeField } from "@/components/settings/backup/restore-mode-field";
 import type { BackupStatus } from "@/components/settings/backup/use-workspace-backup";
+import { PassphraseField } from "@/components/settings/passphrase-field";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { RestoreMode } from "@/lib/backup/workspace-restore";
 
@@ -58,7 +58,7 @@ export function BackupCard({
         />
 
         {isEncrypting && !needsPassphrase ? (
-          <BackupPassphraseField
+          <PassphraseField
             id="export-passphrase"
             label="Passphrase for this backup"
             hint="The file is encrypted with AES-GCM under this passphrase. Nothing can reset it: forget the passphrase and the file cannot be opened."
@@ -75,7 +75,7 @@ export function BackupCard({
         ) : null}
 
         {needsPassphrase ? (
-          <BackupPassphraseField
+          <PassphraseField
             id="import-passphrase"
             label="This backup is encrypted"
             hint="Enter the passphrase it was exported with."

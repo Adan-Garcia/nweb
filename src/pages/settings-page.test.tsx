@@ -4,10 +4,11 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Toaster } from "@/components/shell/toaster";
+import { createLocalAccount } from "@/lib/account/device-account";
+import { readLocalAccount } from "@/lib/account/local-account";
 import { resetActiveCipher } from "@/lib/crypto/cipher";
 import { getNotesDb } from "@/lib/db/notes-db";
-import { unlockWorkspace } from "@/lib/lock/workspace-lock";
-import { createWorkspaceLock } from "@/lib/lock/workspace-passphrase";
+import { getWorkspaceLockState, unlockWorkspace } from "@/lib/lock/workspace-lock";
 
 import { SettingsPage } from "./settings";
 
@@ -74,6 +75,7 @@ beforeEach(async () => {
   await database.clear("notes-media");
   await database.clear("workspace-keys");
   await database.clear("wings");
+  await database.clear("local-account");
   window.localStorage.clear();
   resetActiveCipher();
 });
@@ -84,14 +86,22 @@ afterEach(() => {
 });
 
 describe("SettingsPage", () => {
-  it("says plainly that this build has no server to sign in to", () => {
+  it("says plainly when no server is chosen, and offers one once it is", async () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
     // No `VITE_API_URL` is compiled into a test build, which is the same state a local
-    // build is in: the account card offers nothing and says why rather than going quiet.
-    expect(screen.getByText(/no server configured/i)).toBeInTheDocument();
+    // build is in: the sync card offers nothing to sign in to and says why.
+    expect(
+      await screen.findByText("No server: this device keeps everything to itself."),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create an account" })).not.toBeInTheDocument();
+
+    const sync = screen.getByRole("region", { name: "Sync server" });
+    await userEvent.type(within(sync).getByLabelText("Server address"), "https://sync.example.org");
+    await userEvent.click(within(sync).getByRole("button", { name: "Save" }));
+
+    expect(await within(sync).findByRole("button", { name: "Create an account" })).toBeEnabled();
   });
 
   it("downloads a dated backup of what is stored", async () => {
@@ -167,20 +177,28 @@ describe("SettingsPage", () => {
     const field = screen.getByLabelText("New name for My Wing");
     await userEvent.clear(field);
     await userEvent.type(field, "Second Year");
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(
+      within(screen.getByRole("region", { name: "Workspace" })).getByRole("button", {
+        name: "Save",
+      }),
+    );
 
     await waitFor(async () => {
       expect((await database.get("wings", "wing-1"))?.name).toBe("Second Year");
     });
   });
 
-  it("changes the workspace passphrase from the lock card", async () => {
-    // Creating the lock leaves the workspace unlocked, which is the state the card offers
-    // a change from — and the state the settings page is reachable in at all.
-    await createWorkspaceLock("correct horse");
+  it("changes the device's passphrase from the account card", async () => {
+    // Setting up the account leaves the workspace unlocked, which is the state the settings
+    // page is reachable in at all.
+    await createLocalAccount({
+      name: "Ada",
+      email: "ada@example.com",
+      passphrase: "correct horse",
+    });
     renderPage();
 
-    await userEvent.click(await screen.findByRole("button", { name: "Change the passphrase" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Change passphrase" }));
     await userEvent.type(screen.getByLabelText("Current passphrase"), "correct horse");
     await userEvent.type(screen.getByLabelText("New passphrase"), "battery staple");
     await userEvent.click(
@@ -193,17 +211,24 @@ describe("SettingsPage", () => {
     expect(await unlockWorkspace("correct horse")).toBe(false);
   });
 
-  it("locks and removes the passphrase from the card", async () => {
-    await createWorkspaceLock("correct horse");
+  it("edits the account's name and locks the device from its card", async () => {
+    await createLocalAccount({
+      name: "Ada",
+      email: "ada@example.com",
+      passphrase: "correct horse",
+    });
     renderPage();
 
-    await userEvent.click(await screen.findByRole("button", { name: "Remove the passphrase" }));
-    await userEvent.type(screen.getByLabelText("Confirm the passphrase"), "correct horse");
-    await userEvent.click(screen.getByRole("button", { name: "Remove and decrypt" }));
+    const account = screen.getByRole("region", { name: "Account" });
+    const name = await within(account).findByLabelText("Name");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Ada Lovelace");
+    await userEvent.click(within(account).getByRole("button", { name: "Save" }));
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Set a passphrase" })).toBeInTheDocument();
-    });
+    await waitFor(async () => expect((await readLocalAccount())?.name).toBe("Ada Lovelace"));
+
+    await userEvent.click(within(account).getByRole("button", { name: "Lock now" }));
+    await waitFor(async () => expect(await getWorkspaceLockState()).toBe("locked"));
   });
 
   it("merges a backup instead of replacing when that is what was chosen", async () => {
@@ -254,10 +279,10 @@ describe("SettingsPage layout", () => {
 
     for (const [name, id] of [
       ["Appearance", "appearance"],
+      ["Account", "account"],
+      ["Sync server", "sync"],
       ["Workspace", "workspace"],
-      ["Security", "security"],
       ["Backup", "backup"],
-      ["Account & sync", "account"],
       ["Sharing", "sharing"],
       ["Reminders", "reminders"],
     ]) {

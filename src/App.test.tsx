@@ -1,12 +1,15 @@
 import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { writeLocalAccount } from "@/lib/account/local-account";
+import { getNotesDb } from "@/lib/db/notes-db";
 import { notifySuccess } from "@/lib/toast";
 import { usePreferencesStore } from "@/stores/use-preferences-store";
 
 import App from "./App";
 
-beforeEach(() => {
+beforeEach(async () => {
+  await (await getNotesDb()).clear("local-account");
   window.matchMedia = vi
     .fn()
     .mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} });
@@ -49,7 +52,15 @@ describe("App routing", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Cuervo Planner" })).toBeInTheDocument();
   });
 
+  it("sends a device with no account to create one before any workspace page", async () => {
+    renderAt("/board");
+
+    expect(await screen.findByRole("region", { name: "Sign up form" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/auth/signup");
+  });
+
   it("renders a workspace page inside the shell", async () => {
+    await writeLocalAccount({ name: "Ada", email: "ada@example.com" });
     renderAt("/board");
 
     expect(await screen.findByRole("heading", { level: 1, name: "Board" })).toBeInTheDocument();

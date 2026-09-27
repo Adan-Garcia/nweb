@@ -218,7 +218,7 @@ export async function forgetAccount(): Promise<void> {
  * once opens every note it holds with no network, including the ones under courses it made
  * on a plane.
  */
-async function adoptKeyring(
+export async function adoptKeyring(
   wingKeyId: string,
   wingKey: CryptoKey,
   cached: KeyGraph,

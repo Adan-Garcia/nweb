@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 type LockScreenProps = {
+  /** Whose device this is, from the local account; null on a device from before them. */
+  name: string | null;
   error: string | null;
   isWorking: boolean;
   onUnlock: (passphrase: string) => void;
@@ -18,7 +20,7 @@ type LockScreenProps = {
  * nothing behind it can be read either: the key is not in memory, so the storage layer
  * refuses every encrypted row.
  */
-export function LockScreen({ error, isWorking, onUnlock }: LockScreenProps) {
+export function LockScreen({ name, error, isWorking, onUnlock }: LockScreenProps) {
   const [passphrase, setPassphrase] = useState("");
 
   const submit = () => {
@@ -34,11 +36,11 @@ export function LockScreen({ error, isWorking, onUnlock }: LockScreenProps) {
           {/* A real h1: this screen stands in for the whole page. */}
           <h1 className="flex items-center gap-2 text-heading">
             <Lock className="size-4" />
-            This workspace is locked
+            {name ? `Welcome back, ${name}` : "This workspace is locked"}
           </h1>
           <CardDescription>
-            Your notes, drawings, files and titles are encrypted on this device. Enter the
-            passphrase to read them.
+            Your notes, drawings, files and titles are encrypted on this device. Enter your
+            passphrase to open them.
           </CardDescription>
         </CardHeader>
         <CardContent>

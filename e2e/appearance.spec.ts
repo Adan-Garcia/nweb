@@ -1,4 +1,5 @@
 import { ACCENT_PALETTE, THEME_BRAND } from "../src/lib/preferences/accent-palettes";
+import { visit } from "./account";
 import { expect, test } from "./fixtures";
 
 /**
@@ -35,7 +36,7 @@ test("the stylesheet builds every accent and theme from the checked numbers", as
 });
 
 test("a chosen look is painted before any script has run", async ({ page }) => {
-  await page.goto("/settings#appearance");
+  await visit(page, "/settings#appearance");
   await page.getByRole("button", { name: "Black" }).click();
   await page.getByRole("button", { name: "Teal" }).click();
   await page.getByRole("button", { name: "Compact" }).click();
@@ -54,7 +55,7 @@ test("a chosen look is painted before any script has run", async ({ page }) => {
 });
 
 test("the command palette goes anywhere from the keyboard", async ({ page }) => {
-  await page.goto("/dashboard");
+  await visit(page, "/dashboard");
   await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
 
   await page.keyboard.press("Control+k");
@@ -69,7 +70,7 @@ test.describe("on a phone", () => {
   test.use({ viewport: { width: 375, height: 740 } });
 
   test("the tab bar moves between pages and More opens the rest", async ({ page }) => {
-    await page.goto("/dashboard");
+    await visit(page, "/dashboard");
     const tabs = page.getByRole("navigation", { name: "Workspace" });
 
     await tabs.getByRole("link", { name: "Calendar" }).click();

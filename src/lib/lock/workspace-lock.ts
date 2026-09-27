@@ -1,5 +1,6 @@
 import { type KdfParams } from "@shared/kdf-params";
 
+import { readAccountRecord } from "../account/account-record";
 import { base64ToBytes, bytesToBase64 } from "../crypto/base64";
 import {
   type Cipher,
@@ -94,7 +95,9 @@ export async function getWorkspaceLockState(): Promise<WorkspaceLockState> {
     return "interrupted";
   }
 
-  if (!(await isWorkspaceLockSet())) {
+  // A device on a server account is locked by the account's passphrase, whether or not it
+  // also has a lock record: its rows are under the account's keys either way.
+  if (!(await isWorkspaceLockSet()) && !(await readAccountRecord())) {
     return "unset";
   }
 
@@ -158,7 +161,28 @@ export async function unlockWorkspace(passphrase: string): Promise<boolean> {
   }
 }
 
+const lockListeners = new Set<() => void>();
+
+/**
+ * Hears the device being locked or unlocked from anywhere — Settings, the command palette,
+ * another screen — so the shell can put the lock screen up (or take it down) at once.
+ */
+export function subscribeToLockChanges(listener: () => void): () => void {
+  lockListeners.add(listener);
+
+  return () => {
+    lockListeners.delete(listener);
+  };
+}
+
+export function notifyLockChanged(): void {
+  for (const listener of lockListeners) {
+    listener();
+  }
+}
+
 /** Drops the key. The content stays encrypted and unreadable until the next unlock. */
 export function lockWorkspace() {
   resetActiveCipher();
+  notifyLockChanged();
 }

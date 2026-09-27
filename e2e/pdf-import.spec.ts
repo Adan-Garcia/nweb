@@ -1,3 +1,4 @@
+import { reload } from "./account";
 import { expect, test } from "./fixtures";
 import { createNote, inkPixels, makePdf, openNotes } from "./helpers";
 
@@ -95,7 +96,7 @@ test.describe("importing a PDF onto the canvas (real pdf.js)", () => {
     await expect.poll(() => inkPixels(page)).toBeGreaterThan(200);
     await expect(page.getByText(/^Autosaved at/)).toBeVisible();
 
-    await page.reload();
+    await reload(page);
 
     await expect(page.getByRole("button", { name: "PDF E2E" })).toBeVisible();
     await expect.poll(() => inkPixels(page)).toBeGreaterThan(200);

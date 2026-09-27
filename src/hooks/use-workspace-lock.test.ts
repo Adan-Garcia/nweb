@@ -60,6 +60,14 @@ async function mount() {
   return hook;
 }
 
+/** A device with its passphrase set, as setting up the local account leaves it. */
+async function mountLocked() {
+  await createWorkspaceLock(PASSPHRASE);
+  const hook = await mount();
+  await waitFor(() => expect(hook.result.current.state).toBe("unlocked"));
+  return hook;
+}
+
 describe("useWorkspaceLock", () => {
   it("starts unset when no passphrase has been chosen", async () => {
     const { result } = await mount();
@@ -68,36 +76,8 @@ describe("useWorkspaceLock", () => {
     expect(result.current.error).toBeNull();
   });
 
-  it("sets a passphrase and comes back unlocked", async () => {
-    const { result } = await mount();
-
-    await act(async () => {
-      expect(await result.current.create(PASSPHRASE)).toBe(true);
-    });
-
-    expect(result.current.state).toBe("unlocked");
-  });
-
-  it("reports a failure to set one without changing the state", async () => {
-    const { result } = await mount();
-    await act(async () => {
-      await result.current.create(PASSPHRASE);
-    });
-
-    // A second passphrase over the first is refused by the storage layer.
-    await act(async () => {
-      expect(await result.current.create("another")).toBe(false);
-    });
-
-    expect(result.current.error).toMatch(/Nothing was changed/);
-    expect(result.current.state).toBe("unlocked");
-  });
-
   it("locks, then unlocks with the right passphrase", async () => {
-    const { result } = await mount();
-    await act(async () => {
-      await result.current.create(PASSPHRASE);
-    });
+    const { result } = await mountLocked();
 
     await act(async () => {
       await result.current.lock();
@@ -112,9 +92,8 @@ describe("useWorkspaceLock", () => {
   });
 
   it("stays locked and explains itself for the wrong passphrase", async () => {
-    const { result } = await mount();
+    const { result } = await mountLocked();
     await act(async () => {
-      await result.current.create(PASSPHRASE);
       await result.current.lock();
     });
 
@@ -126,34 +105,13 @@ describe("useWorkspaceLock", () => {
     expect(result.current.error).toMatch(/does not unlock/);
   });
 
-  it("removes the passphrase with the right one, and refuses the wrong one", async () => {
-    const { result } = await mount();
-    await act(async () => {
-      await result.current.create(PASSPHRASE);
-    });
-
-    await act(async () => {
-      expect(await result.current.remove("wrong")).toBe(false);
-    });
-    expect(result.current.error).toMatch(/not the one this workspace was locked with/);
-    expect(result.current.state).toBe("unlocked");
-
-    await act(async () => {
-      expect(await result.current.remove(PASSPHRASE)).toBe(true);
-    });
-    expect(result.current.state).toBe("unset");
-  });
-
   it("changes the passphrase, and reports a wrong current one", async () => {
-    const { result } = await mount();
-    await act(async () => {
-      await result.current.create(PASSPHRASE);
-    });
+    const { result } = await mountLocked();
 
     await act(async () => {
       expect(await result.current.change("wrong", "second passphrase")).toBe(false);
     });
-    expect(result.current.error).toMatch(/not the one this workspace is locked with/);
+    expect(result.current.error).toMatch(/not the one this device is locked with/);
 
     await act(async () => {
       expect(await result.current.change(PASSPHRASE, "second passphrase")).toBe(true);
@@ -169,10 +127,7 @@ describe("useWorkspaceLock", () => {
   });
 
   it("says the old passphrase still works when a change fails outright", async () => {
-    const { result } = await mount();
-    await act(async () => {
-      await result.current.create(PASSPHRASE);
-    });
+    const { result } = await mountLocked();
 
     // An empty new passphrase is one Argon2id refuses, so the derivation throws rather
     // than returning a wrong-passphrase answer.
@@ -184,16 +139,26 @@ describe("useWorkspaceLock", () => {
   });
 
   it("reports how far a rekey has got, and nothing when none is running", async () => {
-    const { result } = await mount();
+    const { result } = await mountLocked();
     expect(result.current.progress).toBeNull();
 
     await act(async () => {
-      await result.current.create(PASSPHRASE);
+      await result.current.change(PASSPHRASE, "second passphrase");
     });
 
     // Cleared once it is done, so no stale bar is left on screen.
     expect(result.current.progress).toBeNull();
     expect(result.current.state).toBe("unlocked");
+  });
+
+  it("follows a lock taken somewhere else, such as the Settings page", async () => {
+    const { result } = await mountLocked();
+
+    act(() => {
+      lockWorkspace();
+    });
+
+    await waitFor(() => expect(result.current.state).toBe("locked"));
   });
 
   it("comes back interrupted, saying which passphrases would finish the job", async () => {
@@ -219,10 +184,7 @@ describe("useWorkspaceLock", () => {
   });
 
   it("refuses a resume with the wrong passphrase and stays interrupted", async () => {
-    const { result } = await mount();
-    await act(async () => {
-      await result.current.create(PASSPHRASE);
-    });
+    const { result } = await mountLocked();
 
     // A journal written over a finished lock: the same state a closed tab leaves behind.
     await writeRekeyJournal({
@@ -265,10 +227,7 @@ describe("useWorkspaceLock", () => {
   });
 
   it("finishes a rekey it can open, and the workspace comes back", async () => {
-    const { result } = await mount();
-    await act(async () => {
-      await result.current.create(PASSPHRASE);
-    });
+    const { result } = await mountLocked();
 
     // Turning the lock off is a rekey too; interrupting it leaves the same journal.
     const database = await getNotesDb();

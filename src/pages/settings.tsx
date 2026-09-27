@@ -1,13 +1,13 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
-import { AccountCard } from "@/components/settings/account/account-card";
-import { useAccount } from "@/components/settings/account/use-account";
+import { AccountSection } from "@/components/settings/account/account-section";
 import { AppearanceSection } from "@/components/settings/appearance/appearance-section";
 import { BackupCard } from "@/components/settings/backup/backup-card";
 import { useWorkspaceBackup } from "@/components/settings/backup/use-workspace-backup";
-import { LockCard } from "@/components/settings/lock/lock-card";
 import { RemindersCard } from "@/components/settings/reminders/reminders-card";
 import { useReminders } from "@/components/settings/reminders/use-reminders";
+import { ServerAccountCard } from "@/components/settings/server/server-account-card";
+import { useServerAccount } from "@/components/settings/server/use-server-account";
 import { SettingsBlock } from "@/components/settings/settings-block";
 import { SettingsNav } from "@/components/settings/settings-nav";
 import { SharingCard } from "@/components/settings/sharing/sharing-card";
@@ -16,14 +16,14 @@ import { useSettingsAnchor } from "@/components/settings/use-settings-anchor";
 import { useWorkspaceEditor } from "@/components/settings/workspace/use-workspace-editor";
 import { WorkspaceEditorCard } from "@/components/settings/workspace/workspace-editor-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useWorkspaceLock } from "@/hooks/use-workspace-lock";
+import { useLocalAccount } from "@/hooks/use-local-account";
 
 export function SettingsPage() {
   const activeId = useSettingsAnchor();
   const backup = useWorkspaceBackup();
-  const lock = useWorkspaceLock();
   const editor = useWorkspaceEditor();
-  const account = useAccount();
+  const account = useServerAccount();
+  const local = useLocalAccount();
   const reminders = useReminders(account.sessionFor);
   const sharing = useSharing(account.sessionFor, account.record?.material.publicKey ?? null);
 
@@ -31,7 +31,7 @@ export function SettingsPage() {
     <PageContainer>
       <PageHeader
         title="Settings"
-        description="Appearance follows your account to every device. Everything else applies to this browser."
+        description="Appearance follows your sync account to every device. Everything else applies to this device."
       />
 
       <div className="grid gap-6 md:grid-cols-[12rem_1fr] md:gap-10">
@@ -50,52 +50,33 @@ export function SettingsPage() {
             </Card>
           </SettingsBlock>
 
-          <SettingsBlock id="workspace">
-            <WorkspaceEditorCard {...editor} />
+          <SettingsBlock id="account">
+            <AccountSection
+              isServerConnected={account.isConnected}
+              // A full load, so nothing held in memory outlives the erased device.
+              onErased={() => window.location.assign("/auth/signup")}
+            />
           </SettingsBlock>
 
-          <SettingsBlock id="security">
-            <LockCard
-              state={lock.state}
-              error={lock.error}
-              isWorking={lock.isWorking}
-              progress={lock.progress}
-              onCreate={(passphrase) => void lock.create(passphrase)}
-              onChange={(current, next) => void lock.change(current, next)}
-              onRemove={(passphrase) => void lock.remove(passphrase)}
-              onLock={() => void lock.lock()}
-            />
+          <SettingsBlock id="sync">
+            <ServerAccountCard {...account} localEmail={local.account?.email ?? ""} />
+          </SettingsBlock>
+
+          <SettingsBlock id="workspace">
+            <WorkspaceEditorCard {...editor} />
           </SettingsBlock>
 
           <SettingsBlock id="backup">
             <BackupCard
               status={backup.status}
               needsPassphrase={backup.needsPassphrase}
-              isLockSet={lock.state !== "unset"}
+              isLockSet
               restoreMode={backup.restoreMode}
               onChooseRestoreMode={backup.chooseRestoreMode}
               onExport={(passphrase) => void backup.exportWorkspace(passphrase)}
               onImport={(file) => void backup.importWorkspace(file)}
               onUnlock={(passphrase) => void backup.unlockImport(passphrase)}
               onCancelUnlock={backup.cancelImport}
-            />
-          </SettingsBlock>
-
-          <SettingsBlock id="account">
-            <AccountCard
-              status={account.status}
-              email={account.record?.email ?? null}
-              hasServer={account.hasServer}
-              isWorking={account.isWorking}
-              isLockSet={lock.state !== "unset"}
-              error={account.error}
-              lastSync={account.lastSync}
-              onCreate={(email, passphrase, current) =>
-                void account.createAccount(email, passphrase, current)
-              }
-              onSignIn={(passphrase) => void account.signIn(passphrase)}
-              onSignOut={() => void account.signOut()}
-              onSync={() => void account.sync()}
             />
           </SettingsBlock>
 
