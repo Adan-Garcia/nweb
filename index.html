@@ -25,14 +25,24 @@
         } catch (error) {
           prefs = {};
         }
-        var mode = prefs.theme || "system";
+        // Only values the schema allows, with its defaults: a stale or hand-edited cache must
+        // not paint a look the app would then correct. Kept in step with preferences-model.ts
+        // by src/index-html.test.ts.
+        function pick(value, allowed, fallback) {
+          return allowed.indexOf(value) === -1 ? fallback : value;
+        }
+        var themes = ["system", "light", "dark", "paper", "oled"];
+        var accents = ["rose", "orange", "amber", "green", "teal", "blue", "indigo", "violet"];
+        var densities = ["compact", "comfortable", "spacious"];
+        var fontSizes = ["sm", "md", "lg"];
+        var mode = pick(prefs.theme, themes, "system");
         var systemDark = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches;
         var theme = mode === "system" ? (systemDark ? "dark" : "light") : mode;
         var dark = theme === "dark" || theme === "oled";
         root.dataset.theme = theme;
-        root.dataset.accent = prefs.accent || "rose";
-        root.dataset.density = prefs.density || "comfortable";
-        root.dataset.fontSize = prefs.fontSize || "md";
+        root.dataset.accent = pick(prefs.accent, accents, "rose");
+        root.dataset.density = pick(prefs.density, densities, "comfortable");
+        root.dataset.fontSize = pick(prefs.fontSize, fontSizes, "md");
         root.classList.toggle("dark", dark);
         root.style.colorScheme = dark ? "dark" : "light";
       })();
