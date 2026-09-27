@@ -225,3 +225,28 @@ export async function changePassphrase(
 
   return true;
 }
+
+/**
+ * Erases an account and everything it owns, after a fresh proof of the passphrase.
+ *
+ * Deleting the user cascades to its sessions, rows, media, keys, push subscriptions and the
+ * grants it was given. Two things point at its keys without a foreign key — the wraps that
+ * hang them together and the grants it made to other people — so those go first, or they
+ * would outlive the keys they describe.
+ */
+export async function deleteAccount(sql: Sql, user: UserRow, authKey: string): Promise<boolean> {
+  if (!(await verifyAuthKey(authKey, user.auth_hash))) {
+    return false;
+  }
+
+  const owned = "select id from keys where owner_id = $1";
+
+  await sql.query(
+    `delete from key_wraps where parent_key_id in (${owned}) or child_key_id in (${owned})`,
+    [user.id],
+  );
+  await sql.query(`delete from grants where key_id in (${owned})`, [user.id]);
+  await sql.query("delete from users where id = $1", [user.id]);
+
+  return true;
+}

@@ -235,6 +235,7 @@ POST   /v1/auth/register        email + auth key + public key + sealed keys
 POST   /v1/auth/session         email + auth key -> session token
 DELETE /v1/auth/session         end this session
 POST   /v1/auth/passphrase      reseal the account key, drop every other session
+DELETE /v1/auth/account         session + auth key -> erase the account and all it owns
 GET    /v1/keys                 this account's own sealed key material
 POST   /v1/sync                 { since, rows[] } -> { seq, rows[] }
 POST   /v1/sync/backfill        { keyIds[], after } -> every row under keys just granted

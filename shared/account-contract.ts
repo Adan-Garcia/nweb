@@ -105,6 +105,16 @@ export const changePassphraseRequestSchema = z.object({
 
 export type ChangePassphraseRequest = z.infer<typeof changePassphraseRequestSchema>;
 
+/**
+ * Deleting an account asks for the passphrase's proof again, not just a session: a token
+ * left open on a borrowed laptop must not be enough to erase everything.
+ */
+export const deleteAccountRequestSchema = z.object({
+  authKey: base64,
+});
+
+export type DeleteAccountRequest = z.infer<typeof deleteAccountRequestSchema>;
+
 /** One shape for every failure, so a client never has to parse prose. */
 export const apiErrorSchema = z.object({
   error: z.enum([
