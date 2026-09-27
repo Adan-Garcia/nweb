@@ -78,6 +78,14 @@ describe("createFeedFetcher", () => {
     expect(await local()(`${base}/loop`)).toEqual({ ok: false, reason: "unavailable" });
   });
 
+  it("treats a redirect to an address that is not one as unavailable, not a crash", async () => {
+    const base = await serve({
+      "/bad": (_request, response) => response.writeHead(302, { location: "http://[x" }).end(),
+    });
+
+    expect(await local()(`${base}/bad`)).toEqual({ ok: false, reason: "unavailable" });
+  });
+
   it("checks every redirect against what it may reach", async () => {
     const base = await serve({
       "/old": (_request, response) =>

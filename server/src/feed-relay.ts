@@ -61,10 +61,12 @@ export function createFeedFetcher({
 
           if (status >= 300 && status < 400 && location) {
             response.resume();
-            const next = new URL(location, url);
+            // Parsed without throwing: this runs in a socket callback, where an exception
+            // is uncaught and takes the whole server down with it.
+            const next = URL.parse(location, url.href);
 
             resolve(
-              redirectsLeft > 0 && isAllowed(next.href)
+              next && redirectsLeft > 0 && isAllowed(next.href)
                 ? fetchOnce(next, redirectsLeft - 1)
                 : UNAVAILABLE,
             );
