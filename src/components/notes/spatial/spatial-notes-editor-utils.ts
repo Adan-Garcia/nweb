@@ -33,6 +33,13 @@ export function isPdfEmbeddableUrl(url: string | null | undefined) {
     const parsed = new URL(url, "https://example.com");
     const pathname = parsed.pathname.toLowerCase();
 
+    // An embed is rendered as a frame, and a drawing may come from somebody else's shared
+    // course. A `javascript:` or `data:` address can end in ".pdf" as easily as a real one,
+    // so the scheme is checked before the path is believed.
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return false;
+    }
+
     if (pathname.endsWith(".pdf")) {
       return true;
     }
