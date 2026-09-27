@@ -175,6 +175,15 @@ function unmatchableHash(): Promise<string> {
   return unmatchable;
 }
 
+/**
+ * Makes that hash before the first sign-in needs it. Made lazily, the first miss after a
+ * restart would pay for a hash as well as a verification, and be the slow answer that says
+ * "no such account". The server awaits this before it listens.
+ */
+export async function prepareSignIn(): Promise<void> {
+  await unmatchableHash();
+}
+
 /** A wrong proof is a false, not a throw: a malformed hash in the table is still a no. */
 async function verifyAuthKey(authKey: string, authHash: string): Promise<boolean> {
   try {
