@@ -18,12 +18,22 @@ describe("normalizeServerUrl", () => {
     expect(normalizeServerUrl("https://example.org/cuervo/")).toBe("https://example.org/cuervo");
   });
 
+  it("refuses plain http anywhere but this machine", () => {
+    // A session token and a proof of the passphrase travel to this address. Over plain
+    // http anyone on the network reads both, and could answer in the server's place.
+    expect(normalizeServerUrl("http://sync.example.org")).toBeNull();
+    expect(normalizeServerUrl("http://192.168.1.20:8787")).toBeNull();
+    expect(normalizeServerUrl("http://127.0.0.1:8787")).toBe("http://127.0.0.1:8787");
+    expect(normalizeServerUrl("http://[::1]:8787")).toBe("http://[::1]:8787");
+  });
+
   it("refuses anything that is not one", () => {
     expect(normalizeServerUrl(null)).toBeNull();
     expect(normalizeServerUrl(undefined)).toBeNull();
     expect(normalizeServerUrl("   ")).toBeNull();
     expect(normalizeServerUrl("not a url")).toBeNull();
     expect(normalizeServerUrl("ftp://example.org")).toBeNull();
+    expect(normalizeServerUrl("https://user:secret@sync.example.org")).toBeNull();
   });
 });
 

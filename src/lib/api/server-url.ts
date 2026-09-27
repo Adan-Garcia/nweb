@@ -16,7 +16,12 @@ const choiceSchema = z.object({ url: z.string().nullable() });
 
 type Env = { VITE_API_URL?: string };
 
-/** A usable base URL, or null: http(s) only, no trailing slash, no path beyond the host. */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * A usable base URL, or null: https (or http to this machine only), no credentials, no
+ * trailing slash.
+ */
 export function normalizeServerUrl(raw: string | null | undefined): string | null {
   const trimmed = raw?.trim();
 
@@ -27,7 +32,14 @@ export function normalizeServerUrl(raw: string | null | undefined): string | nul
   try {
     const url = new URL(trimmed);
 
-    if (url.protocol !== "https:" && url.protocol !== "http:") {
+    // Plain http only to this machine, for running a server locally. Anywhere else a
+    // session token and a proof of the passphrase would cross the network readable, and
+    // anyone on the way could answer in the server's place.
+    const isThisMachine = LOOPBACK_HOSTS.has(url.hostname);
+    const isSecure = url.protocol === "https:" || (url.protocol === "http:" && isThisMachine);
+
+    // Credentials in the address would ride along in every request and every log line.
+    if (!isSecure || url.username || url.password) {
       return null;
     }
 
