@@ -124,14 +124,14 @@ describe("PrivacyPage", () => {
   it("says what the lock does and does not cover, without overselling it", () => {
     const { container } = render(<PrivacyPage />);
 
-    // Plain about the default: no passphrase means no encryption.
-    expect(container.textContent).toMatch(/not encrypted/i);
-    // And plain about the limit of the lock, now that there is one.
+    // Plain about when encryption starts: with the account, which every device has.
+    expect(container.textContent).toMatch(/from the moment your account is created/i);
+    // And plain about the limit of the lock.
     expect(container.textContent).toMatch(/note titles, course names, task titles/i);
     expect(container.textContent).toMatch(/due dates, times and whether a task is done/i);
     expect(container.textContent).toMatch(/cannot be recovered/i);
-    // An account is optional, and the server's view is stated, not waved away.
-    expect(container.textContent).toMatch(/an account is optional/i);
+    // A sync account is optional, and the server's view is stated, not waved away.
+    expect(container.textContent).toMatch(/a sync account is optional/i);
     expect(container.textContent).toMatch(/can see their shape/i);
     expect(container.textContent).not.toMatch(/zero-knowledge|knows nothing/i);
   });

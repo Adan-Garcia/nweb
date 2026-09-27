@@ -75,9 +75,9 @@ export const FEATURE_AREAS: FeatureArea[] = [
     icon: ShieldCheck,
     description: "Built and working today.",
     items: [
-      "A passphrase lock: AES-GCM under an Argon2id key, titles included",
+      "An account on every device: AES-GCM under an Argon2id key from its passphrase, titles included",
       "Backups you can download, encrypt, and restore or merge",
-      "An optional account for encrypted sync between your devices",
+      "An optional sync account on a server you choose, which you can delete from Settings",
       "Share a course, unit or note, read-only or editable, and take it back",
     ],
   },
@@ -86,7 +86,6 @@ export const FEATURE_AREAS: FeatureArea[] = [
     icon: MapIcon,
     description: "Known gaps, in no particular order.",
     items: [
-      "Deleting an account from inside the app",
       "Two people rewriting the same words at once (edits to different words already merge)",
       "Cleaning up the grants on a key once it has been rotated",
       "Paid hosting plans",

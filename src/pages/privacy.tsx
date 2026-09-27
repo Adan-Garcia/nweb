@@ -15,14 +15,14 @@ export function PrivacyPage() {
           <MarketingEyebrow icon={ShieldCheck}>Privacy Policy</MarketingEyebrow>
           <h1 className="mb-3 text-display">Your study data stays yours</h1>
           <p className="text-lg text-muted-foreground">
-            Cuervo Planner is an early beta. It runs in your browser and works without an account;
-            an account is optional, and only exists when the app is connected to a server. This page
-            describes what the app does today, not what it is planned to do.
+            Cuervo Planner is an early beta. It runs in your browser, under an account that lives on
+            your device; a sync account on a server is optional. This page describes what the app
+            does today, not what it is planned to do.
           </p>
           <p className="mt-3 text-sm text-muted-foreground">Last updated: September 27, 2026</p>
         </div>
 
-        <PlainLanguageBreakdown intro="Short version: without an account nothing leaves this browser. Lock it to encrypt it, and if you sync, the server only ever holds what it cannot read." />
+        <PlainLanguageBreakdown intro="Short version: without a sync account nothing leaves this browser. It is encrypted under your passphrase, and if you sync, the server only ever holds what it cannot read." />
 
         <div className="grid gap-5 md:grid-cols-2">
           {POLICY_SECTIONS.map((section) => (

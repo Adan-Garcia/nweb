@@ -34,10 +34,9 @@ export function PricingPage() {
           title="How your data is handled today"
           className="mt-10 text-left"
         >
-          Without an account, Cuervo Planner runs entirely in your browser and uploads nothing. Set
-          a passphrase and it is encrypted on this device. Create an account and your notes are
-          encrypted before they are synced, so the server stores what it cannot read. The paid plans
-          are not available yet.
+          Cuervo Planner runs entirely in your browser, encrypted under your passphrase, and uploads
+          nothing unless you add a sync account. Then your notes are encrypted before they are
+          synced, so the server stores what it cannot read. The paid plans are not available yet.
         </MarketingCallout>
         <MarketingCallout
           icon={ShieldCheck}

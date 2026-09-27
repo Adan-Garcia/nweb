@@ -11,9 +11,9 @@ export function UnloggedPage() {
           </p>
           <h1 className="text-display">Planning, notes and sharing, in one place</h1>
           <p className="text-body text-muted-foreground">
-            Everything you write is stored in this browser, and works offline. An account is
-            optional: it syncs your devices and lets you share a course, and the server only ever
-            holds what it cannot read. For more information, see our{" "}
+            Everything you write is stored and encrypted in this browser, and works offline. A sync
+            account is optional: it keeps your devices in step and lets you share a course, and the
+            server only ever holds what it cannot read. For more information, see our{" "}
             <a
               href="/privacy"
               className="font-medium text-primary underline-offset-4 hover:underline"
@@ -29,8 +29,8 @@ export function UnloggedPage() {
       <div className="grid w-full max-w-sm gap-3">
         <h2 className="text-title">Get started</h2>
         <p className="text-body text-muted-foreground">
-          Open the planner and start now, no account needed. To sync or share later, create an
-          account from Settings → Account & sync.
+          Create your account on this device — a name, an email and a passphrase — and start. To
+          sync or share, add a server when you sign up or later in Settings.
         </p>
         <Button size="lg" nativeButton={false} render={<a href="/dashboard" />}>
           Open the planner

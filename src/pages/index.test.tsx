@@ -62,7 +62,7 @@ describe("IndexPage", () => {
     render(<IndexPage />);
     const benefits = screen.getByLabelText("Features and benefits of using Cuervo Planner");
 
-    expect(benefits.textContent).toMatch(/and their titles are encrypted/);
+    expect(benefits.textContent).toMatch(/and their titles in this browser/);
     expect(benefits.textContent).toMatch(/Due dates stay readable/);
   });
 

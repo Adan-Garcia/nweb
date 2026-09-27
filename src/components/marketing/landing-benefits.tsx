@@ -22,7 +22,7 @@ const BENEFITS: Benefit[] = [
   {
     icon: ShieldCheck,
     title: "Private by default",
-    copy: "Without an account, everything you write stays in this browser and nothing is uploaded.",
+    copy: "Without a sync server, everything you write stays in this browser and nothing is uploaded.",
   },
   {
     icon: Code,
@@ -47,7 +47,7 @@ const BENEFITS: Benefit[] = [
   {
     icon: LockKeyhole,
     title: "Lock it on this device",
-    copy: "Set a passphrase and your notes, drawings, files and their titles are encrypted in this browser. Due dates stay readable so reminders can work.",
+    copy: "Your passphrase encrypts your notes, drawings, files and their titles in this browser. Due dates stay readable so reminders can work.",
   },
   {
     icon: RefreshCw,

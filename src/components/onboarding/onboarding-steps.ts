@@ -39,6 +39,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     description: "Lock, back up, sync",
     icon: ShieldCheck,
     content:
-      "Set a passphrase in Settings to encrypt everything on this device, and download a backup now and then. If this app is connected to a server, create an account there to sync your devices and share a course.",
+      "Everything on this device is already encrypted under your passphrase, so download a backup now and then. To sync your devices and share a course, add a sync account in Settings → Sync server.",
   },
 ];
