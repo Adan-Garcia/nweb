@@ -1,6 +1,6 @@
 import type { upgradeWebSocket } from "@hono/node-server";
 import { MEDIA_MAX_BYTES } from "@shared/sync-contract";
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 
@@ -29,6 +29,12 @@ function maxBodyFor(path: string): number {
 
   return path === "/v1/sync" ? SYNC_MAX_BYTES : DEFAULT_MAX_BYTES;
 }
+
+const limitBody: MiddlewareHandler = (context, next) =>
+  bodyLimit({ maxSize: maxBodyFor(context.req.path), onError: () => fail("too_large") })(
+    context,
+    next,
+  );
 
 export type AppOptions = {
   sql: Sql;
@@ -76,12 +82,7 @@ export function createApp({
   const app = new Hono();
 
   app.use("/v1/*", cors({ origin: allowedOrigins, credentials: false }));
-  app.use("/v1/*", (context, next) =>
-    bodyLimit({ maxSize: maxBodyFor(context.req.path), onError: () => fail("too_large") })(
-      context,
-      next,
-    ),
-  );
+  app.use("/v1/*", limitBody);
 
   app.route("/", authRoutes(deps));
   app.route("/", syncRoutes(deps));
