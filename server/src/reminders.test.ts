@@ -342,6 +342,7 @@ describe("deliverPush", () => {
         .fn()
         .mockRejectedValueOnce(new WebPushError("gone", 410, {}, "", ""))
         .mockRejectedValueOnce(new WebPushError("busy", 503, {}, "", ""))
+        .mockRejectedValueOnce(Object.assign(new Error("private"), { code: "ENOTPUBLIC" }))
         .mockResolvedValueOnce({});
 
       const mocked = { ...actual, sendNotification };
@@ -354,7 +355,15 @@ describe("deliverPush", () => {
 
     expect(await deliverPush(subscription, "{}")).toBe("gone");
     expect(await deliverPush(subscription, "{}")).toBe("sent");
+    // A name that resolves into this server's own network is dropped, never retried.
+    expect(await deliverPush(subscription, "{}")).toBe("gone");
     expect(await deliverPush(subscription, "{}")).toBe("sent");
+    // Every delivery goes through the agent that checks the address it connects to.
+    const { publicOnlyAgent } = await import("./public-address");
+    const { default: mocked } = await import("web-push");
+    expect(mocked.sendNotification).toHaveBeenCalledWith(subscription, "{}", {
+      agent: publicOnlyAgent,
+    });
 
     vi.doUnmock("web-push");
   });

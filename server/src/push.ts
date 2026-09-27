@@ -3,6 +3,7 @@
 // source and from the bundle, which is the only form that is true in both.
 import webpush from "web-push";
 
+import { NOT_PUBLIC, publicOnlyAgent } from "./public-address";
 import type { StoredSubscription } from "./reminders";
 
 /**
@@ -30,7 +31,9 @@ export async function deliverPush(
   payload: string,
 ): Promise<"sent" | "gone"> {
   try {
-    await webpush.sendNotification(subscription, payload);
+    // Through an agent that refuses any address that is not public, checked on the
+    // connection's own lookup (public-address.ts): the endpoint's name alone proves nothing.
+    await webpush.sendNotification(subscription, payload, { agent: publicOnlyAgent });
 
     return "sent";
   } catch (error) {
@@ -38,6 +41,11 @@ export async function deliverPush(
       error instanceof webpush.WebPushError &&
       (error.statusCode === 404 || error.statusCode === 410)
     ) {
+      return "gone";
+    }
+
+    // Aimed at this server's own network: not a bad minute, and never worth another try.
+    if (error instanceof Error && "code" in error && error.code === NOT_PUBLIC) {
       return "gone";
     }
 

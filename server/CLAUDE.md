@@ -69,8 +69,10 @@ write it.
     `foreignKeyIds`). A key nobody has registered yet is allowed; `putKeys` keeps the first
     owner of an id.
 *   **The server calls out only to public https push services.** `[REQUIRED]` A stored push
-    endpoint is where the sweep POSTs from inside the server's network, so it is checked with
-    `isPublicPushEndpoint` when saved and again before each delivery.
+    endpoint is where the sweep POSTs from inside the server's network, so its name is checked
+    with `isPublicPushEndpoint` when saved and before each delivery, and the address it
+    resolves to is checked by the connection's own lookup (`public-address.ts`), which a
+    public name pointing at a private address, or changing its answer, cannot get past.
 *   **Bodies are capped while they stream in** (`app.ts`): 25 MiB for a file, 64 MiB for a
     sync page, 1 MiB for everything else. Account fields and KDF parameters have bounds in
     `shared/`, so nobody can make the server hash a megabyte or store parameters that would
