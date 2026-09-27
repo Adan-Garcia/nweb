@@ -49,6 +49,7 @@ async function main(): Promise<void> {
     upgrade: upgradeWebSocket,
     clientIpHeader: config.clientIpHeader,
     registrationEmails: config.registrationEmails,
+    staticDir: config.staticDir,
   });
 
   // `noServer`: the adapter hands it upgrades from the HTTP server it already runs, so the

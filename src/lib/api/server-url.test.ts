@@ -38,6 +38,16 @@ describe("normalizeServerUrl", () => {
 });
 
 describe("the chosen server", () => {
+  it("finds a server that serves the app itself where the app was loaded from", () => {
+    expect(defaultServerUrl({ VITE_API_URL: "same-origin" }, "https://planner.example.org")).toBe(
+      "https://planner.example.org",
+    );
+    // A page served over plain http from elsewhere is no place to send a passphrase's proof.
+    expect(defaultServerUrl({ VITE_API_URL: "same-origin" }, "http://planner.example.org")).toBe(
+      null,
+    );
+  });
+
   it("falls back to the build's server until one is chosen", () => {
     expect(defaultServerUrl(BUILD)).toBe("https://build.example.com");
     expect(readServerUrl(BUILD)).toBe("https://build.example.com");

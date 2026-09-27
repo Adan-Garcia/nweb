@@ -97,8 +97,10 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
 
-  // Another origin's response is not ours to store.
-  if (url.origin !== self.location.origin) {
+  // Another origin's response is not ours to store. Nor is the API's, when the server
+  // serves the app too: a response to a session is a credential's worth of key material,
+  // and it would sit on disk after the session that fetched it had gone.
+  if (url.origin !== self.location.origin || url.pathname.startsWith("/v1/")) {
     return;
   }
 

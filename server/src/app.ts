@@ -13,6 +13,7 @@ import { createLiveHub, type LiveHub } from "./live";
 import { liveRoutes } from "./live-routes";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
 import { sharingRoutes } from "./sharing-routes";
+import { staticAppRoutes } from "./static-app";
 import { syncRoutes } from "./sync-routes";
 
 /**
@@ -50,6 +51,8 @@ export type AppOptions = {
   clientIpHeader?: string | null;
   /** Limits by caller address; one is made when none is passed. */
   addressLimiter?: RateLimiter;
+  /** The built app to serve beside the API (`STATIC_DIR`); absent or null serves none. */
+  staticDir?: string | null;
   /** Who may register (`REGISTRATION_EMAILS`); absent or null is anyone. */
   registrationEmails?: string[] | null;
   /** Who is connected for live nudges. One is made when none is passed. */
@@ -80,6 +83,7 @@ export function createApp({
   clientIpHeader = null,
   addressLimiter,
   registrationEmails = null,
+  staticDir = null,
 }: AppOptions) {
   // Thirty a minute from one address, across every guess-taking route: generous for a
   // household behind one router, useless for working through a list.
@@ -114,6 +118,11 @@ export function createApp({
 
   if (upgrade) {
     app.route("/", liveRoutes({ sql, hub: deps.live, upgrade }));
+  }
+
+  // Last, so every API route has had its chance first.
+  if (staticDir) {
+    app.route("/", staticAppRoutes(staticDir));
   }
 
   return app;

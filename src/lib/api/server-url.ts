@@ -49,9 +49,19 @@ export function normalizeServerUrl(raw: string | null | undefined): string | nul
   }
 }
 
+/**
+ * Built to be served by its own server (`STATIC_DIR` on the server): the API is wherever the
+ * app was loaded from, which is not known until it is — the same build works on any domain
+ * a tunnel gives it.
+ */
+export const SAME_ORIGIN = "same-origin";
+
 /** What the build was pointed at, which is also what "reset" goes back to. */
-export function defaultServerUrl(env: Env = import.meta.env): string | null {
-  return normalizeServerUrl(env.VITE_API_URL);
+export function defaultServerUrl(
+  env: Env = import.meta.env,
+  origin: string = window.location.origin,
+): string | null {
+  return normalizeServerUrl(env.VITE_API_URL?.trim() === SAME_ORIGIN ? origin : env.VITE_API_URL);
 }
 
 export function readServerUrl(env: Env = import.meta.env): string | null {
