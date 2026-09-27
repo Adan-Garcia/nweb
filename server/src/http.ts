@@ -14,7 +14,7 @@ import { bearerToken } from "./tokens";
  */
 const ERRORS: Record<
   ApiError["error"],
-  { status: 400 | 401 | 403 | 409 | 413 | 429; message: string }
+  { status: 400 | 401 | 403 | 409 | 413 | 429 | 502; message: string }
 > = {
   invalid_request: { status: 400, message: "That request is not one this server understands." },
   too_large: { status: 413, message: "That file is larger than this server will store." },
@@ -22,6 +22,10 @@ const ERRORS: Record<
   invalid_credentials: { status: 401, message: "That email and passphrase do not match." },
   unauthorized: { status: 401, message: "This request needs a valid session." },
   rate_limited: { status: 429, message: "Too many attempts. Wait a minute and try again." },
+  feed_unavailable: {
+    status: 502,
+    message: "That calendar could not be fetched, or what came back was not a calendar.",
+  },
   registration_closed: {
     status: 403,
     message: "This server only takes accounts for the addresses its owner has listed.",

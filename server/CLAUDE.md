@@ -23,9 +23,9 @@ write it.
 | Path | Holds |
 | --- | --- |
 | `server/src/app.ts` | CORS, the rate limiter, and the route groups mounted over one database. |
-| `server/src/*-routes.ts` | Hono routes for one area: `auth`, `sync`, `sharing`. Parse, authorise, delegate, respond. No logic. |
+| `server/src/*-routes.ts` | Hono routes for one area: `auth`, `sync`, `sharing`, `feed`. Parse, authorise, delegate, respond. No logic. |
 | `server/src/http.ts` | The one error shape (`fail`) and the one session check (`callerFor`). |
-| `server/src/*.ts` | One concern each: `accounts`, `tokens`, `db`, `rate-limit`, `sync`, `sharing`, `reminders`, `push`, `zoned-time`. |
+| `server/src/*.ts` | One concern each: `accounts`, `tokens`, `db`, `rate-limit`, `sync`, `sharing`, `reminders`, `push`, `zoned-time`, `feed-relay`. |
 | `shared/` | The wire contract, imported by the client too. Zod only, no runtime. |
 
 *   Paths are absolute in each group (`/v1/auth/…`, `/v1/keys/…`), so the groups mount at
@@ -73,6 +73,12 @@ write it.
     with `isPublicPushEndpoint` when saved and before each delivery, and the address it
     resolves to is checked by the connection's own lookup (`public-address.ts`), which a
     public name pointing at a private address, or changing its answer, cannot get past.
+*   **The feed relay fetches for signed-in callers only, and only calendars.**
+    `[REQUIRED]` `POST /v1/feeds/relay` (`feed-relay.ts`) connects to a user's address from
+    inside the server's network, so it is held to the push rule above on every hop,
+    redirects included, capped while it streams, and refuses a body that is not an
+    iCalendar file — otherwise it is an open proxy for reading pages. It never logs the
+    address: a feed link is a credential to that calendar.
 *   **Bodies are capped while they stream in** (`app.ts`): 25 MiB for a file, 64 MiB for a
     sync page, 1 MiB for everything else. Account fields and KDF parameters have bounds in
     `shared/`, so nobody can make the server hash a megabyte or store parameters that would

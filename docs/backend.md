@@ -251,7 +251,16 @@ GET    /v1/keys/:keyId/shares   who a key has been given to, by address
 GET    /v1/users/public-key     the key to seal a share with
 POST   /v1/push/subscribe       a Web Push subscription for this device
 DELETE /v1/push/subscribe       forget one
+POST   /v1/feeds/relay          { url } -> { text }: fetch a calendar feed a browser may not
 ```
+
+`/v1/feeds/relay` exists because most calendar hosts (Brightspace, Google, Outlook) send no
+CORS headers, so a browser cannot read a feed that anyone with the link may download. A
+device tries the feed directly first and asks its server only when the browser refuses. The
+server fetches public https addresses only — checked by name and again on the connection's
+own lookup, on every redirect (`server/src/feed-relay.ts`) — caps the body at 5 MiB, hands
+back only what reads as a calendar, and serves signed-in callers only, twenty a minute. It
+logs and stores nothing.
 
 `/v1/sync` is the whole of B2. Apply each incoming row if its `updated_at` beats what is
 stored, assign a `seq`, return everything above the caller's cursor. The client already has
@@ -384,6 +393,11 @@ to make sharing possible need one too.
     structure. How many notes a course has, who shares what with whom, and when things are
     due are all visible. Say "the server cannot read your notes", never "the server knows
     nothing".
+*   **A relayed calendar is seen in passing.** A feed's link is a password to that
+    calendar, and a feed fetched through the relay passes through the server in the clear.
+    Nothing keeps it, but a server someone else runs could. A feed its host lets browsers
+    read never goes near the server; the feed's settings, link included, live sealed on the
+    device and are not synced.
 *   **A three-way merge is not live co-editing.** Edits to different words, shapes or
     fields survive, and the other person sees them within a sync round of the nudge; two
     people typing the same words at once do not both survive, and nobody sees the other's

@@ -129,20 +129,20 @@ export const mediaListSchema = z.object({
 export const PUSH_ENDPOINT_MAX_LENGTH = 2048;
 
 /**
- * Whether an address could be a push service on the public internet: https, a named host
- * with a dot in it, no credentials, and nothing that names this machine or its network.
+ * Whether an address is an https URL on the public internet: a named host with a dot in
+ * it, no credentials, and nothing that names this machine or its network.
  *
- * The reminder sweep POSTs to whatever is stored, from inside the server's own network, so
- * an endpoint pointing back into it — a cloud metadata address, a database, a router —
- * would turn every reminder into a request forged on somebody else's behalf. Every real
- * push service is a public https host, so this refuses nothing a browser would hand over.
- * It checks the name, not where the name resolves: that is the network's job.
+ * The server connects to addresses users hand it — push endpoints, and calendar feeds it
+ * relays — from inside its own network, so one pointing back into it (a cloud metadata
+ * address, a database, a router) would turn the request into one forged on somebody else's
+ * behalf. It checks the name, not where the name resolves: that is the connection's job
+ * (`server/src/public-address.ts`).
  */
-export function isPublicPushEndpoint(endpoint: string): boolean {
+export function isPublicHttpsUrl(address: string): boolean {
   let url: URL;
 
   try {
-    url = new URL(endpoint);
+    url = new URL(address);
   } catch {
     return false;
   }
@@ -155,13 +155,16 @@ export function isPublicPushEndpoint(endpoint: string): boolean {
     /\.(localhost|local|internal|intranet|lan|home|corp)$/.test(host);
 
   return (
-    url.protocol === "https:" &&
-    !url.username &&
-    !url.password &&
-    !isIpLiteral &&
-    !isInternalName &&
-    endpoint.length <= PUSH_ENDPOINT_MAX_LENGTH
+    url.protocol === "https:" && !url.username && !url.password && !isIpLiteral && !isInternalName
   );
+}
+
+/**
+ * Whether an address could be a push service. Every real push service is a public https
+ * host, so this refuses nothing a browser would hand over.
+ */
+export function isPublicPushEndpoint(endpoint: string): boolean {
+  return isPublicHttpsUrl(endpoint) && endpoint.length <= PUSH_ENDPOINT_MAX_LENGTH;
 }
 
 export const pushSubscriptionSchema = z.object({
