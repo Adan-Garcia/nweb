@@ -20,7 +20,7 @@ const ENROLMENT = {
     memorySize: 65_536,
     iterations: 3,
     parallelism: 1,
-    salt: "c2FsdHktc2FsdC1oZXJl",
+    salt: "c2FsdHktc2FsdC1oZXJlIQ==",
   },
   sealedAccountKey: "c2VhbGVkLWFjY291bnQta2V5LWJ5dGVz",
   publicKey: "cHVibGljLWtleS1zcGtpLWJ5dGVz",
@@ -293,6 +293,76 @@ describe("changing a passphrase", () => {
   });
 });
 
+describe("a server that only takes the accounts it was told to", () => {
+  it("registers a listed address, whatever its case, and refuses any other", async () => {
+    app = createApp({
+      sql: database,
+      serverSecret: SERVER_SECRET,
+      allowedOrigins: [],
+      registrationEmails: ["student@example.com"],
+    });
+
+    expect(
+      (await post("/v1/auth/register", { ...ENROLMENT, email: "Student@Example.com" })).status,
+    ).toBe(201);
+
+    const refused = await post("/v1/auth/register", {
+      ...ENROLMENT,
+      email: "stranger@example.com",
+    });
+
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({ error: "registration_closed" });
+    expect((await database.query("select * from users")).rows).toHaveLength(1);
+  });
+});
+
+describe("what an account may be made with", () => {
+  it("refuses key material another device would be weakened, or stalled, by", async () => {
+    // Every device that signs in derives its proof with these, then sends the proof here.
+    // Parameters this cheap would make that proof a quick route back to the passphrase.
+    for (const kdf of [
+      { ...ENROLMENT.kdf, memorySize: 8 },
+      { ...ENROLMENT.kdf, iterations: 1 },
+      { ...ENROLMENT.kdf, memorySize: 4_194_304 },
+      // A salt the client's own floor would refuse later: the account could never sign in.
+      { ...ENROLMENT.kdf, salt: "c2FsdA" },
+      { ...ENROLMENT.kdf, salt: "not base64 at all!" },
+      { name: "PBKDF2", hash: "SHA-256", iterations: 1, salt: "c2FsdA" },
+    ]) {
+      const response = await post("/v1/auth/register", { ...ENROLMENT, kdf });
+
+      expect({ kdf, status: response.status }).toEqual({ kdf, status: 400 });
+    }
+  });
+
+  it("refuses a field far larger than any real one", async () => {
+    const response = await post("/v1/auth/register", {
+      ...ENROLMENT,
+      authKey: "a".repeat(100_000),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("refuses a weakened passphrase change", async () => {
+    const { token } = await registerAndSignIn();
+
+    const response = await post(
+      "/v1/auth/passphrase",
+      {
+        currentAuthKey: ENROLMENT.authKey,
+        nextAuthKey: "bmV4dC1hdXRoLWtleQ",
+        kdf: { ...ENROLMENT.kdf, memorySize: 8, iterations: 1 },
+        sealedAccountKey: ENROLMENT.sealedAccountKey,
+      },
+      token,
+    );
+
+    expect(response.status).toBe(400);
+  });
+});
+
 describe("deleting an account", () => {
   const remove = (body: unknown, token?: string) =>
     app.request("/v1/auth/account", {
@@ -393,6 +463,60 @@ describe("rate limiting", () => {
     expect((await attempt()).status).toBe(429);
   });
 
+  it("counts an address however it is capitalised, since the account does", async () => {
+    app = createApp({
+      sql: database,
+      serverSecret: SERVER_SECRET,
+      allowedOrigins: [],
+      limiter: createRateLimiter({ limit: 2, windowMs: 60_000 }),
+    });
+    await post("/v1/auth/register", ENROLMENT);
+
+    const attempt = (email: string) => post("/v1/auth/session", { email, authKey: "d3Jvbmc" });
+
+    expect((await attempt("student@example.com")).status).toBe(401);
+    expect((await attempt("Student@Example.com")).status).toBe(401);
+    expect((await attempt("STUDENT@EXAMPLE.COM")).status).toBe(429);
+  });
+
+  it("stops a run of registrations for one address", async () => {
+    app = createApp({
+      sql: database,
+      serverSecret: SERVER_SECRET,
+      allowedOrigins: [],
+      limiter: createRateLimiter({ limit: 2, windowMs: 60_000 }),
+    });
+
+    expect((await post("/v1/auth/register", ENROLMENT)).status).toBe(201);
+    expect((await post("/v1/auth/register", ENROLMENT)).status).toBe(409);
+    expect(
+      (await post("/v1/auth/register", { ...ENROLMENT, email: "Student@example.com" })).status,
+    ).toBe(429);
+  });
+
+  it("stops one address working through many accounts, behind a tunnel", async () => {
+    app = createApp({
+      sql: database,
+      serverSecret: SERVER_SECRET,
+      allowedOrigins: [],
+      clientIpHeader: "cf-connecting-ip",
+      addressLimiter: createRateLimiter({ limit: 2, windowMs: 60_000 }),
+    });
+
+    const ask = (email: string, address: string) =>
+      app.request("/v1/auth/prelogin", {
+        method: "POST",
+        headers: { "content-type": "application/json", "cf-connecting-ip": address },
+        body: JSON.stringify({ email }),
+      });
+
+    expect((await ask("one@example.com", "203.0.113.7")).status).toBe(200);
+    expect((await ask("two@example.com", "203.0.113.7")).status).toBe(200);
+    expect((await ask("three@example.com", "203.0.113.7")).status).toBe(429);
+    // Somebody else, from somewhere else, is not held up by it.
+    expect((await ask("three@example.com", "198.51.100.4")).status).toBe(200);
+  });
+
   it("stops a stolen session from guessing its way to a delete", async () => {
     app = createApp({
       sql: database,
@@ -427,6 +551,45 @@ describe("rate limiting", () => {
     // through it: the tell would be how long it took, not what came back.
     expect((await ask()).status).toBe(200);
     expect((await ask()).status).toBe(429);
+  });
+});
+
+describe("every response", () => {
+  it("says it is not to be framed, sniffed or fetched over http", async () => {
+    const response = await post("/v1/auth/prelogin", { email: "nobody@example.com" });
+
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("x-frame-options")).toBe("DENY");
+    expect(response.headers.get("strict-transport-security")).toMatch(/max-age=/);
+  });
+});
+
+describe("requests too large to be real", () => {
+  const sized = (path: string, bytes: number, method = "POST", token?: string) =>
+    app.request(path, {
+      method,
+      headers: {
+        "content-type": "application/json",
+        "content-length": String(bytes),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: "x".repeat(bytes),
+    });
+
+  it("are refused before they are read, whatever the route", async () => {
+    // Nothing on these routes is more than a few kilobytes. A megabyte is somebody filling
+    // the server's memory one request at a time.
+    expect((await sized("/v1/auth/prelogin", 2 * 1024 * 1024)).status).toBe(413);
+    expect((await sized("/v1/auth/session", 2 * 1024 * 1024)).status).toBe(413);
+  });
+
+  it("allow a sync page and a file their own, larger, room", async () => {
+    const { token } = await registerAndSignIn();
+
+    // Big enough to be refused anywhere else; well inside what a page of notes may be.
+    expect((await sized("/v1/sync", 2 * 1024 * 1024, "POST", token)).status).toBe(400);
+    expect((await sized("/v1/sync", 65 * 1024 * 1024, "POST", token)).status).toBe(413);
+    expect((await sized("/v1/media/file-1", 26 * 1024 * 1024, "PUT", token)).status).toBe(413);
   });
 });
 

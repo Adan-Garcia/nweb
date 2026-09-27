@@ -31,6 +31,8 @@ vi.mock("../crypto/kdf", async (importOriginal) => ({
     parallelism: 1,
     salt: btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))),
   }),
+  // Cheap parameters are below the floor a server's are held to; that floor has its own tests.
+  assertAccountKdf: () => undefined,
 }));
 
 const PROFILE = { name: "Ada", email: "ada@example.com" };

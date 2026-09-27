@@ -56,6 +56,18 @@ describe("isPdfEmbeddableUrl", () => {
   it("rejects a URL that cannot be parsed", () => {
     expect(isPdfEmbeddableUrl("http://[::1")).toBe(false);
   });
+
+  // A drawing can come from somebody else's shared course, and an embed is rendered as a
+  // frame. Only a web address may be one, however its path ends.
+  it.each([
+    "javascript:alert(document.cookie)//x.pdf",
+    "data:text/html,<script>alert(1)</script>.pdf",
+    "data:application/pdf;base64,JVBERi0=",
+    "file:///etc/passwd.pdf",
+    "blob:https://site.test/00000000-0000-0000-0000-000000000000?format=pdf",
+  ])("rejects %s, which is not a web address", (url) => {
+    expect(isPdfEmbeddableUrl(url)).toBe(false);
+  });
 });
 
 describe("clampPenWidth", () => {

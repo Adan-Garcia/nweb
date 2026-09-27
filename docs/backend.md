@@ -333,6 +333,12 @@ the address. A dev server started as
 production dependencies, which are one list for the app and the server, so it is larger
 than the bundle alone needs.
 
+To put it on the internet — the image serves the built app too (`STATIC_DIR`), and Compose
+has an optional Cloudflare Tunnel — see [`deploy.md`](./deploy.md). Three settings exist for
+that case: `CLIENT_IP_HEADER` (where a proxy puts the caller's address, so sign-in guesses are
+limited per address as well as per account), `REGISTRATION_EMAILS` (who may create an
+account) and `STATIC_DIR`.
+
 The server is bundled with Vite rather than run from source: Node can strip types now but
 cannot resolve `./app` or `@shared/…`, which this codebase writes everywhere because the
 browser build resolves them.

@@ -1,4 +1,5 @@
 import { registerRequestSchema } from "@shared/account-contract";
+import { ARGON2ID_DEFAULTS } from "@shared/kdf-params";
 import { describe, expect, it, vi } from "vitest";
 
 import { base64ToBytes } from "../crypto/base64";
@@ -21,6 +22,8 @@ vi.mock("../crypto/kdf", async (importOriginal) => ({
     parallelism: 1,
     salt: btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))),
   }),
+  // Cheap parameters are below the floor a server's are held to; that floor has its own tests.
+  assertAccountKdf: () => undefined,
 }));
 
 const PASSPHRASE = "correct horse battery staple";
@@ -58,7 +61,10 @@ describe("createAccountKeys", () => {
     const { enrolment } = await createAccountKeys(PASSPHRASE);
     const request = { email: "a@example.com", ...enrolment.material, authKey: enrolment.authKey };
 
-    expect(registerRequestSchema.safeParse(request).success).toBe(true);
+    // This suite derives at a cheap cost the server would refuse; the shape is what is checked.
+    const shipped = { ...request, kdf: { ...request.kdf, ...ARGON2ID_DEFAULTS } };
+
+    expect(registerRequestSchema.safeParse(shipped).success).toBe(true);
     // The passphrase is in none of it, and neither is anything it would be derived to.
     expect(JSON.stringify(request)).not.toContain(PASSPHRASE);
   });

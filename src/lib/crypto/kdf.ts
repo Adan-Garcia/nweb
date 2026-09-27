@@ -1,4 +1,9 @@
-import { ARGON2ID_DEFAULTS, type KdfParams } from "@shared/kdf-params";
+import {
+  ACCOUNT_KDF_BOUNDS,
+  accountKdfSchema,
+  ARGON2ID_DEFAULTS,
+  type KdfParams,
+} from "@shared/kdf-params";
 import { argon2id } from "hash-wasm";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
@@ -11,6 +16,49 @@ import { base64ToBytes, bytesToBase64 } from "./base64";
 
 const SALT_BYTES = 16;
 const KEY_BITS = 256;
+
+/** Thrown instead of deriving from parameters a server should never have handed over. */
+export class UntrustedKdfError extends Error {
+  constructor() {
+    super("The server asked for key-derivation parameters outside what this app accepts.");
+    this.name = "UntrustedKdfError";
+  }
+}
+
+/**
+ * Refuses parameters an account's key material may not be derived with.
+ *
+ * Signing in derives a proof from parameters the server supplies and then sends the proof
+ * to that server. A server — malicious, or one somebody is sitting in front of — that
+ * answered with a trivial cost or a salt it reuses would get back a proof it could turn
+ * into the passphrase offline, and the passphrase also opens this device. So the bounds
+ * are checked here, before anything is derived, and not trusted to the server.
+ */
+export function assertAccountKdf(params: KdfParams): void {
+  // The salt's length is part of the schema, so the server refuses the same salts.
+  if (!accountKdfSchema.safeParse(params).success) {
+    throw new UntrustedKdfError();
+  }
+}
+
+/**
+ * Whether deriving with these would finish in a reasonable time. No floor: an old backup
+ * made at a lower cost still opens. But parameters read from a file anybody can hand over
+ * could otherwise ask for ten million passes, and the tab would hang trying.
+ */
+export function isWithinKdfCeiling(params: KdfParams): boolean {
+  if (params.name === "PBKDF2") {
+    return params.iterations <= ACCOUNT_KDF_BOUNDS.pbkdf2.iterations.max;
+  }
+
+  const { argon2id } = ACCOUNT_KDF_BOUNDS;
+
+  return (
+    params.memorySize <= argon2id.memorySize.max &&
+    params.iterations <= argon2id.iterations.max &&
+    params.parallelism <= argon2id.parallelism.max
+  );
+}
 
 /** What new key material is derived with. Old material keeps whatever it recorded. */
 export function createKdfParams(

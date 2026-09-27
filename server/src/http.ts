@@ -1,4 +1,5 @@
 import type { ApiError } from "@shared/account-contract";
+import type { Context } from "hono";
 
 import { userForToken, type UserRow } from "./accounts";
 import type { Sql } from "./db";
@@ -11,15 +12,21 @@ import { bearerToken } from "./tokens";
  * calling". Both live here rather than in a route module so that no group can quietly grow
  * a second way of saying no.
  */
-const ERRORS: Record<ApiError["error"], { status: 400 | 401 | 409 | 413 | 429; message: string }> =
-  {
-    invalid_request: { status: 400, message: "That request is not one this server understands." },
-    too_large: { status: 413, message: "That file is larger than this server will store." },
-    email_taken: { status: 409, message: "That address already has an account." },
-    invalid_credentials: { status: 401, message: "That email and passphrase do not match." },
-    unauthorized: { status: 401, message: "This request needs a valid session." },
-    rate_limited: { status: 429, message: "Too many attempts. Wait a minute and try again." },
-  };
+const ERRORS: Record<
+  ApiError["error"],
+  { status: 400 | 401 | 403 | 409 | 413 | 429; message: string }
+> = {
+  invalid_request: { status: 400, message: "That request is not one this server understands." },
+  too_large: { status: 413, message: "That file is larger than this server will store." },
+  email_taken: { status: 409, message: "That address already has an account." },
+  invalid_credentials: { status: 401, message: "That email and passphrase do not match." },
+  unauthorized: { status: 401, message: "This request needs a valid session." },
+  rate_limited: { status: 429, message: "Too many attempts. Wait a minute and try again." },
+  registration_closed: {
+    status: 403,
+    message: "This server only takes accounts for the addresses its owner has listed.",
+  },
+};
 
 export function fail(error: ApiError["error"]): Response {
   const { status, message } = ERRORS[error];
@@ -40,6 +47,14 @@ export type RouteDeps = {
   vapidPublicKey: string | null;
   /** Nudged after anything a connected device might want to sync. */
   live: LiveHub;
+  /**
+   * Limits by caller address, across every route that takes a guess without a session. A
+   * per-address limit stops one caller trying many accounts; this stops one caller trying
+   * many addresses. Null when the caller's address cannot be told.
+   */
+  isAddressLimited: (context: Context) => boolean;
+  /** Who may register; null is anyone. Lower-cased. */
+  registrationEmails: string[] | null;
 };
 
 export type Caller = { token: string; user: UserRow };

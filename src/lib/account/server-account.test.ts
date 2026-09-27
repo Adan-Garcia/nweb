@@ -1,6 +1,8 @@
+import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { startFakeSyncServer } from "@/test/fake-sync-server";
+import { server } from "@/test/server";
 
 import { getApiSession, setApiSession } from "../api/session-store";
 import { resetActiveCipher } from "../crypto/cipher";
@@ -36,6 +38,8 @@ vi.mock("../crypto/kdf", async (importOriginal) => ({
     parallelism: 1,
     salt: btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))),
   }),
+  // Cheap parameters are below the floor a server's are held to; that floor has its own tests.
+  assertAccountKdf: () => undefined,
 }));
 
 const EMAIL = "ada@example.com";
@@ -119,6 +123,19 @@ describe("enrolServerAccount", () => {
     expect(
       await enrolServerAccount({ email: EMAIL, passphrase: PASSPHRASE, baseUrl: fake.baseUrl }),
     ).toEqual({ ok: false, reason: "already-connected" });
+  });
+
+  it("says when the server does not take accounts for this address", async () => {
+    await createLocalAccount({ name: "Ada", email: EMAIL, passphrase: PASSPHRASE });
+    server.use(
+      http.post(`${fake.baseUrl}/v1/auth/register`, () =>
+        HttpResponse.json({ error: "registration_closed", message: "closed" }, { status: 403 }),
+      ),
+    );
+
+    expect(
+      await enrolServerAccount({ email: EMAIL, passphrase: PASSPHRASE, baseUrl: fake.baseUrl }),
+    ).toEqual({ ok: false, reason: "registration-closed" });
   });
 
   it("reports a server that is not there", async () => {

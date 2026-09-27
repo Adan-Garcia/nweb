@@ -16,13 +16,20 @@ import {
   prelogin,
   register,
 } from "./accounts";
+import { normalizeEmail } from "./db";
 import { callerFor, fail, noContent, type RouteDeps } from "./http";
 
 /**
  * An account is a proof of a passphrase and four strings this server cannot open. Every
  * route here either checks the proof or hands those strings back.
  */
-export function authRoutes({ sql, serverSecret, attempts }: RouteDeps) {
+export function authRoutes({
+  sql,
+  serverSecret,
+  attempts,
+  isAddressLimited,
+  registrationEmails,
+}: RouteDeps) {
   const routes = new Hono();
 
   routes.post("/v1/auth/prelogin", async (context) => {
@@ -32,7 +39,10 @@ export function authRoutes({ sql, serverSecret, attempts }: RouteDeps) {
       return fail("invalid_request");
     }
 
-    if (attempts.isLimited(`prelogin:${parsed.data.email}`)) {
+    if (
+      isAddressLimited(context) ||
+      attempts.isLimited(`prelogin:${normalizeEmail(parsed.data.email)}`)
+    ) {
       return fail("rate_limited");
     }
 
@@ -44,6 +54,19 @@ export function authRoutes({ sql, serverSecret, attempts }: RouteDeps) {
 
     if (!parsed.success) {
       return fail("invalid_request");
+    }
+
+    // Registering costs an Argon2 hash, and "taken" is an answer about who has an account.
+    const email = normalizeEmail(parsed.data.email);
+
+    if (isAddressLimited(context) || attempts.isLimited(`register:${email}`)) {
+      return fail("rate_limited");
+    }
+
+    // Before anything is hashed or looked up: an address not on the list gets the same
+    // answer whether or not it has an account, so this says nothing about who does.
+    if (registrationEmails && !registrationEmails.includes(email)) {
+      return fail("registration_closed");
     }
 
     const outcome = await register(sql, parsed.data);
@@ -58,7 +81,10 @@ export function authRoutes({ sql, serverSecret, attempts }: RouteDeps) {
       return fail("invalid_request");
     }
 
-    if (attempts.isLimited(`session:${parsed.data.email}`)) {
+    if (
+      isAddressLimited(context) ||
+      attempts.isLimited(`session:${normalizeEmail(parsed.data.email)}`)
+    ) {
       return fail("rate_limited");
     }
 

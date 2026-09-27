@@ -2,7 +2,7 @@ import type { AccountKeyMaterial } from "@shared/account-contract";
 import type { KdfParams } from "@shared/kdf-params";
 
 import { base64ToBytes, bytesToBase64 } from "../crypto/base64";
-import { createKdfParams, deriveMasterBits } from "../crypto/kdf";
+import { assertAccountKdf, createKdfParams, deriveMasterBits } from "../crypto/kdf";
 
 /**
  * The keys an account is made of, and the one place a passphrase turns into them.
@@ -83,6 +83,8 @@ async function expand(master: Uint8Array<ArrayBuffer>, info: string) {
 
 /** The two halves of a passphrase: one to prove it, one to open what it protects. */
 async function splitPassphrase(passphrase: string, kdf: KdfParams) {
+  // Every account derivation passes here, whichever way the parameters arrived.
+  assertAccountKdf(kdf);
   const master = await deriveMasterBits(passphrase, kdf);
 
   return {

@@ -44,4 +44,17 @@ describe("createRateLimiter", () => {
     expect(limiter.isLimited("address-0", NOW + 60_001)).toBe(false);
     expect(limiter.isLimited("address-0", NOW + 60_001)).toBe(true);
   });
+
+  it("stays cheap under a spray of new addresses, which is what an attack looks like", () => {
+    const limiter = createRateLimiter({ limit: 5, windowMs: 60_000 });
+    const start = performance.now();
+
+    for (let index = 0; index < 40_000; index += 1) {
+      limiter.isLimited(`address-${index}`, NOW);
+    }
+
+    // Sweeping the whole map for every new key made this take about ten seconds of the
+    // event loop. The bound is loose on purpose; the difference is three orders of magnitude.
+    expect(performance.now() - start).toBeLessThan(1_000);
+  });
 });

@@ -3,13 +3,14 @@ import type { SessionResponse } from "@shared/account-contract";
 import { fetchKeyGraph, openSession, prelogin, putKeys, registerAccount } from "../api/account-api";
 import { setApiSession } from "../api/session-store";
 import { createAesGcmCipher, getActiveCipher, setActiveCipher } from "../crypto/cipher";
+import { UntrustedKdfError } from "../crypto/kdf";
 import { openKeyGraph } from "../keys/key-graph";
 import { rotateRowsToKey } from "../keys/rotate-rows";
 import { lockCipherFor, resetLockRecord } from "../lock/lock-record";
 import { readLockRecord, writeLockHint } from "../lock/workspace-lock";
 import { resetSyncState, runSyncRound } from "../sync/sync-service";
 import { deriveAuthKey, openAccountKeys } from "./account-keys";
-import { readAccountRecord, writeAccountRecord } from "./account-record";
+import { forgetAccountRecord, readAccountRecord, writeAccountRecord } from "./account-record";
 import { adoptAccount, adoptKeyring } from "./adopt-account";
 import { wrapWingKey } from "./wing-key";
 import { clearWorkspaceData } from "./workspace-data";
@@ -28,7 +29,16 @@ export type ConnectFailure =
   | "wrong-credentials"
   | "email-taken"
   | "unreachable"
-  | "no-workspace";
+  | "no-workspace"
+  /** It asked for key-derivation parameters too weak to send it a proof made with. */
+  | "untrusted-server"
+  /** It only takes accounts for addresses its owner listed, and this is not one. */
+  | "registration-closed";
+
+const REGISTER_REFUSALS: Partial<Record<string, ConnectFailure>> = {
+  email_taken: "email-taken",
+  registration_closed: "registration-closed",
+};
 
 export type ConnectOutcome = { ok: true } | { ok: false; reason: ConnectFailure };
 
@@ -65,7 +75,7 @@ export async function enrolServerAccount(options: {
       );
 
       if (!registered.ok) {
-        refusal = registered.error === "email_taken" ? "email-taken" : "unreachable";
+        refusal = REGISTER_REFUSALS[registered.error] ?? "unreachable";
         return false;
       }
 
@@ -124,7 +134,19 @@ async function signInSession(
     return "unreachable";
   }
 
-  const authKey = await deriveAuthKey(passphrase, parameters.value.kdf);
+  let authKey: string;
+
+  try {
+    authKey = await deriveAuthKey(passphrase, parameters.value.kdf);
+  } catch (error) {
+    // Nothing was sent: the proof is never made from parameters like these.
+    if (error instanceof UntrustedKdfError) {
+      return "untrusted-server";
+    }
+
+    throw error;
+  }
+
   const session = await openSession({ baseUrl }, email, authKey);
 
   if (!session.ok) {
@@ -189,13 +211,9 @@ export async function signInToServer(options: {
 
   const to = createAesGcmCipher(wingKey, wing.id);
 
-  if (mode === "replace") {
-    await clearWorkspaceData();
-  } else {
-    // Stamped, so the next round sends every moved row up under the account's key.
-    await rotateRowsToKey(from, to, Date.now());
-  }
-
+  // The account is recorded before anything here is erased or moved. If this write fails,
+  // nothing has happened to the notes on this device; if what follows fails, the device
+  // already knows the account that the moved rows are now under.
   const record = await writeAccountRecord({
     email,
     baseUrl,
@@ -204,6 +222,27 @@ export async function signInToServer(options: {
     wrappedWingKey: await wrapWingKey(wingKey, keys.accountKey),
     graph: served.value,
   });
+
+  try {
+    if (mode === "replace") {
+      await clearWorkspaceData();
+    } else {
+      // Stamped, so the next round sends every moved row up under the account's key.
+      await rotateRowsToKey(from, to, Date.now());
+    }
+  } catch (error) {
+    // Both rewrites go row by row, so a failure can stop one partway. Left on the account,
+    // this device would open only the account's key and every row still under its own lock
+    // would be unreadable. So it goes back to the local account it was: rows moved so far
+    // are moved back, and the record is forgotten. Should the undo fail as well, nothing is
+    // lost: signing in again moves the rest, since it is the same account's key.
+    if (mode === "merge") {
+      await rotateRowsToKey(to, from).catch(() => undefined);
+    }
+
+    await forgetAccountRecord();
+    throw error;
+  }
 
   setActiveCipher(to);
   await adoptKeyring(wing.id, wingKey, record.graph, keys.privateKey);

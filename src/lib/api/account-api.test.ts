@@ -29,7 +29,7 @@ describe("prelogin", () => {
             memorySize: 65_536,
             iterations: 3,
             parallelism: 1,
-            salt: "c2FsdHktc2FsdC1oZXJl",
+            salt: "c2FsdHktc2FsdC1oZXJlIQ==",
           },
         }),
       ),

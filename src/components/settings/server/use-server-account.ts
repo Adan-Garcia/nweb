@@ -43,6 +43,9 @@ const CONNECT_ERRORS: Record<ConnectFailure, string> = {
   "email-taken": "That address already has an account on this server. Sign in to it instead.",
   unreachable: "The server could not be reached. Nothing on this device was changed.",
   "no-workspace": "That account has no workspace on this server yet.",
+  "registration-closed": "This server only takes accounts for addresses its owner has listed.",
+  "untrusted-server":
+    "That server asked for weaker protection than this app allows, so your passphrase was not used with it. Check the address.",
 };
 
 const DISCONNECT_ERRORS: Record<DisconnectFailure, string> = {

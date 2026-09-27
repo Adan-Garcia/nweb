@@ -23,11 +23,30 @@ const configSchema = z.object({
       privateKey: z.string().min(1),
     })
     .nullable(),
+  /**
+   * The header a proxy in front of this server puts the caller's address in — for a
+   * Cloudflare Tunnel, `cf-connecting-ip`. Without it, every request through a tunnel comes
+   * from the tunnel's own loopback address, and there is no address to limit by.
+   */
+  clientIpHeader: z.string().min(1).nullable(),
+  /** Who may register. Null is anyone; a server on the internet for one family is not. */
+  registrationEmails: z.array(z.string().min(1)).nullable(),
+  /** The built app to serve beside the API, so one tunnel exposes one origin. */
+  staticDir: z.string().min(1).nullable(),
 });
 
 export type ServerConfig = z.infer<typeof configSchema>;
 
 export type Environment = Record<string, string | undefined>;
+
+function listOr(value: string | undefined): string[] | null {
+  const items = (value ?? "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  return items.length ? items : null;
+}
 
 function numberOr(value: string | undefined, fallback: number): number {
   return value === undefined || value === "" ? fallback : Number(value);
@@ -71,6 +90,9 @@ export function readConfig(environment: Environment): ServerConfig {
     port: numberOr(environment.PORT, 8787),
     sweepEveryMs: numberOr(environment.REMINDER_SWEEP_MS, 60_000),
     vapid: vapidFrom(environment),
+    clientIpHeader: environment.CLIENT_IP_HEADER?.trim().toLowerCase() || null,
+    registrationEmails: listOr(environment.REGISTRATION_EMAILS),
+    staticDir: environment.STATIC_DIR?.trim() || null,
   });
 
   if (parsed.success) {

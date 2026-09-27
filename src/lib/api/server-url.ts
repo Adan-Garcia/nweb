@@ -16,7 +16,12 @@ const choiceSchema = z.object({ url: z.string().nullable() });
 
 type Env = { VITE_API_URL?: string };
 
-/** A usable base URL, or null: http(s) only, no trailing slash, no path beyond the host. */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * A usable base URL, or null: https (or http to this machine only), no credentials, no
+ * trailing slash.
+ */
 export function normalizeServerUrl(raw: string | null | undefined): string | null {
   const trimmed = raw?.trim();
 
@@ -27,7 +32,14 @@ export function normalizeServerUrl(raw: string | null | undefined): string | nul
   try {
     const url = new URL(trimmed);
 
-    if (url.protocol !== "https:" && url.protocol !== "http:") {
+    // Plain http only to this machine, for running a server locally. Anywhere else a
+    // session token and a proof of the passphrase would cross the network readable, and
+    // anyone on the way could answer in the server's place.
+    const isThisMachine = LOOPBACK_HOSTS.has(url.hostname);
+    const isSecure = url.protocol === "https:" || (url.protocol === "http:" && isThisMachine);
+
+    // Credentials in the address would ride along in every request and every log line.
+    if (!isSecure || url.username || url.password) {
       return null;
     }
 
@@ -37,9 +49,19 @@ export function normalizeServerUrl(raw: string | null | undefined): string | nul
   }
 }
 
+/**
+ * Built to be served by its own server (`STATIC_DIR` on the server): the API is wherever the
+ * app was loaded from, which is not known until it is — the same build works on any domain
+ * a tunnel gives it.
+ */
+export const SAME_ORIGIN = "same-origin";
+
 /** What the build was pointed at, which is also what "reset" goes back to. */
-export function defaultServerUrl(env: Env = import.meta.env): string | null {
-  return normalizeServerUrl(env.VITE_API_URL);
+export function defaultServerUrl(
+  env: Env = import.meta.env,
+  origin: string = window.location.origin,
+): string | null {
+  return normalizeServerUrl(env.VITE_API_URL?.trim() === SAME_ORIGIN ? origin : env.VITE_API_URL);
 }
 
 export function readServerUrl(env: Env = import.meta.env): string | null {

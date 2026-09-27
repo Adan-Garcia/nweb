@@ -6,7 +6,7 @@ import type {
   SessionRequest,
 } from "@shared/account-contract";
 import { ARGON2ID_DEFAULTS, type KdfParams } from "@shared/kdf-params";
-import { createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 
 import { normalizeEmail, type Sql } from "./db";
 import { hashToken, issueToken, SESSION_TTL_MS } from "./tokens";
@@ -136,7 +136,15 @@ export async function createSession(
 ): Promise<Session | null> {
   const user = await findByEmail(sql, request.email);
 
-  if (!user || !(await verifyAuthKey(request.authKey, user.auth_hash))) {
+  // An address with no account is checked against a hash that matches nothing, so both
+  // refusals cost one Argon2 verification. Returning early would make "no such account" the
+  // fast answer, and a stopwatch would turn this into a list of who has one.
+  const isProven = await verifyAuthKey(
+    request.authKey,
+    user?.auth_hash ?? (await unmatchableHash()),
+  );
+
+  if (!user || !isProven) {
     return null;
   }
 
@@ -156,6 +164,24 @@ export async function createSession(
     expiresAt,
     keyMaterial: materialFrom(user),
   };
+}
+
+let unmatchable: Promise<string> | null = null;
+
+/** A real Argon2id hash, at the server's cost, of a value no proof can be. Made once. */
+function unmatchableHash(): Promise<string> {
+  unmatchable ??= hash(randomBytes(32).toString("base64"), ARGON2_SERVER);
+
+  return unmatchable;
+}
+
+/**
+ * Makes that hash before the first sign-in needs it. Made lazily, the first miss after a
+ * restart would pay for a hash as well as a verification, and be the slow answer that says
+ * "no such account". The server awaits this before it listens.
+ */
+export async function prepareSignIn(): Promise<void> {
+  await unmatchableHash();
 }
 
 /** A wrong proof is a false, not a throw: a malformed hash in the table is still a no. */
@@ -239,14 +265,19 @@ export async function deleteAccount(sql: Sql, user: UserRow, authKey: string): P
     return false;
   }
 
-  const owned = "select id from keys where owner_id = $1";
-
+  // One statement, so it is all or nothing: `Sql` is a single query, and a pool may run
+  // consecutive ones on different connections, so a transaction cannot be spread over
+  // several. Postgres applies every data-modifying CTE with the statement or not at all.
   await sql.query(
-    `delete from key_wraps where parent_key_id in (${owned}) or child_key_id in (${owned})`,
+    `with owned as (select id from keys where owner_id = $1),
+       wraps as (
+         delete from key_wraps
+         where parent_key_id in (select id from owned) or child_key_id in (select id from owned)
+       ),
+       given as (delete from grants where key_id in (select id from owned))
+     delete from users where id = $1`,
     [user.id],
   );
-  await sql.query(`delete from grants where key_id in (${owned})`, [user.id]);
-  await sql.query("delete from users where id = $1", [user.id]);
 
   return true;
 }

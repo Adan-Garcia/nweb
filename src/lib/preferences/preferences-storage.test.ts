@@ -1,3 +1,4 @@
+import { openDB } from "idb";
 import { describe, expect, it } from "vitest";
 
 import { getNotesDb, NOTES_DB_VERSION } from "../db/notes-db";
@@ -29,12 +30,12 @@ describe("preferences storage", () => {
   });
 
   it("validates what it reads rather than trusting the row", async () => {
-    const database = await getNotesDb();
-    await database.put("preferences", {
-      ...DEFAULT_PREFERENCES,
-      // A value from some later build, or a row edited by hand.
-      accent: "chartreuse" as "rose",
-    });
+    await getNotesDb();
+    // Through a connection with no schema, the way a later build or a hand edit would
+    // write it: the typed one rightly will not accept this row.
+    const raw = await openDB("cuervo-notes");
+    await raw.put("preferences", { ...DEFAULT_PREFERENCES, accent: "chartreuse" });
+    raw.close();
 
     expect((await readPreferences())?.accent).toBe("rose");
   });

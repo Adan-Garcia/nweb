@@ -126,9 +126,47 @@ export const mediaListSchema = z.object({
  * that service needs to encrypt to it. The server keeps it and nothing else — it cannot
  * say what is due, only that something is (see `docs/backend.md`, "what it costs").
  */
+export const PUSH_ENDPOINT_MAX_LENGTH = 2048;
+
+/**
+ * Whether an address could be a push service on the public internet: https, a named host
+ * with a dot in it, no credentials, and nothing that names this machine or its network.
+ *
+ * The reminder sweep POSTs to whatever is stored, from inside the server's own network, so
+ * an endpoint pointing back into it — a cloud metadata address, a database, a router —
+ * would turn every reminder into a request forged on somebody else's behalf. Every real
+ * push service is a public https host, so this refuses nothing a browser would hand over.
+ * It checks the name, not where the name resolves: that is the network's job.
+ */
+export function isPublicPushEndpoint(endpoint: string): boolean {
+  let url: URL;
+
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+
+  const host = url.hostname.toLowerCase();
+  const isIpLiteral = /^[\d.]+$/.test(host) || host.startsWith("[");
+  const isInternalName =
+    !host.includes(".") ||
+    host === "localhost" ||
+    /\.(localhost|local|internal|intranet|lan|home|corp)$/.test(host);
+
+  return (
+    url.protocol === "https:" &&
+    !url.username &&
+    !url.password &&
+    !isIpLiteral &&
+    !isInternalName &&
+    endpoint.length <= PUSH_ENDPOINT_MAX_LENGTH
+  );
+}
+
 export const pushSubscriptionSchema = z.object({
-  endpoint: z.url(),
-  keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
+  endpoint: z.url().refine(isPublicPushEndpoint, "Not a public push service"),
+  keys: z.object({ p256dh: z.string().min(1).max(256), auth: z.string().min(1).max(256) }),
 });
 
 export type PushSubscription = z.infer<typeof pushSubscriptionSchema>;

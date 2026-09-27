@@ -2,6 +2,7 @@ import { serve, upgradeWebSocket } from "@hono/node-server";
 import { Pool, type QueryResultRow } from "pg";
 import { WebSocketServer } from "ws";
 
+import { prepareSignIn } from "./accounts";
 import { createApp } from "./app";
 import { ConfigError, readConfig } from "./config";
 import { migrate, type Sql } from "./db";
@@ -25,6 +26,7 @@ async function main(): Promise<void> {
   };
 
   await migrate(sql);
+  await prepareSignIn();
 
   if (config.vapid) {
     configurePush(config.vapid);
@@ -47,6 +49,9 @@ async function main(): Promise<void> {
     allowedOrigins: config.allowedOrigins,
     vapidPublicKey: config.vapid?.publicKey ?? null,
     upgrade: upgradeWebSocket,
+    clientIpHeader: config.clientIpHeader,
+    registrationEmails: config.registrationEmails,
+    staticDir: config.staticDir,
   });
 
   // `noServer`: the adapter hands it upgrades from the HTTP server it already runs, so the

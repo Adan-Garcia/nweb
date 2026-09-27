@@ -1,4 +1,4 @@
-import { REMINDER_WINDOW_MS } from "@shared/sync-contract";
+import { isPublicPushEndpoint, REMINDER_WINDOW_MS } from "@shared/sync-contract";
 
 import type { Sql } from "./db";
 import { zonedInstant } from "./zoned-time";
@@ -156,7 +156,11 @@ export async function sweepReminders(
     });
 
     for (const subscription of subscriptions) {
-      if ((await deliver(subscription, payload)) === "gone") {
+      // Checked again here, not only when saved: a row stored before the rule existed must
+      // not be the one request that still reaches into the server's own network.
+      const isSafe = isPublicPushEndpoint(subscription.endpoint);
+
+      if (!isSafe || (await deliver(subscription, payload)) === "gone") {
         await forgetSubscription(sql, userId, subscription.endpoint);
         dropped += 1;
       } else {

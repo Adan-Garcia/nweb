@@ -17,6 +17,7 @@ export type SignupOutcome = "done" | "local-only" | "failed";
 const SERVER_ERRORS: Record<string, string> = {
   "email-taken": "that address already has an account there — sign in to it from Settings",
   unreachable: "the server could not be reached",
+  "registration-closed": "that server only takes accounts for addresses its owner has listed",
 };
 
 /**

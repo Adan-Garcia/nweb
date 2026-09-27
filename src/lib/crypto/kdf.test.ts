@@ -2,7 +2,13 @@ import { ARGON2ID_DEFAULTS, type KdfParams, kdfParamsSchema } from "@shared/kdf-
 import { describe, expect, it } from "vitest";
 
 import { base64ToBytes, bytesToBase64 } from "./base64";
-import { createKdfParams, deriveKey } from "./kdf";
+import {
+  assertAccountKdf,
+  createKdfParams,
+  deriveKey,
+  isWithinKdfCeiling,
+  UntrustedKdfError,
+} from "./kdf";
 
 const SALT = bytesToBase64(new Uint8Array(16).fill(7));
 
@@ -112,5 +118,73 @@ describe("kdfParamsSchema", () => {
     expect(kdfParamsSchema.safeParse({ name: "scrypt", salt: SALT }).success).toBe(false);
     expect(kdfParamsSchema.safeParse({ ...cheapArgon2id, memorySize: 0 }).success).toBe(false);
     expect(kdfParamsSchema.safeParse({ ...cheapPbkdf2, hash: "SHA-1" }).success).toBe(false);
+  });
+});
+
+describe("assertAccountKdf", () => {
+  const shipped = {
+    name: "Argon2id" as const,
+    ...ARGON2ID_DEFAULTS,
+    salt: bytesToBase64(new Uint8Array(16).fill(7)),
+  };
+
+  it("accepts what this app makes, and an old PBKDF2 account at its full cost", () => {
+    expect(() => assertAccountKdf(shipped)).not.toThrow();
+    expect(() =>
+      assertAccountKdf({
+        name: "PBKDF2",
+        hash: "SHA-256",
+        iterations: 600_000,
+        salt: shipped.salt,
+      }),
+    ).not.toThrow();
+  });
+
+  it("refuses a cost a server could brute-force a proof back from", () => {
+    for (const weak of [
+      { ...shipped, memorySize: 1024 },
+      { ...shipped, iterations: 1 },
+      { name: "PBKDF2" as const, hash: "SHA-256" as const, iterations: 1, salt: shipped.salt },
+    ]) {
+      expect(() => assertAccountKdf(weak)).toThrow(UntrustedKdfError);
+    }
+  });
+
+  it("refuses a salt too short to be unique, or not a salt at all", () => {
+    expect(() => assertAccountKdf({ ...shipped, salt: bytesToBase64(new Uint8Array(4)) })).toThrow(
+      UntrustedKdfError,
+    );
+    expect(() => assertAccountKdf({ ...shipped, salt: "%%%not base64%%%" })).toThrow(
+      UntrustedKdfError,
+    );
+  });
+
+  it("refuses a cost that would take the tab down", () => {
+    expect(() => assertAccountKdf({ ...shipped, memorySize: 4_194_304 })).toThrow(
+      UntrustedKdfError,
+    );
+  });
+});
+
+describe("isWithinKdfCeiling", () => {
+  it("allows any cost this app has made, however old, and refuses a runaway one", () => {
+    const salt = bytesToBase64(new Uint8Array(16));
+
+    expect(isWithinKdfCeiling(createKdfParams())).toBe(true);
+    expect(isWithinKdfCeiling({ name: "PBKDF2", hash: "SHA-256", iterations: 100, salt })).toBe(
+      true,
+    );
+    expect(
+      isWithinKdfCeiling({ name: "PBKDF2", hash: "SHA-256", iterations: 50_000_000, salt }),
+    ).toBe(false);
+    expect(
+      isWithinKdfCeiling({
+        name: "Argon2id",
+        memorySize: 8,
+        iterations: 10_000_000,
+        parallelism: 1,
+        salt,
+      }),
+    ).toBe(false);
   });
 });

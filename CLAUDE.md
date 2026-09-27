@@ -156,6 +156,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
     *   **Seal before opening an IndexedDB transaction, never inside one.** Awaiting anything that is not an IDB request lets the transaction auto-commit, and the puts after it fail with `TransactionInactiveError` in a real browser (fake-indexeddb is lenient and will not catch this).
     *   **An encrypted row that cannot be read is an error, not a fallback.** Returning the raw bytes would hand the editor ciphertext and autosave would write it back as the note.
 *   **Crypto is AES-GCM from WebCrypto, under a key derived by Argon2id** (`hash-wasm`, the one crypto dependency — WebCrypto has no Argon2). The KDF's name and parameters travel inside every envelope and inside the lock record (`lib/crypto/kdf.ts`), so a workspace locked under PBKDF2 still opens with it and raising a cost is a new value rather than a migration. New key material is always Argon2id. Say "encrypted on this device"; the key is in JS memory while the data is readable and the code using it is served from the same origin, so it protects a file that leaves the device and a copied profile directory, not a compromised bundle or an XSS bug.
+*   **A server's key-derivation parameters are held to a floor.** `[REQUIRED]` Signing in derives a proof from parameters the server supplies and sends it back, so a hostile server could ask for a trivial cost and brute-force the passphrase — which also opens the device. `assertAccountKdf` (`lib/crypto/kdf.ts`, bounds in `shared/kdf-params.ts`) runs before any account derivation and fails as `untrusted-server`; parameters read from a backup file are held to the ceiling only. A sync server is reached over https, or plain http to localhost only (`lib/api/server-url.ts`).
 *   **A path resolves as far as it can, and never further.** `[REQUIRED]` `branchPath` is
     deliberately not all-or-nothing: a course shared with you has no readable term or wing,
     and dropping its own name along with them would lose the one thing that *is* readable.
@@ -179,7 +180,8 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | Build | `npm run build` | `tsc -b && vite build` |
 | Build the server | `npm run build:server` | Bundles `server/src/main.ts`; Node cannot resolve `./app` or `@shared/…` on its own. |
 | Run the server | `npm run start:server` | Needs `DATABASE_URL` and `SERVER_SECRET`; see `server/CLAUDE.md` §5. |
-| Server + Postgres in Docker | `docker compose up --build` | Needs `POSTGRES_PASSWORD` and `SERVER_SECRET` in a git-ignored `.env`; see `docs/backend.md` ("Running it"). |
+| Server + Postgres in Docker | `docker compose up --build` | Needs `POSTGRES_PASSWORD` and `SERVER_SECRET` in a git-ignored `.env`; see `docs/backend.md` ("Running it"). The image serves the built app too. |
+| Deploy through a tunnel | `docker compose --profile tunnel up -d --build` | Adds Cloudflare's `cloudflared`; needs `TUNNEL_TOKEN`. See `docs/deploy.md`. |
 | Test | `npm run test` | Vitest; see §4. |
 
 *   **Before reporting completion run:** `npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build`. All pass on a clean tree today; keep them clean.

@@ -17,6 +17,24 @@ describe("reading the environment", () => {
       port: 8787,
       sweepEveryMs: 60_000,
       vapid: null,
+      clientIpHeader: null,
+      registrationEmails: null,
+      staticDir: null,
+    });
+  });
+
+  it("takes what a deployment behind a tunnel needs", () => {
+    const config = readConfig({
+      ...ENOUGH,
+      CLIENT_IP_HEADER: " CF-Connecting-IP ",
+      REGISTRATION_EMAILS: "Me@Example.com, friend@example.com,",
+      STATIC_DIR: "/app/web",
+    });
+
+    expect(config).toMatchObject({
+      clientIpHeader: "cf-connecting-ip",
+      registrationEmails: ["me@example.com", "friend@example.com"],
+      staticDir: "/app/web",
     });
   });
 
