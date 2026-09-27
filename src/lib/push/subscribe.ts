@@ -23,6 +23,15 @@ function isSupported(): boolean {
   );
 }
 
+/**
+ * Whether this browser has been asked about notifications yet, without asking. Only a
+ * "default" answer is worth an offer: after a yes there is nothing to ask, and after a no
+ * the browser will not ask again anyway.
+ */
+export function notificationPermission(): NotificationPermission | "unsupported" {
+  return isSupported() ? Notification.permission : "unsupported";
+}
+
 /** A VAPID key travels as base64url and has to reach `subscribe` as bytes. */
 export function decodeVapidKey(base64Url: string): Uint8Array<ArrayBuffer> {
   const padded = base64Url.replace(/-/g, "+").replace(/_/g, "/");

@@ -25,6 +25,7 @@ describe("preferencesSchema", () => {
         { id: "upcoming", visible: true },
         { id: "recent-notes", visible: true },
       ],
+      reminderPrompt: "offer",
       updatedAt: 0,
       deletedAt: null,
       keyId: undefined,

@@ -27,6 +27,8 @@ export const FONT_SIZES = ["sm", "md", "lg"] as const;
 export const SIDEBAR_MODES = ["expanded", "icons"] as const;
 export const NAV_IDS = ["dashboard", "calendar", "board", "notes"] as const;
 export const DASHBOARD_CARD_IDS = ["next-priority", "stats", "upcoming", "recent-notes"] as const;
+/** Whether the offer to turn on reminders has been waved away with "Not now". */
+export const REMINDER_PROMPTS = ["offer", "dismissed"] as const;
 
 export type ThemeMode = (typeof THEME_MODES)[number];
 export type Accent = (typeof ACCENTS)[number];
@@ -35,6 +37,7 @@ export type FontSize = (typeof FONT_SIZES)[number];
 export type SidebarMode = (typeof SIDEBAR_MODES)[number];
 export type NavId = (typeof NAV_IDS)[number];
 export type DashboardCardId = (typeof DASHBOARD_CARD_IDS)[number];
+export type ReminderPrompt = (typeof REMINDER_PROMPTS)[number];
 export type DashboardCardPref = { id: DashboardCardId; visible: boolean };
 
 /** Keeps the order given, drops what is unknown or repeated, and appends what is missing. */
@@ -88,6 +91,7 @@ export const preferencesSchema = z.object({
         ),
       ),
     ),
+  reminderPrompt: z.enum(REMINDER_PROMPTS).catch("offer"),
   updatedAt: z.number().int().nonnegative().catch(0),
   deletedAt: z.number().nullable().catch(null),
   /** Always empty: the row is never sealed at rest. Declared as any synced row may carry it. */

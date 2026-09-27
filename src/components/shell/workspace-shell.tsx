@@ -4,6 +4,7 @@ import { CommandPalette } from "@/components/command-palette/command-palette";
 import { LockScreen } from "@/components/lock/lock-screen";
 import { RekeyResumeScreen } from "@/components/lock/rekey-resume-screen";
 import { MobileTabBar } from "@/components/shell/mobile-tab-bar";
+import { ReminderPrompt } from "@/components/shell/reminder-prompt";
 import { WorkspaceSidebar } from "@/components/shell/workspace-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -80,6 +81,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
           {children}
         </SidebarInset>
         <MobileTabBar />
+        <ReminderPrompt />
         <CommandPalette canLock={lock.state === "unlocked"} onLock={() => void lock.lock()} />
       </SidebarProvider>
     </TooltipProvider>

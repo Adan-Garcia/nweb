@@ -3,7 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { server } from "@/test/server";
 
-import { decodeVapidKey, subscribeToPush, unsubscribeFromPush } from "./subscribe";
+import {
+  decodeVapidKey,
+  notificationPermission,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from "./subscribe";
 
 const SESSION = { baseUrl: "https://api.example", token: "a-token" };
 const VAPID =
@@ -75,6 +80,21 @@ describe("decodeVapidKey", () => {
     // An uncompressed P-256 point: 65 bytes starting with 0x04.
     expect(bytes).toHaveLength(65);
     expect(bytes[0]).toBe(4);
+  });
+});
+
+describe("notificationPermission", () => {
+  it("reads what the browser was told, without asking it again", () => {
+    const requestPermission = vi.fn();
+    givenBrowser();
+    vi.stubGlobal("Notification", { permission: "default", requestPermission });
+
+    expect(notificationPermission()).toBe("default");
+    expect(requestPermission).not.toHaveBeenCalled();
+  });
+
+  it("is unsupported where there is no push", () => {
+    expect(notificationPermission()).toBe("unsupported");
   });
 });
 

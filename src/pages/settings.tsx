@@ -9,7 +9,6 @@ import { FeedsCard } from "@/components/settings/feeds/feeds-card";
 import { useCalendarFeeds } from "@/components/settings/feeds/use-calendar-feeds";
 import { useFeedEditor } from "@/components/settings/feeds/use-feed-editor";
 import { RemindersCard } from "@/components/settings/reminders/reminders-card";
-import { useReminders } from "@/components/settings/reminders/use-reminders";
 import { ServerAccountCard } from "@/components/settings/server/server-account-card";
 import { useServerAccount } from "@/components/settings/server/use-server-account";
 import { SettingsBlock } from "@/components/settings/settings-block";
@@ -21,6 +20,7 @@ import { useWorkspaceEditor } from "@/components/settings/workspace/use-workspac
 import { WorkspaceEditorCard } from "@/components/settings/workspace/workspace-editor-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocalAccount } from "@/hooks/use-local-account";
+import { useReminders } from "@/hooks/use-reminders";
 
 export function SettingsPage() {
   const activeId = useSettingsAnchor();

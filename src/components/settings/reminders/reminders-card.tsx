@@ -1,6 +1,6 @@
-import type { ReminderState } from "@/components/settings/reminders/use-reminders";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { ReminderState } from "@/hooks/use-reminders";
 
 type RemindersCardProps = {
   state: ReminderState;
