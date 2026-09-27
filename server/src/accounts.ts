@@ -256,14 +256,19 @@ export async function deleteAccount(sql: Sql, user: UserRow, authKey: string): P
     return false;
   }
 
-  const owned = "select id from keys where owner_id = $1";
-
+  // One statement, so it is all or nothing: `Sql` is a single query, and a pool may run
+  // consecutive ones on different connections, so a transaction cannot be spread over
+  // several. Postgres applies every data-modifying CTE with the statement or not at all.
   await sql.query(
-    `delete from key_wraps where parent_key_id in (${owned}) or child_key_id in (${owned})`,
+    `with owned as (select id from keys where owner_id = $1),
+       wraps as (
+         delete from key_wraps
+         where parent_key_id in (select id from owned) or child_key_id in (select id from owned)
+       ),
+       given as (delete from grants where key_id in (select id from owned))
+     delete from users where id = $1`,
     [user.id],
   );
-  await sql.query(`delete from grants where key_id in (${owned})`, [user.id]);
-  await sql.query("delete from users where id = $1", [user.id]);
 
   return true;
 }
