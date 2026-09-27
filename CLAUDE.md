@@ -172,6 +172,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | Build | `npm run build` | `tsc -b && vite build` |
 | Build the server | `npm run build:server` | Bundles `server/src/main.ts`; Node cannot resolve `./app` or `@shared/…` on its own. |
 | Run the server | `npm run start:server` | Needs `DATABASE_URL` and `SERVER_SECRET`; see `server/CLAUDE.md` §5. |
+| Server + Postgres in Docker | `docker compose up --build` | Needs `POSTGRES_PASSWORD` and `SERVER_SECRET` in a git-ignored `.env`; see `BACKEND.md` ("Running it"). |
 | Test | `npm run test` | Vitest; see §4. |
 
 *   **Before reporting completion run:** `npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build`. All pass on a clean tree today; keep them clean.

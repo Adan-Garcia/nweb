@@ -1,0 +1,11 @@
+.git
+node_modules
+dist
+dist-server
+coverage
+e2e
+src
+public
+.env
+.env.*
+*.log

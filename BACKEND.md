@@ -317,6 +317,18 @@ than a default for a secret. `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY` and `VAPID_PRIV
 all three or none; without them the server runs and sends no reminders, which is a choice
 rather than a failure. The client is pointed at it with `VITE_API_URL` at build time.
 
+To run it against a real Postgres without installing one, `docker compose up --build` starts
+both (`Dockerfile`, `docker-compose.yml`). Put `POSTGRES_PASSWORD` and `SERVER_SECRET` in a
+git-ignored `.env`; compose refuses to start without them, and `SERVER_SECRET` has to be the
+same on every start. The server listens on `127.0.0.1:8787` and allows
+`http://localhost:5173` and `:5174` (Vite's next port when 5173 is taken) unless
+`ALLOWED_ORIGINS` says otherwise. An origin it does not allow is not refused by the server:
+the browser blocks the request, and the account form can only say the server would not take
+the address. A dev server started as
+`VITE_API_URL=http://localhost:8787 npm run dev` talks to it. The image installs the
+production dependencies, which are one list for the app and the server, so it is larger
+than the bundle alone needs.
+
 The server is bundled with Vite rather than run from source: Node can strip types now but
 cannot resolve `./app` or `@shared/…`, which this codebase writes everywhere because the
 browser build resolves them.
