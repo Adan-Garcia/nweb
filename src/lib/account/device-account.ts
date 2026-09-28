@@ -1,20 +1,35 @@
 import { setApiSession } from "../api/session-store";
-import { resetActiveCipher } from "../crypto/cipher";
+import { createAesGcmCipher, resetActiveCipher, setActiveCipher } from "../crypto/cipher";
 import { eraseNotesDb } from "../db/notes-db";
 import { forgetKeyring } from "../keys/object-keys";
 import { lockCipherFor, resetLockRecord } from "../lock/lock-record";
-import { readLockRecord, unlockWorkspace } from "../lock/workspace-lock";
+import {
+  forgetRememberedUnlock,
+  readRememberedUnlock,
+  rememberAccountUnlock,
+  rememberLockUnlock,
+} from "../lock/remembered-unlock";
+import {
+  readLockRecord,
+  resumeWorkspaceKey,
+  unlockWorkspace,
+  unlockWorkspaceKey,
+} from "../lock/workspace-lock";
 import {
   changeWorkspacePassphrase,
   createWorkspaceLock,
   type RekeyProgress,
 } from "../lock/workspace-passphrase";
 import { resetSyncState } from "../sync/sync-service";
-import { openAccountKeys } from "./account-keys";
+import { deriveAuthKey, openAccountKeys } from "./account-keys";
 import { readAccountRecord } from "./account-record";
-import { unlockAccount } from "./adopt-account";
+import { adoptKeyring, unlockAccount } from "./adopt-account";
 import { type LocalAccountProfile, readLocalAccount, writeLocalAccount } from "./local-account";
-import { changeServerPassphrase, openAccountSession } from "./server-disconnect";
+import {
+  changeServerPassphrase,
+  openAccountSession,
+  openAccountSessionWithAuthKey,
+} from "./server-disconnect";
 
 /**
  * The local account: the one every device must have before its workspace opens.
@@ -65,17 +80,84 @@ export async function createLocalAccount(
  * account, through the lock when it is not. A session is opened afterwards, in the
  * background — the notes are readable the moment the keys are, network or not.
  */
-export async function unlockDevice(passphrase: string): Promise<boolean> {
-  if (await readAccountRecord()) {
-    if (!(await unlockAccount(passphrase)).ok) {
+export async function unlockDevice(
+  passphrase: string,
+  { remember = false }: { remember?: boolean } = {},
+): Promise<boolean> {
+  const record = await readAccountRecord();
+
+  if (record) {
+    const unlocked = await unlockAccount(passphrase);
+
+    if (!unlocked.ok) {
       return false;
     }
 
-    void openAccountSession(passphrase).catch(() => false);
+    if (remember) {
+      // Derived once and used twice: for the session now, and for the ones after a reload.
+      const authKey = await deriveAuthKey(passphrase, record.material.kdf);
+
+      await rememberAccountUnlock({
+        wingKey: unlocked.wingKey,
+        wingKeyId: record.wingKeyId,
+        privateKey: unlocked.keys.privateKey,
+        authKey,
+      });
+      void openAccountSessionWithAuthKey(authKey).catch(() => false);
+    } else {
+      await forgetRememberedUnlock();
+      void openAccountSession(passphrase).catch(() => false);
+    }
+
     return true;
   }
 
-  return unlockWorkspace(passphrase);
+  const unlocked = await unlockWorkspaceKey(passphrase);
+
+  if (!unlocked) {
+    return false;
+  }
+
+  await (remember ? rememberLockUnlock(unlocked) : forgetRememberedUnlock());
+  return true;
+}
+
+/**
+ * Opens this device with what "Keep me signed in" left, if it is still good: not lapsed,
+ * and still the keys of the lock or account this device has now. Anything else is
+ * forgotten, and the passphrase is asked for as usual.
+ */
+export async function resumeRememberedDevice(): Promise<boolean> {
+  const remembered = await readRememberedUnlock();
+
+  if (!remembered) {
+    return false;
+  }
+
+  const record = await readAccountRecord();
+
+  if (remembered.kind === "account" && record?.wingKeyId === remembered.wingKeyId) {
+    setActiveCipher(createAesGcmCipher(remembered.wingKey, remembered.wingKeyId));
+    await adoptKeyring(
+      remembered.wingKeyId,
+      remembered.wingKey,
+      record.graph,
+      remembered.privateKey,
+    );
+    void openAccountSessionWithAuthKey(remembered.authKey).catch(() => false);
+    return true;
+  }
+
+  if (
+    remembered.kind === "lock" &&
+    !record &&
+    (await resumeWorkspaceKey(remembered.key, remembered.keyId))
+  ) {
+    return true;
+  }
+
+  await forgetRememberedUnlock();
+  return false;
 }
 
 /** Whether this is the device's passphrase, without unlocking anything. */
@@ -96,6 +178,21 @@ export type ChangePassphraseFailure = "wrong-passphrase" | "unreachable" | "fail
  * a local-only device it rewrites every row, which is why it reports progress.
  */
 export async function changeDevicePassphrase(
+  current: string,
+  next: string,
+  onProgress?: (progress: RekeyProgress) => void,
+): Promise<{ ok: true } | { ok: false; reason: ChangePassphraseFailure }> {
+  const changed = await changePassphrase(current, next, onProgress);
+
+  // What was remembered was opened by the old passphrase; the next load asks for the new one.
+  if (changed.ok) {
+    await forgetRememberedUnlock();
+  }
+
+  return changed;
+}
+
+async function changePassphrase(
   current: string,
   next: string,
   onProgress?: (progress: RekeyProgress) => void,

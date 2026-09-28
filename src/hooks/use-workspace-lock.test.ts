@@ -50,6 +50,7 @@ beforeEach(async () => {
     database.clear("workspace-keys"),
     database.clear("workspace-rekey"),
     database.clear("notes-documents"),
+    database.clear("remembered-unlock"),
   ]);
   window.localStorage.clear();
   resetActiveCipher();
@@ -71,6 +72,40 @@ async function mountLocked() {
 }
 
 describe("useWorkspaceLock", () => {
+  it("opens with a remembered sign-in before ever showing the lock", async () => {
+    const { result, unmount } = await mountLocked();
+
+    await act(() => result.current.lock());
+    await act(async () => {
+      expect(await result.current.unlock(PASSPHRASE, true)).toBe(true);
+    });
+    unmount();
+    // A reload: the key leaves memory, and the hint says the lock screen is due.
+    resetActiveCipher();
+
+    const reloaded = renderHook(() => useWorkspaceLock());
+
+    expect(reloaded.result.current).toMatchObject({ state: "locked", isChecking: true });
+    await waitFor(() =>
+      expect(reloaded.result.current).toMatchObject({ state: "unlocked", isChecking: false }),
+    );
+  });
+
+  it("still asks after a reload when the sign-in was not remembered", async () => {
+    const { result, unmount } = await mountLocked();
+
+    await act(() => result.current.lock());
+    await act(() => result.current.unlock(PASSPHRASE));
+    unmount();
+    resetActiveCipher();
+
+    const reloaded = renderHook(() => useWorkspaceLock());
+
+    await waitFor(() =>
+      expect(reloaded.result.current).toMatchObject({ state: "locked", isChecking: false }),
+    );
+  });
+
   it("starts unset when no passphrase has been chosen", async () => {
     const { result } = await mount();
 
@@ -156,8 +191,8 @@ describe("useWorkspaceLock", () => {
   it("follows a lock taken somewhere else, such as the Settings page", async () => {
     const { result } = await mountLocked();
 
-    act(() => {
-      lockWorkspace();
+    await act(async () => {
+      await lockWorkspace();
     });
 
     await waitFor(() => expect(result.current.state).toBe("locked"));
@@ -258,7 +293,7 @@ describe("useWorkspaceLock", () => {
 
   it("paints locked on the first render when the hint says so, without waiting", async () => {
     await createWorkspaceLock(PASSPHRASE);
-    lockWorkspace();
+    await lockWorkspace();
 
     const { result } = renderHook(() => useWorkspaceLock());
 

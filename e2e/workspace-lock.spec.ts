@@ -105,6 +105,25 @@ test.describe("the workspace lock", () => {
     await expect(page.getByRole("heading", { name: "Welcome back, Ada" })).toBeVisible();
   });
 
+  test("keep me signed in survives a reload, and Lock forgets it", async ({ page }) => {
+    // A real IndexedDB has to hold a real CryptoKey across the reload; jsdom cannot say so.
+    await page.goto("/dashboard");
+    await page.getByLabel("Passphrase").fill(PASSPHRASE);
+    await page.getByLabel("Keep me signed in for 30 days").check();
+    await page.getByRole("button", { name: "Unlock" }).click();
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByLabel("Passphrase")).toHaveCount(0);
+
+    await page.keyboard.press("Control+k");
+    await page.getByRole("option", { name: /Lock/ }).click();
+    await expect(page.getByLabel("Passphrase")).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Passphrase")).toBeVisible();
+  });
+
   test("leaves a task's due date readable, which is what a reminder would need", async ({
     page,
   }) => {

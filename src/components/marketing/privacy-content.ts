@@ -35,11 +35,11 @@ export const POLICY_SECTIONS: PolicySection[] = [
     title: "Who can see it",
     icon: Users,
     items: [
-      "Without a sync account, only someone using this browser profile who knows your passphrase.",
+      'Without a sync account, only someone using this browser profile who knows your passphrase — or anyone using it at all while "Keep me signed in" is on.',
       "With one, your own signed-in devices, and anyone you share a course, a unit or a note with — read-only or with edit access, and only what you shared. Removing someone changes the key, so they cannot open anything written after; what they already had stays with them.",
       "Whoever runs the server cannot read your notes, but can see their shape: how many items there are, when they change, when tasks are due, and who has been given access to what.",
       "A reminder cannot say what is due, only that something is and when: the server composing it cannot read the title.",
-      "If you use Cuervo Planner on a shared or public computer, lock the workspace or treat your notes as readable by the next person.",
+      'If you use Cuervo Planner on a shared or public computer, lock the workspace or treat your notes as readable by the next person. "Keep me signed in" keeps the unlocked keys in this browser for 30 days, and on a sync account the proof that signs you in to it; locking forgets them.',
     ],
   },
   {
@@ -66,7 +66,7 @@ export const PLAIN_LANGUAGE_STEPS: BreakdownStep[] = [
   {
     step: "2",
     title: "It is locked",
-    copy: "Your account's passphrase encrypts the content and its titles on this device, and is asked for each time the app opens.",
+    copy: "Your account's passphrase encrypts the content and its titles on this device, and is asked for each time the app opens, unless you chose to stay signed in on this device for 30 days.",
   },
   {
     step: "3",

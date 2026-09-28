@@ -7,6 +7,7 @@ import type { Branch, Flight, Nest, Wing } from "../hierarchy/entity-model";
 import type { Pebble } from "../hierarchy/pebble-model";
 import type { SharePathRecord } from "../hierarchy/share-path-model";
 import type { RekeyJournal } from "../lock/rekey-journal";
+import type { RememberedUnlock } from "../lock/remembered-unlock";
 import type { WorkspaceLockRecord } from "../lock/workspace-lock-model";
 import type {
   NotesDirectoryEntry,
@@ -83,8 +84,12 @@ const NOTES_DB_NAME = "cuervo-notes";
  * it and a `seriesId` tying together the occurrences of a repeating task. Rewrites no rows:
  * a twig without them was typed in by hand, once, which is what every twig written before
  * this one was, and `listTwigs` reads the absence as null.
+ *
+ * 15 added `remembered-unlock`: the keys a "Keep me signed in" unlock left on this device
+ * (`lib/lock/remembered-unlock.ts`). One row at most, never synced or backed up. Rewrites
+ * no rows: without one, every load asks for the passphrase, as every load always has.
  */
-export const NOTES_DB_VERSION = 14;
+export const NOTES_DB_VERSION = 15;
 
 export interface NotesDbSchema extends DBSchema {
   "notes-documents": {
@@ -155,6 +160,10 @@ export interface NotesDbSchema extends DBSchema {
     key: string;
     value: FeedRecord;
   };
+  "remembered-unlock": {
+    key: string;
+    value: RememberedUnlock;
+  };
 }
 
 const STORE_NAMES = [
@@ -175,6 +184,7 @@ const STORE_NAMES = [
   "preferences",
   "local-account",
   "feeds",
+  "remembered-unlock",
 ] as const;
 
 let dbPromise: Promise<IDBPDatabase<NotesDbSchema>> | null = null;

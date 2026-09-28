@@ -161,7 +161,7 @@ function newWorkspaceGraph(wingKeyId: string): KeyGraph {
 }
 
 export type SignInOutcome =
-  | { ok: true; keys: AccountKeys; cipher: Cipher }
+  | { ok: true; keys: AccountKeys; cipher: Cipher; wingKey: CryptoKey }
   | { ok: false; reason: "no-account" | "wrong-passphrase" };
 
 /**
@@ -195,7 +195,7 @@ export async function unlockAccount(passphrase: string): Promise<SignInOutcome> 
   setActiveCipher(cipher);
   await adoptKeyring(record.wingKeyId, wingKey, record.graph, keys.privateKey);
 
-  return { ok: true, keys, cipher };
+  return { ok: true, keys, cipher, wingKey };
 }
 
 /**

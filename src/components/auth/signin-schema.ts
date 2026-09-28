@@ -19,6 +19,8 @@ export type ServerSigninValues = z.infer<typeof serverSigninSchema>;
 
 export const unlockSchema = z.object({
   passphrase: z.string().min(1, "Enter your passphrase"),
+  /** "Keep me signed in": remember the unlock on this device (`remembered-unlock.ts`). */
+  remember: z.boolean(),
 });
 
 export type UnlockValues = z.infer<typeof unlockSchema>;

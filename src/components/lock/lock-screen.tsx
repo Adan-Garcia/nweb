@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { REMEMBER_DAYS } from "@/lib/lock/remembered-unlock";
 
 type LockScreenProps = {
   /** Whose device this is, from the local account; null on a device from before them. */
   name: string | null;
   error: string | null;
   isWorking: boolean;
-  onUnlock: (passphrase: string) => void;
+  onUnlock: (passphrase: string, remember: boolean) => void;
 };
 
 /**
@@ -22,10 +23,11 @@ type LockScreenProps = {
  */
 export function LockScreen({ name, error, isWorking, onUnlock }: LockScreenProps) {
   const [passphrase, setPassphrase] = useState("");
+  const [remember, setRemember] = useState(false);
 
   const submit = () => {
     if (passphrase.length) {
-      onUnlock(passphrase);
+      onUnlock(passphrase, remember);
     }
   };
 
@@ -64,6 +66,17 @@ export function LockScreen({ name, error, isWorking, onUnlock }: LockScreenProps
                 }}
               />
             </div>
+
+            <Label className="font-normal">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(event) => {
+                  setRemember(event.currentTarget.checked);
+                }}
+              />
+              Keep me signed in for {REMEMBER_DAYS} days
+            </Label>
 
             {error ? (
               <p role="alert" className="text-sm text-destructive">

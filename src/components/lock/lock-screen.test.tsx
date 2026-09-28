@@ -56,7 +56,18 @@ describe("LockScreen", () => {
     await user.type(screen.getByLabelText("Passphrase"), "correct horse");
     await user.click(screen.getByRole("button", { name: "Unlock" }));
 
-    expect(onUnlock).toHaveBeenCalledWith("correct horse");
+    expect(onUnlock).toHaveBeenCalledWith("correct horse", false);
+  });
+
+  it("asks to keep the device signed in only when the box is ticked", async () => {
+    const user = userEvent.setup();
+    const { onUnlock } = setup();
+
+    await user.type(screen.getByLabelText("Passphrase"), "correct horse");
+    await user.click(screen.getByLabelText("Keep me signed in for 30 days"));
+    await user.click(screen.getByRole("button", { name: "Unlock" }));
+
+    expect(onUnlock).toHaveBeenCalledWith("correct horse", true);
   });
 
   it("shows a wrong passphrase where a screen reader will announce it", () => {
@@ -94,7 +105,7 @@ describe("the workspace behind the lock", () => {
 
   it("replaces the whole workspace with the lock screen once it is locked", async () => {
     await createWorkspaceLock("correct horse");
-    lockWorkspace();
+    await lockWorkspace();
 
     render(
       <MemoryRouter>
@@ -112,7 +123,7 @@ describe("the workspace behind the lock", () => {
   it("names whose workspace it is once the device has its local account", async () => {
     await createWorkspaceLock("correct horse");
     await writeLocalAccount({ name: "Ada", email: "ada@example.com" });
-    lockWorkspace();
+    await lockWorkspace();
 
     render(
       <MemoryRouter>
@@ -128,7 +139,7 @@ describe("the workspace behind the lock", () => {
   it("shows the workspace again once the passphrase is accepted", async () => {
     const user = userEvent.setup();
     await createWorkspaceLock("correct horse");
-    lockWorkspace();
+    await lockWorkspace();
 
     render(
       <MemoryRouter>
@@ -147,7 +158,7 @@ describe("the workspace behind the lock", () => {
   it("keeps the lock screen up for the wrong passphrase", async () => {
     const user = userEvent.setup();
     await createWorkspaceLock("correct horse");
-    lockWorkspace();
+    await lockWorkspace();
 
     render(
       <MemoryRouter>

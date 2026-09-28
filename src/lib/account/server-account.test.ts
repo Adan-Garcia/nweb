@@ -19,6 +19,7 @@ import { readAccountRecord } from "./account-record";
 import {
   changeDevicePassphrase,
   createLocalAccount,
+  resumeRememberedDevice,
   unlockDevice,
   verifyDevicePassphrase,
 } from "./device-account";
@@ -167,7 +168,7 @@ describe("signInToServer on a second device", () => {
 
     expect(await titles()).toEqual(["Mitosis"]);
     // The account's passphrase now opens this device too.
-    lockWorkspace();
+    await lockWorkspace();
     forgetKeyring();
     setApiSession(null);
     expect(await unlockDevice(PASSPHRASE)).toBe(true);
@@ -223,7 +224,7 @@ describe("signInToServer on a second device", () => {
     expect(await attempt("wrong")).toEqual({ ok: false, reason: "wrong-credentials" });
 
     await createLocalAccount({ name: "Ada", email: EMAIL, passphrase: "local" });
-    lockWorkspace();
+    await lockWorkspace();
     expect(await attempt(PASSPHRASE)).toEqual({ ok: false, reason: "locked" });
 
     await unlockDevice("local");
@@ -351,5 +352,37 @@ describe("the account passphrase and its session", () => {
     expect(await openAccountSession("wrong")).toBe(false);
     expect(await openAccountSession(PASSPHRASE)).toBe(true);
     expect(getApiSession()?.token).toBeTruthy();
+  });
+});
+
+describe("keep me signed in, on a server account", () => {
+  it("reopens the notes and the sync session after a reload, with no passphrase", async () => {
+    await enrolledDevice("Mitosis");
+    await lockWorkspace();
+    expect(await unlockDevice(PASSPHRASE, { remember: true })).toBe(true);
+    await vi.waitFor(() => expect(getApiSession()?.token).toBeTruthy());
+
+    // A reload: nothing in memory, the account's keys and the session both gone.
+    resetActiveCipher();
+    forgetKeyring();
+    setApiSession(null);
+
+    expect(await resumeRememberedDevice()).toBe(true);
+    expect(await titles()).toEqual(["Mitosis"]);
+    // The remembered sign-in proof opens a new session: sync resumes by itself.
+    await vi.waitFor(() => expect(getApiSession()?.token).toBeTruthy());
+  });
+
+  it("is forgotten when the device leaves the account", async () => {
+    await enrolledDevice("Mitosis");
+    expect(await unlockDevice(PASSPHRASE, { remember: true })).toBe(true);
+    await vi.waitFor(() => expect(getApiSession()?.token).toBeTruthy());
+    expect(await disconnectServer(PASSPHRASE)).toEqual({ ok: true });
+
+    resetActiveCipher();
+    forgetKeyring();
+
+    // Its keys are the account's, and the account is gone from this device.
+    expect(await resumeRememberedDevice()).toBe(false);
   });
 });

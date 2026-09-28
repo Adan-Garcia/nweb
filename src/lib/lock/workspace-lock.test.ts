@@ -174,7 +174,7 @@ describe("createWorkspaceLock", () => {
   it("refuses to list a name it cannot open, rather than showing its ciphertext", async () => {
     await createBranch({ flightId: "flight-1", name: "Organic Chemistry" });
     await createWorkspaceLock(PASSPHRASE);
-    lockWorkspace();
+    await lockWorkspace();
 
     await expect(listBranches()).rejects.toThrow(/not unlocked/);
   });
@@ -191,7 +191,7 @@ describe("locking and unlocking", () => {
     await seedNote();
     await createWorkspaceLock(PASSPHRASE);
 
-    lockWorkspace();
+    await lockWorkspace();
     expect(await getWorkspaceLockState()).toBe("locked");
     await expect(loadNotesDocument("doc-1")).rejects.toThrow();
 
@@ -206,7 +206,7 @@ describe("locking and unlocking", () => {
 
   it("refuses the wrong passphrase and stays locked", async () => {
     await createWorkspaceLock(PASSPHRASE);
-    lockWorkspace();
+    await lockWorkspace();
 
     expect(await unlockWorkspace("wrong")).toBe(false);
     expect(await unlockWorkspace("")).toBe(false);
@@ -222,7 +222,7 @@ describe("locking and unlocking", () => {
     // got, so this stops at "the bytes come back"; the rest is covered end to end.
     await seedImage();
     await createWorkspaceLock(PASSPHRASE);
-    lockWorkspace();
+    await lockWorkspace();
     await unlockWorkspace(PASSPHRASE);
 
     const database = await getNotesDb();
@@ -242,7 +242,7 @@ describe("changeWorkspacePassphrase", () => {
 
     expect(await changeWorkspacePassphrase(PASSPHRASE, "second passphrase")).toBe(true);
 
-    lockWorkspace();
+    await lockWorkspace();
     expect(await unlockWorkspace(PASSPHRASE)).toBe(false);
     expect(await unlockWorkspace("second passphrase")).toBe(true);
 
@@ -283,7 +283,7 @@ describe("changeWorkspacePassphrase", () => {
 
     expect(await changeWorkspacePassphrase("wrong", "second passphrase")).toBe(false);
 
-    lockWorkspace();
+    await lockWorkspace();
     expect(await unlockWorkspace(PASSPHRASE)).toBe(true);
   });
 
@@ -298,7 +298,7 @@ describe("removeWorkspaceLock", () => {
     await seedImage();
     const branch = await createBranch({ flightId: "flight-1", name: "Organic Chemistry" });
     await createWorkspaceLock(PASSPHRASE);
-    lockWorkspace();
+    await lockWorkspace();
 
     expect(await removeWorkspaceLock(PASSPHRASE)).toBe(true);
 

@@ -16,6 +16,7 @@ import {
   changeDevicePassphrase,
   createLocalAccount,
   eraseDevice,
+  resumeRememberedDevice,
   unlockDevice,
   verifyDevicePassphrase,
 } from "./device-account";
@@ -80,7 +81,7 @@ describe("createLocalAccount", () => {
   it("keeps the passphrase an older, already-locked device has, and checks it", async () => {
     await createWorkspaceLock(PASSPHRASE);
     const before = await readLockRecord();
-    lockWorkspace();
+    await lockWorkspace();
 
     expect(await createLocalAccount({ ...PROFILE, passphrase: "something else" })).toEqual({
       ok: false,
@@ -98,7 +99,7 @@ describe("unlocking and checking the passphrase", () => {
   it("opens a locked local device with its passphrase and nothing else", async () => {
     await writeNote("Photosynthesis");
     await createLocalAccount({ ...PROFILE, passphrase: PASSPHRASE });
-    lockWorkspace();
+    await lockWorkspace();
 
     expect(await unlockDevice("wrong")).toBe(false);
     expect(await unlockDevice(PASSPHRASE)).toBe(true);
@@ -107,11 +108,71 @@ describe("unlocking and checking the passphrase", () => {
 
   it("checks a passphrase without unlocking anything", async () => {
     await createLocalAccount({ ...PROFILE, passphrase: PASSPHRASE });
-    lockWorkspace();
+    await lockWorkspace();
 
     expect(await verifyDevicePassphrase(PASSPHRASE)).toBe(true);
     expect(await verifyDevicePassphrase("wrong")).toBe(false);
     expect(getActiveCipher().name).toBe("none");
+  });
+});
+
+describe("keep me signed in, on a local-only device", () => {
+  it("reopens the device after a reload when asked to, and only then", async () => {
+    await writeNote("Photosynthesis");
+    await createLocalAccount({ ...PROFILE, passphrase: PASSPHRASE });
+    resetActiveCipher();
+
+    expect(await unlockDevice(PASSPHRASE)).toBe(true);
+    resetActiveCipher();
+    expect(await resumeRememberedDevice()).toBe(false);
+
+    expect(await unlockDevice(PASSPHRASE, { remember: true })).toBe(true);
+    // A reload drops the key from memory; the remembered one brings it back.
+    resetActiveCipher();
+    expect(await resumeRememberedDevice()).toBe(true);
+    expect((await listNotesDirectoryEntries())[0].feather).toBe("Photosynthesis");
+  });
+
+  it("is forgotten by locking, and by an unlock that does not ask to be remembered", async () => {
+    await createLocalAccount({ ...PROFILE, passphrase: PASSPHRASE });
+
+    await unlockDevice(PASSPHRASE, { remember: true });
+    await lockWorkspace();
+    expect(await resumeRememberedDevice()).toBe(false);
+
+    await unlockDevice(PASSPHRASE, { remember: true });
+    await unlockDevice(PASSPHRASE);
+    resetActiveCipher();
+    expect(await resumeRememberedDevice()).toBe(false);
+  });
+
+  it("is forgotten by a new passphrase, which the old key no longer opens", async () => {
+    await createLocalAccount({ ...PROFILE, passphrase: PASSPHRASE });
+    await unlockDevice(PASSPHRASE, { remember: true });
+
+    expect(await changeDevicePassphrase(PASSPHRASE, "next one")).toEqual({ ok: true });
+    resetActiveCipher();
+
+    expect(await resumeRememberedDevice()).toBe(false);
+    expect(await (await getNotesDb()).count("remembered-unlock")).toBe(0);
+  });
+
+  it("refuses a remembered key that is no longer the lock's, and forgets it", async () => {
+    await createLocalAccount({ ...PROFILE, passphrase: PASSPHRASE });
+    await unlockDevice(PASSPHRASE, { remember: true });
+    const database = await getNotesDb();
+    const lock = await readLockRecord();
+
+    if (!lock) {
+      throw new Error("expected a lock");
+    }
+
+    // As if another tab changed the passphrase without this one hearing of it.
+    await database.put("workspace-keys", { ...lock, keyId: "someone-else" });
+    resetActiveCipher();
+
+    expect(await resumeRememberedDevice()).toBe(false);
+    expect(await database.count("remembered-unlock")).toBe(0);
   });
 });
 
@@ -126,7 +187,7 @@ describe("changeDevicePassphrase on a local-only device", () => {
     });
     expect(await changeDevicePassphrase(PASSPHRASE, "next one")).toEqual({ ok: true });
 
-    lockWorkspace();
+    await lockWorkspace();
     expect(await unlockDevice(PASSPHRASE)).toBe(false);
     expect(await unlockDevice("next one")).toBe(true);
     expect((await listNotesDirectoryEntries())[0].feather).toBe("Osmosis");

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { REMEMBER_DAYS } from "@/lib/lock/remembered-unlock";
 
 type UnlockFormProps = {
   name: string;
@@ -23,7 +24,7 @@ export function UnlockForm({ name, isWorking, error, onSubmit, className }: Unlo
     formState: { errors },
   } = useForm<UnlockValues>({
     resolver: zodResolver(unlockSchema),
-    defaultValues: { passphrase: "" },
+    defaultValues: { passphrase: "", remember: false },
   });
 
   return (
@@ -48,6 +49,10 @@ export function UnlockForm({ name, isWorking, error, onSubmit, className }: Unlo
               />
               <FieldError errors={[errors.passphrase]} />
             </Field>
+            <label className="flex items-center gap-2 text-body">
+              <input type="checkbox" {...register("remember")} />
+              Keep me signed in for {REMEMBER_DAYS} days
+            </label>
             {error ? (
               <p role="alert" className="text-sm text-destructive">
                 {error}

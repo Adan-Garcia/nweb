@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { changeDevicePassphrase, unlockDevice } from "@/lib/account/device-account";
+import {
+  changeDevicePassphrase,
+  resumeRememberedDevice,
+  unlockDevice,
+} from "@/lib/account/device-account";
 import { passphrasesNeeded, readRekeyJournal } from "@/lib/lock/rekey-journal";
 import {
   getWorkspaceLockState,
@@ -31,10 +35,22 @@ export function useWorkspaceLock() {
   const [progress, setProgress] = useState<RekeyProgress | null>(null);
   /** Which passphrases an interrupted rekey still needs, so the screen can ask for them. */
   const [needed, setNeeded] = useState<("source" | "target")[]>([]);
+  /**
+   * True until the first read of the database, which is also when a "Keep me signed in"
+   * gets its chance: the lock screen waits for it rather than flashing up and away.
+   */
+  const [isChecking, setIsChecking] = useState(true);
 
   const refresh = useCallback(async () => {
-    const next = await getWorkspaceLockState();
+    let next = await getWorkspaceLockState();
+
+    if (next === "locked" && (await resumeRememberedDevice())) {
+      notifyLockChanged();
+      next = "unlocked";
+    }
+
     setState(next);
+    setIsChecking(false);
 
     const journal = next === "interrupted" ? await readRekeyJournal() : null;
     setNeeded(journal ? passphrasesNeeded(journal) : []);
@@ -74,12 +90,12 @@ export function useWorkspaceLock() {
    * server account, the lock's otherwise (`device-account.ts`).
    */
   const unlock = useCallback(
-    async (passphrase: string) => {
+    async (passphrase: string, remember = false) => {
       setIsWorking(true);
       setError(null);
 
       try {
-        if (await unlockDevice(passphrase)) {
+        if (await unlockDevice(passphrase, { remember })) {
           // Other readers of the lock hear about it; this one reads it before returning.
           notifyLockChanged();
           await refresh();
@@ -96,7 +112,7 @@ export function useWorkspaceLock() {
   );
 
   const lock = useCallback(async () => {
-    lockWorkspace();
+    await lockWorkspace();
     await refresh();
   }, [refresh]);
 
@@ -139,6 +155,7 @@ export function useWorkspaceLock() {
 
   return {
     state,
+    isChecking,
     error,
     isWorking,
     progress,

@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { CommandPalette } from "@/components/command-palette/command-palette";
+import { RouteFallback } from "@/components/layout/route-fallback";
 import { LockScreen } from "@/components/lock/lock-screen";
 import { RekeyResumeScreen } from "@/components/lock/rekey-resume-screen";
 import { MobileTabBar } from "@/components/shell/mobile-tab-bar";
@@ -60,12 +61,17 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   }
 
   if (lock.state === "locked") {
+    // A remembered sign-in may yet open it; the lock screen waits for that answer.
+    if (lock.isChecking) {
+      return <RouteFallback />;
+    }
+
     return (
       <LockScreen
         name={account?.name ?? null}
         error={lock.error}
         isWorking={lock.isWorking}
-        onUnlock={(passphrase) => void lock.unlock(passphrase)}
+        onUnlock={(passphrase, remember) => void lock.unlock(passphrase, remember)}
       />
     );
   }

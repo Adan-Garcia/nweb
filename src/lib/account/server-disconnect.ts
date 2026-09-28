@@ -39,11 +39,14 @@ async function sessionFor(record: AccountRecord, passphrase: string): Promise<Ap
     return open;
   }
 
-  const session = await openSession(
-    { baseUrl: record.baseUrl },
-    record.email,
-    await deriveAuthKey(passphrase, record.material.kdf),
-  );
+  return sessionWithAuthKey(record, await deriveAuthKey(passphrase, record.material.kdf));
+}
+
+async function sessionWithAuthKey(
+  record: AccountRecord,
+  authKey: string,
+): Promise<ApiSession | null> {
+  const session = await openSession({ baseUrl: record.baseUrl }, record.email, authKey);
 
   return session.ok ? { baseUrl: record.baseUrl, token: session.value.token } : null;
 }
@@ -59,8 +62,26 @@ export async function openAccountSession(passphrase: string): Promise<boolean> {
     return false;
   }
 
-  const session = await sessionFor(record, passphrase);
+  return adoptSession(await sessionFor(record, passphrase));
+}
 
+/**
+ * `openAccountSession` from a sign-in proof already derived — the one "Keep me signed in"
+ * remembered — so a reload reconnects sync without the passphrase.
+ */
+export async function openAccountSessionWithAuthKey(authKey: string): Promise<boolean> {
+  const record = await readAccountRecord();
+
+  if (!record) {
+    return false;
+  }
+
+  const open = getApiSession();
+
+  return adoptSession(open?.token ? open : await sessionWithAuthKey(record, authKey));
+}
+
+async function adoptSession(session: ApiSession | null): Promise<boolean> {
   if (!session) {
     return false;
   }

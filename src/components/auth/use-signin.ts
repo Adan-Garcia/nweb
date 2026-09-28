@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { ServerSigninValues } from "@/components/auth/signin-schema";
 import { readAccountRecord } from "@/lib/account/account-record";
-import { unlockDevice } from "@/lib/account/device-account";
+import { resumeRememberedDevice, unlockDevice } from "@/lib/account/device-account";
 import {
   type LocalAccount,
   readLocalAccount,
@@ -58,7 +58,11 @@ async function readSigninDevice(): Promise<SigninDevice> {
   ]);
 
   if (account) {
-    const state = (await getWorkspaceLockState()) === "unlocked" ? "open" : "locked";
+    const lockState = await getWorkspaceLockState();
+    // A "Keep me signed in" that is still good opens it here as it would in the workspace.
+    const isOpen =
+      lockState === "unlocked" || (lockState === "locked" && (await resumeRememberedDevice()));
+    const state = isOpen ? "open" : "locked";
 
     return { state, account, hasContent };
   }
@@ -76,12 +80,12 @@ export function useSignin() {
     void readSigninDevice().then(setDevice);
   }, []);
 
-  const unlock = useCallback(async (passphrase: string): Promise<boolean> => {
+  const unlock = useCallback(async (passphrase: string, remember = false): Promise<boolean> => {
     setIsWorking(true);
     setError(null);
 
     try {
-      const opened = await unlockDevice(passphrase);
+      const opened = await unlockDevice(passphrase, { remember });
 
       if (!opened) {
         setError("That passphrase does not open this device.");

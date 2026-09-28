@@ -12,6 +12,7 @@ import {
 import { deriveKey } from "../crypto/kdf";
 import { getNotesDb } from "../db/notes-db";
 import { readRekeyJournal } from "./rekey-journal";
+import { forgetRememberedUnlock } from "./remembered-unlock";
 import {
   LOCK_VERIFIER_PLAINTEXT,
   WORKSPACE_LOCK_ID,
@@ -138,27 +139,54 @@ export async function opensVerifier(cipher: Cipher, verifier: string): Promise<b
  * plausible rubbish.
  */
 export async function unlockWorkspace(passphrase: string): Promise<boolean> {
+  return (await unlockWorkspaceKey(passphrase)) !== null;
+}
+
+/**
+ * `unlockWorkspace`, handing back the key it put in memory so "Keep me signed in" can
+ * remember it. Null means the passphrase was wrong.
+ */
+export async function unlockWorkspaceKey(
+  passphrase: string,
+): Promise<{ key: CryptoKey; keyId: string } | null> {
   const record = await readLockRecord();
 
   if (!record) {
-    return false;
+    return null;
   }
 
   // The derivation is inside the try as well: a passphrase a KDF will not even accept —
   // an empty one, which Argon2id rejects outright — is a wrong passphrase like any other,
   // and the caller has nothing different to do about it.
   try {
-    const cipher = await cipherFor(passphrase, record.kdf, record.keyId ?? "");
+    const keyId = record.keyId ?? "";
+    const key = await deriveKey(passphrase, record.kdf);
 
-    if (!(await opensVerifier(cipher, record.verifier))) {
-      return false;
-    }
-
-    setActiveCipher(cipher);
-    return true;
+    return (await resumeWorkspaceKey(key, keyId)) ? { key, keyId } : null;
   } catch {
+    return null;
+  }
+}
+
+/**
+ * Puts a key already in hand — a remembered one — in memory, if it is still the lock's.
+ * A passphrase changed on another tab since makes it a stranger, and it is refused.
+ */
+export async function resumeWorkspaceKey(key: CryptoKey, keyId: string): Promise<boolean> {
+  const record = await readLockRecord();
+
+  if (!record || (record.keyId ?? "") !== keyId) {
     return false;
   }
+
+  const cipher = createAesGcmCipher(key, keyId);
+
+  if (!(await opensVerifier(cipher, record.verifier))) {
+    return false;
+  }
+
+  setActiveCipher(cipher);
+  return true;
 }
 
 const lockListeners = new Set<() => void>();
@@ -181,8 +209,12 @@ export function notifyLockChanged(): void {
   }
 }
 
-/** Drops the key. The content stays encrypted and unreadable until the next unlock. */
-export function lockWorkspace() {
+/**
+ * Drops the key. The content stays encrypted and unreadable until the next unlock, and a
+ * "Keep me signed in" is forgotten with it: locking means the next load asks again.
+ */
+export async function lockWorkspace() {
   resetActiveCipher();
   notifyLockChanged();
+  await forgetRememberedUnlock();
 }

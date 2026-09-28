@@ -149,7 +149,7 @@ describe("creating an account", () => {
 
   it("asks an older, locked device for the passphrase it already has", async () => {
     await createWorkspaceLock(PASSPHRASE);
-    lockWorkspace();
+    await lockWorkspace();
     const user = renderAt("/auth/signup");
 
     await user.type(await screen.findByLabelText("Name"), "Ada");
@@ -174,7 +174,7 @@ describe("creating an account", () => {
 describe("signing in", () => {
   it("opens a locked device with its passphrase, and nothing else", async () => {
     await createLocalAccount({ name: "Ada", email: EMAIL, passphrase: PASSPHRASE });
-    lockWorkspace();
+    await lockWorkspace();
     const user = renderAt("/auth/signin");
 
     expect(await screen.findByText("Welcome back, Ada")).toBeInTheDocument();
@@ -190,6 +190,23 @@ describe("signing in", () => {
     await user.type(screen.getByLabelText("Passphrase"), PASSPHRASE);
     await user.click(screen.getByRole("button", { name: "Sign in" }));
     expect(await screen.findByText("Dashboard")).toBeInTheDocument();
+  });
+
+  it("keeps the device signed in when asked, so the next visit needs no passphrase", async () => {
+    await createLocalAccount({ name: "Ada", email: EMAIL, passphrase: PASSPHRASE });
+    await lockWorkspace();
+    const user = renderAt("/auth/signin");
+
+    await user.type(await screen.findByLabelText("Passphrase"), PASSPHRASE);
+    await user.click(screen.getByLabelText("Keep me signed in for 30 days"));
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByText("Dashboard")).toBeInTheDocument();
+
+    // A reload: the key leaves memory, and the sign-in page finds the device already open.
+    resetActiveCipher();
+    renderAt("/auth/signin");
+
+    expect(await screen.findByText(/You're signed in, Ada/)).toBeInTheDocument();
   });
 
   it("sends a device with a passphrase but no account to set one up", async () => {

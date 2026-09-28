@@ -40,8 +40,8 @@ export function SigninPanel() {
         name={device.account.name}
         isWorking={isWorking}
         error={error}
-        onSubmit={({ passphrase }) => {
-          void unlock(passphrase).then((opened) => {
+        onSubmit={({ passphrase, remember }) => {
+          void unlock(passphrase, remember).then((opened) => {
             if (opened) {
               void navigate("/dashboard");
             }
