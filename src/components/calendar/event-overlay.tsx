@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldGroup } from "@/components/ui/field";
+import { focusNextFieldOnEnter } from "@/lib/utils";
 
 type EventOverlayProps = {
   isOpen: boolean;
@@ -64,6 +65,7 @@ export function EventOverlay({
             onSubmit={(event) => {
               void handleSubmit(onSubmit)(event);
             }}
+            onKeyDown={(event) => focusNextFieldOnEnter(event.nativeEvent, event.currentTarget)}
           >
             <FieldGroup>
               <EventTextField

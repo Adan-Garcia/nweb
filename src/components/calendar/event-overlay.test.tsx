@@ -198,6 +198,23 @@ describe("EventOverlay", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("moves to the next field on Enter instead of submitting half a form", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = setup();
+
+    await user.type(screen.getByLabelText("Title"), "Lab report{Enter}");
+    expect(screen.getByLabelText("Date")).toHaveFocus();
+
+    screen.getByLabelText("Branch").focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByLabelText("Type")).toHaveFocus();
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    // Ctrl+Enter is the way to submit from inside a field.
+    await user.keyboard("{Control>}{Enter}{/Control}");
+    await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+  });
+
   it("closes from the Cancel button", async () => {
     const user = userEvent.setup();
     const { onClose } = setup();

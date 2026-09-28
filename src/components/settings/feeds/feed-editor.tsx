@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { focusNextFieldOnEnter } from "@/lib/utils";
 
 type FeedEditorProps = {
   editor: ReturnType<typeof useFeedEditor>;
@@ -50,6 +51,7 @@ export function FeedEditor({ editor, branchOptions }: FeedEditorProps) {
           onSubmit={(event) => {
             void form.handleSubmit(editor.submit)(event);
           }}
+          onKeyDown={(event) => focusNextFieldOnEnter(event.nativeEvent, event.currentTarget)}
         >
           <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto px-5 py-4">
             <FeedSourceFields
