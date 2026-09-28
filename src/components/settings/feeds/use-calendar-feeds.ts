@@ -117,5 +117,5 @@ export function useCalendarFeeds() {
     [reload],
   );
 
-  return { feeds, branchOptions, isLoading, busyFeedId, refresh, afterSave, remove };
+  return { feeds, branchOptions, isLoading, busyFeedId, refresh, afterSave, remove, reload };
 }

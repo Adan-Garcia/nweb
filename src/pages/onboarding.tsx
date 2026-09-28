@@ -1,57 +1,93 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { AuthBrand } from "@/components/auth/auth-brand";
-import { OnboardingStepCard } from "@/components/onboarding/onboarding-step-card";
-import { OnboardingStepList } from "@/components/onboarding/onboarding-step-list";
+import { COURSES_FORM_ID, CoursesStep } from "@/components/onboarding/courses-step";
+import { OnboardingFrame } from "@/components/onboarding/onboarding-frame";
 import { ONBOARDING_STEPS } from "@/components/onboarding/onboarding-steps";
-import { ThemeMenu } from "@/components/theme/theme-menu";
+import { WelcomeStep } from "@/components/onboarding/welcome-step";
+import { AppearanceSection } from "@/components/settings/appearance/appearance-section";
+import { FeedEditor } from "@/components/settings/feeds/feed-editor";
+import { FeedsCard } from "@/components/settings/feeds/feeds-card";
+import { useCalendarFeeds } from "@/components/settings/feeds/use-calendar-feeds";
+import { useFeedEditor } from "@/components/settings/feeds/use-feed-editor";
+import { RemindersCard } from "@/components/settings/reminders/reminders-card";
+import { ServerAccountCard } from "@/components/settings/server/server-account-card";
+import { useServerAccount } from "@/components/settings/server/use-server-account";
+import { useLocalAccount } from "@/hooks/use-local-account";
+import { useReminders } from "@/hooks/use-reminders";
 
+/**
+ * Setting a new workspace up. The steps after the welcome reuse the cards Settings shows —
+ * the same feeds, appearance, sync and reminders — so what is set here is exactly what
+ * Settings will show later, with nothing to keep in step between the two.
+ */
 export function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0);
-  const lastStep = ONBOARDING_STEPS.length - 1;
+  const navigate = useNavigate();
+  const feeds = useCalendarFeeds();
+  const feedEditor = useFeedEditor({ onSaved: feeds.afterSave });
+  const account = useServerAccount();
+  const local = useLocalAccount();
+  const reminders = useReminders(account.sessionFor);
+
+  const stepId = ONBOARDING_STEPS[currentStep].id;
+  const next = () => {
+    if (currentStep === ONBOARDING_STEPS.length - 1) {
+      void navigate("/dashboard");
+    } else {
+      setCurrentStep(currentStep + 1);
+    }
+  };
 
   return (
-    <main className="min-h-svh w-full bg-background text-foreground">
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-10 flex items-center justify-between">
-          <AuthBrand />
-          <ThemeMenu />
-        </div>
+    <OnboardingFrame
+      currentStep={currentStep}
+      onSelectStep={setCurrentStep}
+      onBack={() => setCurrentStep(Math.max(0, currentStep - 1))}
+      onSkip={stepId === "courses" ? next : undefined}
+      onContinue={next}
+      continueFormId={stepId === "courses" ? COURSES_FORM_ID : undefined}
+    >
+      {stepId === "welcome" ? <WelcomeStep /> : null}
 
-        <div className="mb-12 grid gap-8 md:grid-cols-2">
-          <div className="flex flex-col justify-between">
-            <div>
-              <h1 className="mb-1 text-title">Getting Started</h1>
-              <p className="mb-6 text-body text-muted-foreground">
-                Step {currentStep + 1} of {ONBOARDING_STEPS.length}
-              </p>
+      {stepId === "courses" ? (
+        <CoursesStep
+          onSaved={() => {
+            // The courses just added are what a feed's tasks will be filed under.
+            void feeds.reload();
+            next();
+          }}
+        />
+      ) : null}
 
-              <OnboardingStepList
-                steps={ONBOARDING_STEPS}
-                currentStep={currentStep}
-                onSelectStep={setCurrentStep}
-              />
-            </div>
-          </div>
-
-          <OnboardingStepCard
-            step={ONBOARDING_STEPS[currentStep]}
-            isFirst={currentStep === 0}
-            isLast={currentStep === lastStep}
-            onBack={() => setCurrentStep(Math.max(0, currentStep - 1))}
-            onNext={() => setCurrentStep(Math.min(lastStep, currentStep + 1))}
-            onFinish={() => (window.location.href = "/dashboard")}
+      {stepId === "calendar" ? (
+        <>
+          <FeedsCard
+            feeds={feeds.feeds}
+            isLoading={feeds.isLoading}
+            busyFeedId={feeds.busyFeedId}
+            onAdd={() => feedEditor.open(null)}
+            onEdit={feedEditor.open}
+            onRefresh={(feed) => void feeds.refresh(feed)}
+            onRemove={(feed, removeTasks) => void feeds.remove(feed, removeTasks)}
           />
-        </div>
+          <FeedEditor editor={feedEditor} branchOptions={feeds.branchOptions} />
+        </>
+      ) : null}
 
-        <p className="text-body text-muted-foreground">
-          Guides are still being written. The{" "}
-          <a href="/documentation" className="text-primary hover:underline">
-            documentation page
-          </a>{" "}
-          lists what works today and what is still to come.
-        </p>
-      </div>
-    </main>
+      {stepId === "appearance" ? <AppearanceSection /> : null}
+
+      {stepId === "sync" ? (
+        <>
+          <ServerAccountCard {...account} localEmail={local.account?.email ?? ""} />
+          <RemindersCard
+            state={reminders.state}
+            isWorking={reminders.isWorking}
+            onEnable={() => void reminders.enable()}
+            onDisable={() => void reminders.disable()}
+          />
+        </>
+      ) : null}
+    </OnboardingFrame>
   );
 }

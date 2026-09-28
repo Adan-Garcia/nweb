@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getNotesDb } from "@/lib/db/notes-db";
 import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
+import { createTwigSeries } from "@/lib/twigs/twig-series";
 import { createTwig, listTwigs } from "@/lib/twigs/twig-storage";
 
 import { CalendarPage } from "./calendar";
@@ -107,6 +108,33 @@ describe("CalendarPage", () => {
     );
 
     await waitFor(() => expect(screen.queryByText("Old quiz")).not.toBeInTheDocument());
+  });
+
+  it("deletes a repeating event from one occurrence on, or all of it", async () => {
+    const user = userEvent.setup();
+    const today = new Date();
+    const month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    const { path } = await ensureDefaultWorkspace();
+    await createTwigSeries(
+      { branchId: path.branch.id, title: "Reading", dueDate: `${month}-10`, dueTime: "9:00 AM" },
+      "daily",
+      `${month}-13`,
+    );
+    const readingDates = async () => (await listTwigs()).map((twig) => twig.dueDate).sort();
+    renderPage();
+
+    const deleteButtons = await screen.findAllByRole("button", { name: "Delete Reading" });
+    await user.click(deleteButtons[2]);
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "This and following" }),
+    );
+    await waitFor(async () => expect(await readingDates()).toEqual([`${month}-10`, `${month}-11`]));
+
+    await user.click((await screen.findAllByRole("button", { name: "Delete Reading" }))[0]);
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "All events" }),
+    );
+    await waitFor(async () => expect(await readingDates()).toEqual([]));
   });
 
   it("closes the form with Escape", async () => {

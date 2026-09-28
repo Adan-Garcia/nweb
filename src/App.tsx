@@ -53,6 +53,14 @@ const WorkspaceLayout = lazyPage(
     isWorkspace: true,
   },
 );
+// The lock and account checks without the workspace frame, for the onboarding.
+const UnlockedLayout = lazyPage(
+  () => import("@/components/lock/unlocked-layout"),
+  "UnlockedLayout",
+  {
+    isWorkspace: true,
+  },
+);
 const SettingsPage = lazyPage(() => import("@/pages/settings"), "SettingsPage", {
   isWorkspace: true,
 });
@@ -72,7 +80,9 @@ export default function App() {
           <Route path="/auth" element={<UnloggedPage />} />
           <Route path="/auth/signup" element={<SignupPage />} />
           <Route path="/auth/signin" element={<SignInPage />} />
-          <Route path="/auth/onboarding" element={<OnboardingPage />} />
+          <Route element={<UnlockedLayout />}>
+            <Route path="/auth/onboarding" element={<OnboardingPage />} />
+          </Route>
           <Route path="/documentation" element={<DocumentationPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />

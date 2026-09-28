@@ -32,7 +32,7 @@ export function OnboardingStepList({ steps, currentStep, onSelectStep }: Onboard
             <div className="flex items-center gap-3">
               <div
                 className={cn(
-                  "flex size-6 items-center justify-center rounded-full border-2",
+                  "flex size-6 shrink-0 items-center justify-center rounded-full border-2",
                   isDone && "border-primary text-primary",
                   isCurrent && "border-primary bg-primary text-primary-foreground",
                   !isCurrent && !isDone && "border-muted",

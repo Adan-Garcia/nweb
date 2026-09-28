@@ -1,44 +1,55 @@
-import { type LucideIcon, NotebookPen, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import {
+  BellRing,
+  CalendarSync,
+  GraduationCap,
+  type LucideIcon,
+  Palette,
+  Sparkles,
+} from "lucide-react";
+
+export type OnboardingStepId = "welcome" | "courses" | "calendar" | "appearance" | "sync";
 
 export type OnboardingStep = {
-  id: string;
+  id: OnboardingStepId;
   title: string;
   description: string;
   icon: LucideIcon;
-  content: string;
 };
 
+/**
+ * Setting a new workspace up, one thing at a time. Every step after the first does the
+ * setting up itself, and any of it can be skipped: each has a home in Settings to come back
+ * to, which the step says.
+ */
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: "welcome",
-    title: "Welcome to Cuervo Planner",
+    title: "Welcome",
     description: "How everything is organised",
     icon: Sparkles,
-    content:
-      "Everything is filed like a school year. Your wing is the workspace; it holds flights (terms), which hold branches (courses). Inside a course go nests (tags such as units), twigs (tasks), feathers (notes) and pebbles (files).",
   },
   {
-    id: "add-courses",
-    title: "Add Your Courses",
-    description: "Set up your terms and classes",
-    icon: Zap,
-    content:
-      "In Notes, each part of the path bar has an Add option: add a term, then its courses, then any units. Settings → Workspace is where you rename them, give a course a colour, or delete one.",
+    id: "courses",
+    title: "Your term and courses",
+    description: "What you are taking this term",
+    icon: GraduationCap,
   },
   {
-    id: "plan-and-write",
-    title: "Plan and Take Notes",
-    description: "Tasks, notes and search",
-    icon: NotebookPen,
-    content:
-      "Add homework and exams on the Calendar or the Board, and write notes as text or on a canvas. Press ⌘K (Ctrl+K on Windows) anywhere to jump to a page, a note or a task.",
+    id: "calendar",
+    title: "Bring in your calendar",
+    description: "Import deadlines from Brightspace, Canvas or Google",
+    icon: CalendarSync,
   },
   {
-    id: "keep-it-safe",
-    title: "Keep It Safe",
-    description: "Lock, back up, sync",
-    icon: ShieldCheck,
-    content:
-      "Everything on this device is already encrypted under your passphrase, so download a backup now and then. To sync your devices and share a course, add a sync account in Settings → Sync server.",
+    id: "appearance",
+    title: "Make it yours",
+    description: "Theme, colour and spacing",
+    icon: Palette,
+  },
+  {
+    id: "sync",
+    title: "Sync and reminders",
+    description: "Your other devices, and a nudge when something is due",
+    icon: BellRing,
   },
 ];

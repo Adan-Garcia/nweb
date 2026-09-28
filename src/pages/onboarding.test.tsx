@@ -1,81 +1,122 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ONBOARDING_STEPS } from "@/components/onboarding/onboarding-steps";
+import { getNotesDb } from "@/lib/db/notes-db";
+import { listBranches, listFlights } from "@/lib/hierarchy/entity-storage";
 import { cachedTheme, chooseTheme } from "@/test/theme";
 
 import { OnboardingPage } from "./onboarding";
 
-beforeEach(() => {
+const STORES = ["wings", "flights", "branches", "nests", "feeds", "account"] as const;
+
+beforeEach(async () => {
   window.matchMedia = vi
     .fn()
     .mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} });
+  const database = await getNotesDb();
+  await Promise.all(STORES.map((store) => database.clear(store)));
 });
 
-const [first, second, , last] = ONBOARDING_STEPS;
+function renderPage() {
+  const user = userEvent.setup();
+
+  render(
+    <MemoryRouter initialEntries={["/auth/onboarding"]}>
+      <Routes>
+        <Route path="/auth/onboarding" element={<OnboardingPage />} />
+        <Route path="/dashboard" element={<p>Dashboard</p>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  return user;
+}
+
+const step = (title: string) => screen.findByRole("heading", { name: title });
+const next = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(screen.getByRole("button", { name: /^Continue/ }));
 
 describe("OnboardingPage", () => {
-  it("starts on the first step with Back disabled", () => {
-    render(<OnboardingPage />);
+  it("starts with the welcome, and moves forward, back, and to a step picked from the list", async () => {
+    const user = renderPage();
 
-    expect(screen.getByText("Step 1 of 4")).toBeInTheDocument();
-    expect(screen.getByText(first.content)).toBeInTheDocument();
+    expect(await step("Welcome")).toBeInTheDocument();
+    expect(screen.getByText("Step 1 of 5")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
-  });
 
-  it("moves forward and back through the steps", async () => {
-    const user = userEvent.setup();
-    render(<OnboardingPage />);
-
-    await user.click(screen.getByRole("button", { name: /Next/ }));
-    expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
-    expect(screen.getByText(second.content)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Back" })).toBeEnabled();
+    await next(user);
+    expect(await step("Your term and courses")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByText("Step 1 of 4")).toBeInTheDocument();
+    expect(await step("Welcome")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Make it yours/ }));
+    expect(await step("Make it yours")).toBeInTheDocument();
+    expect(screen.getByText("Step 4 of 5")).toBeInTheDocument();
   });
 
-  it("jumps straight to a step chosen from the list", async () => {
-    const user = userEvent.setup();
-    render(<OnboardingPage />);
+  it("names the term and turns the placeholder course into the first one typed", async () => {
+    const user = renderPage();
+    await next(user);
 
-    await user.click(screen.getByRole("button", { name: new RegExp(last.title) }));
+    const term = await screen.findByLabelText("This term");
+    await user.clear(term);
+    await user.type(term, "Fall 2026");
+    // The placeholder course starts blank rather than saying "General".
+    expect(screen.getByLabelText("Course 1")).toHaveValue("");
+    await user.type(screen.getByLabelText("Course 1"), "MECE 110 Thermodynamics");
+    await user.click(screen.getByRole("button", { name: "Add another course" }));
+    await user.type(screen.getByLabelText("Course 2"), "MECE 203 Strength of Materials");
+    await user.click(screen.getByRole("button", { name: "Add another course" }));
+    await user.click(screen.getByRole("button", { name: "Remove course 3" }));
+    await next(user);
 
-    expect(screen.getByText("Step 4 of 4")).toBeInTheDocument();
-    expect(screen.getByText(last.content)).toBeInTheDocument();
+    expect(await step("Bring in your calendar")).toBeInTheDocument();
+    expect((await listFlights()).map((flight) => flight.name)).toEqual(["Fall 2026"]);
+    expect((await listBranches()).map((branch) => branch.name).sort()).toEqual([
+      "MECE 110 Thermodynamics",
+      "MECE 203 Strength of Materials",
+    ]);
   });
 
-  it("replaces Next with a dashboard button on the last step", async () => {
-    const user = userEvent.setup();
-    render(<OnboardingPage />);
+  it("will not save a term with no name, and skipping saves nothing", async () => {
+    const user = renderPage();
+    await next(user);
 
-    await user.click(screen.getByRole("button", { name: new RegExp(last.title) }));
+    await user.clear(await screen.findByLabelText("This term"));
+    await user.type(screen.getByLabelText("Course 1"), "Chemistry");
+    await next(user);
 
-    expect(screen.getByRole("button", { name: /Go to Dashboard/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Next/ })).not.toBeInTheDocument();
+    expect(await screen.findByText("Name the term")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Your term and courses" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Skip for now" }));
+
+    expect(await step("Bring in your calendar")).toBeInTheDocument();
+    expect((await listBranches()).map((branch) => branch.name)).toEqual(["General"]);
   });
 
-  it("shows a check for finished steps and the step number for the rest", async () => {
-    const user = userEvent.setup();
-    render(<OnboardingPage />);
+  it("offers the calendar, appearance and sync settings, then goes to the dashboard", async () => {
+    const user = renderPage();
 
-    await user.click(screen.getByRole("button", { name: /Next/ }));
+    await user.click(await screen.findByRole("button", { name: /Bring in your calendar/ }));
+    await user.click(await screen.findByRole("button", { name: /Add a calendar/i }));
+    // The same editor Settings opens, over the step.
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
-    const [done, current] = screen.getAllByRole("button", {
-      name: /Welcome to Cuervo Planner|Add Your Courses/,
-    });
-    expect(done.querySelector("svg")).not.toBeNull();
-    expect(current).toHaveTextContent("2");
-  });
-
-  it("toggles the theme", async () => {
-    const user = userEvent.setup();
-    render(<OnboardingPage />);
-
+    await next(user);
     await chooseTheme(user, "Dark");
-
     expect(cachedTheme()).toBe("dark");
+
+    await next(user);
+    expect(await step("Sync and reminders")).toBeInTheDocument();
+    expect(await screen.findByText("Reminders")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Go to the dashboard/ }));
+    await waitFor(() => expect(screen.getByText("Dashboard")).toBeInTheDocument());
   });
 });

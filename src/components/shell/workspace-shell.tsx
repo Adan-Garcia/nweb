@@ -1,9 +1,7 @@
 import * as React from "react";
 
 import { CommandPalette } from "@/components/command-palette/command-palette";
-import { RouteFallback } from "@/components/layout/route-fallback";
-import { LockScreen } from "@/components/lock/lock-screen";
-import { RekeyResumeScreen } from "@/components/lock/rekey-resume-screen";
+import { WorkspaceLockGate } from "@/components/lock/workspace-lock-gate";
 import { MobileTabBar } from "@/components/shell/mobile-tab-bar";
 import { ReminderPrompt } from "@/components/shell/reminder-prompt";
 import { WorkspaceSidebar } from "@/components/shell/workspace-sidebar";
@@ -46,50 +44,22 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   // Subscribed calendars, fetched again as each falls due.
   useFeedRefresh(isUsable);
 
-  // Checked before the lock screen: a half-converted workspace cannot be unlocked, only
-  // finished, and offering a passphrase box that cannot work would be a dead end.
-  if (lock.state === "interrupted") {
-    return (
-      <RekeyResumeScreen
-        needed={lock.needed}
-        error={lock.error}
-        isWorking={lock.isWorking}
-        progress={lock.progress}
-        onResume={(passphrases) => void lock.resume(passphrases)}
-      />
-    );
-  }
-
-  if (lock.state === "locked") {
-    // A remembered sign-in may yet open it; the lock screen waits for that answer.
-    if (lock.isChecking) {
-      return <RouteFallback />;
-    }
-
-    return (
-      <LockScreen
-        name={account?.name ?? null}
-        error={lock.error}
-        isWorking={lock.isWorking}
-        onUnlock={(passphrase, remember) => void lock.unlock(passphrase, remember)}
-      />
-    );
-  }
-
   return (
-    <TooltipProvider>
-      <SidebarProvider
-        open={preferences.sidebar === "expanded"}
-        onOpenChange={(isOpen) => update({ sidebar: isOpen ? "expanded" : "icons" })}
-      >
-        <WorkspaceSidebar />
-        <SidebarInset className="min-w-0 bg-background pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
-          {children}
-        </SidebarInset>
-        <MobileTabBar />
-        <ReminderPrompt />
-        <CommandPalette canLock={lock.state === "unlocked"} onLock={() => void lock.lock()} />
-      </SidebarProvider>
-    </TooltipProvider>
+    <WorkspaceLockGate lock={lock} name={account?.name ?? null}>
+      <TooltipProvider>
+        <SidebarProvider
+          open={preferences.sidebar === "expanded"}
+          onOpenChange={(isOpen) => update({ sidebar: isOpen ? "expanded" : "icons" })}
+        >
+          <WorkspaceSidebar />
+          <SidebarInset className="min-w-0 bg-background pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
+            {children}
+          </SidebarInset>
+          <MobileTabBar />
+          <ReminderPrompt />
+          <CommandPalette canLock={lock.state === "unlocked"} onLock={() => void lock.lock()} />
+        </SidebarProvider>
+      </TooltipProvider>
+    </WorkspaceLockGate>
   );
 }

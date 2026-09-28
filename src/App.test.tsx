@@ -39,7 +39,6 @@ describe("App routing", () => {
   it.each([
     ["/privacy", /Your study data stays yours/],
     ["/documentation", /How Cuervo Planner is organised/],
-    ["/auth/onboarding", /Getting Started/],
   ])("routes %s to its page", async (path, heading) => {
     renderAt(path);
     expect(await screen.findByRole("heading", { level: 1, name: heading })).toBeInTheDocument();
@@ -57,6 +56,25 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("region", { name: "Sign up form" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/auth/signup");
+  });
+
+  it("sends a device with no account to make one before the onboarding", async () => {
+    renderAt("/auth/onboarding");
+
+    expect(await screen.findByRole("region", { name: "Sign up form" })).toBeInTheDocument();
+  });
+
+  it("opens the onboarding on a device with an account", async () => {
+    await writeLocalAccount({ name: "Ada", email: "ada@example.com" });
+    renderAt("/auth/onboarding");
+    expect(
+      // The first import of the page and the settings cards it reuses is a large one.
+      await screen.findByRole(
+        "heading",
+        { level: 1, name: "Set up your planner" },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
   });
 
   it("renders a workspace page inside the shell", async () => {
