@@ -18,9 +18,9 @@ Settled on 2026-09-30:
     and Android.
 4.  **Reminders under Tauri are remote push**, sent by the server through APNs and FCM,
     not only notifications scheduled on the device.
-
-Still open: whether any device besides the owner's might stay on an old version (see
-"Version guard").
+5.  **No existing notes are carried over.** Nobody has notes yet, so there is no converter
+    from Excalidraw's format and no version-guard release ahead of the switch. Excalidraw
+    is removed in the same change that brings the new canvas in.
 
 ## Why replace Excalidraw
 
@@ -51,9 +51,9 @@ four, which is what keeps `src/lib/` almost untouched.
     unchanged on the other" as a delete.
 4.  **A dropped image's id is derived from its contents.** `notes-document-storage.ts`,
     `notes-delete.ts` and `entity-delete.ts` count references by id before deleting bytes,
-    because one picture dropped into two notes is one row. Use the same hash Excalidraw
-    uses, so an image dropped after the switch deduplicates against rows written before it.
-    PDF pages keep their random ids (`newSceneFileId`), as today.
+    because one picture dropped into two notes is one row. The new canvas takes a SHA-256
+    of the file's bytes (WebCrypto), so the same picture always gets the same id. PDF pages
+    keep their random ids, as today.
 
 The storage row does not change either: the scene is still one JSON string, compressed
 (`sceneCompressed`, `sceneCompressionAlgorithm`) and sealed through the cipher seam, with
@@ -73,7 +73,6 @@ what is inside the string.
 *   Undo and redo.
 *   Images (drop and paste) and PDF pages, with the page picker as it is today.
 *   Fullscreen, autosave, sync merge and backup, as today.
-*   Reading every note Excalidraw wrote (see "Reading old notes").
 *   Export of a note to PNG and PDF.
 
 **Later, in this order:** text boxes; shape recognition (a hand-drawn box or circle
@@ -81,8 +80,7 @@ straightened into the shape elements above); a pixel eraser that splits strokes;
 and grid backgrounds; recognition (OCR, math, vocabulary).
 
 Arrows, connectors, diamonds, libraries, collaboration cursors and Mermaid import are
-dropped. A note that contains them is still shown (see below), just no longer editable as
-those things.
+dropped.
 
 ## The scene format
 
@@ -91,7 +89,7 @@ inferred from it.
 
 ```ts
 type Scene = {
-  format: 2;                       // 1 is Excalidraw's JSON; see "Version guard"
+  format: 1;                       // bumped when the shape of an element changes
   elements: SceneElement[];
   view?: { x: number; y: number; zoom: number }; // this device's; never merged
 };
@@ -133,12 +131,6 @@ type ImageElement = ElementBase & {
   height: number;
 };
 
-type LegacyElement = ElementBase & {
-  type: "legacy";
-  // An Excalidraw element with no equivalent yet (text, arrow, rectangle…),
-  // kept verbatim so nothing is lost, rendered as a flattened preview.
-  source: unknown;
-};
 ```
 
 Samples are a flat number array because a note is thousands of strokes of hundreds of
@@ -149,43 +141,14 @@ rounded to two decimals and pressure and tilt to three before saving.
 its comments stop naming Excalidraw, and the whole-scene key it copies from the local side
 becomes `view` instead of `appState`.
 
-## Reading old notes
+A scene that does not parse, including one with a `format` above what the app knows, is an
+error shown on the note, read-only and never autosaved, following CLAUDE.md's rule that a
+row that cannot be read is an error and not a fallback. That is also the whole of the
+version handling: a future format change adds its own upgrade step when there are notes
+to upgrade.
 
-`lib/canvas/excalidraw-import.ts` converts format 1 to format 2 when a scene is read. It is
-pure, has no Excalidraw import (it reads the JSON through its own loose Zod schema), and is
-the only place that knows Excalidraw's shape.
-
-| Excalidraw element | Becomes |
-| --- | --- |
-| `freedraw` | `stroke`, with its `points` and `pressures`; tilt 0, time evenly spaced. |
-| `image` | `image`, same `fileId`. |
-| `rectangle`, `ellipse` | `shape` of that kind, with its size, angle, colour and fill. |
-| `line` with two points | `shape` of kind `line`. |
-| `line` with more points | `stroke` through those points, pressure 0.5. |
-| `text`, `diamond`, `arrow` | `legacy` until an equivalent exists; text is converted once text boxes ship. |
-| `isDeleted: true` | dropped. |
-
-Ids, versions and indexes carry over unchanged, so a note converted on two devices converts
-to the same thing and the next sync merges cleanly. A converted note is written back in
-format 2 on its next save and not before: opening a note never writes it.
-
-The same converter runs on a restored backup, so a backup made before the switch restores
-after it.
-
-### Version guard
-
-A device still on the old app will receive format-2 scenes by sync. Excalidraw would read
-it as an empty scene, and its autosave could then write the empty scene back over the
-note. So:
-
-1.  **Ship the guard first, in a release of its own, before the canvas.** It teaches the
-    current Excalidraw editor to check `format`: a scene whose `format` is above what the
-    app knows is shown as "This note needs a newer version of the app", read-only, and
-    never autosaved.
-2.  The new canvas applies the same rule to any future `format: 3`.
-
-The service worker picks a new build up on the next load, so the window is short, but a
-tablet left open for a week is exactly the device that would lose a note.
+The spatial-note rows already in a development database hold Excalidraw's JSON. They fail
+that parse and show as unreadable; delete them rather than write a converter for them.
 
 ## The input pipeline
 
@@ -274,7 +237,7 @@ column of the Pencil table above.
 | Origin | The page's `https://` origin. | `tauri://localhost` (Apple) or `http://tauri.localhost` (Windows, Android). The server's `allowedOrigins` (`server/src/app.ts`) must list them, or every sync request fails CORS. |
 | Sync server choice | Settings → Sync server, default `VITE_API_URL`. | Unchanged. There is no page origin to fall back to, so a Tauri build must always have a server set or run local-only. |
 | Reminders | Web Push through the service worker (`lib/push/`). | No Web Push in a native webview. Remote push through APNs and FCM instead; see "Remote push". |
-| Updates | A deploy is picked up on the next load. | A new build per release: App Store review on iOS, the updater plugin on desktop. The version guard above matters more, because old versions live longer. |
+| Updates | A deploy is picked up on the next load. | A new build per release: App Store review on iOS, the updater plugin on desktop. Old versions live longer, so once people have notes a scene-format change needs an upgrade step, and the unknown-format refusal above keeps an old build from overwriting a newer note. |
 | Storage | IndexedDB in the browser profile; Safari may evict it for a site not added to the home screen. | IndexedDB in the app's own container, kept until the app is deleted. A durability win. |
 | "Keep me signed in" | Non-extractable keys in IndexedDB. | Unchanged. The Keychain is possible later through a plugin but not needed. |
 | Security policy | The server's headers. | A CSP in `tauri.conf.json`; it must allow `wasm-unsafe-eval` (Argon2 and Brotli) and `connect-src` to the chosen sync server. |
@@ -404,7 +367,6 @@ Following CLAUDE.md §2.1 and the size limits (150 lines for `.tsx`, 300 for `.t
 ```
 src/lib/canvas/                 pure, no React
   scene-model.ts                Zod schema, types, format constant
-  excalidraw-import.ts          format 1 → 2
   input-filter.ts               which pointer draws
   stroke-geometry.ts            smoothing, pressure → outline
   hit-test.ts                   eraser and lasso
@@ -437,39 +399,36 @@ rewritten against the new scene; `excalidraw-adapter.ts`, `use-excalidraw-pen.ts
 
 Each phase ships on its own and leaves the app working.
 
-1.  **Version guard.** The `format` check in today's editor, released alone. Small.
-2.  **Format and converter.** `scene-model.ts`, `excalidraw-import.ts`, tests against real
-    scenes exported from today's app. No UI change.
-3.  **Canvas behind a setting.** Ink, eraser, shapes, pan and zoom, undo, images and PDF
-    pages.
-    Off by default; Excalidraw is still the editor unless it is turned on.
-4.  **Switch over.** The new canvas becomes the only editor; Excalidraw, its `overrides`
-    and `notes.css` are removed; the E2E specs are rewritten against it; CLAUDE.md and
-    `docs/feature-checklist.md` stop naming Excalidraw.
-5.  **Export and text boxes.**
-6.  **Tauri on desktop.** Windows, macOS and Linux. No plugin needed, and it proves the
+1.  **Format.** `scene-model.ts` and the pure `lib/canvas/` modules, with their tests. No
+    UI change.
+2.  **Replace the editor.** Ink, eraser, lasso, shapes, pan and zoom, undo, images and PDF
+    pages, in one change that also removes Excalidraw, its `overrides` and `notes.css`,
+    rewrites the E2E specs against the new canvas, and stops CLAUDE.md, `hierarchy.md`,
+    `backend.md` and `docs/feature-checklist.md` naming Excalidraw. With no notes to
+    protect there is no reason to run the two editors side by side.
+3.  **Export and text boxes.**
+4.  **Tauri on desktop.** Windows, macOS and Linux. No plugin needed, and it proves the
     origin, CSP and service-worker changes. Local notifications on Windows and Linux.
-7.  **Server push senders.** `native_push_targets`, the two routes, APNs and FCM, tested
+5.  **Server push senders.** `native_push_targets`, the two routes, APNs and FCM, tested
     against recorded responses. Web Push is unchanged, so this ships before any native
     client uses it.
-8.  **Tauri on iOS, iPadOS and Android.** The native plugin: push registration on both,
+6.  **Tauri on iOS, iPadOS and Android.** The native plugin: push registration on both,
     then the Pencil features on iPad.
-9.  **Recognition** over the stored samples, shape recognition first.
+7.  **Recognition** over the stored samples, shape recognition first.
 
-Phases 6 to 8 can run beside phase 5; none of them touches the canvas.
+Phases 4 to 6 can run beside phase 3; none of them touches the canvas.
 
-A rough size for phases 1 to 4: 3,000 to 5,000 lines of code and as much again in tests,
-most of it in pure `lib/canvas/` modules. Phases 6 to 8 add roughly 1,500 lines across
+A rough size for phases 1 and 2: 3,000 to 5,000 lines of code and as much again in tests,
+most of it in pure `lib/canvas/` modules. Phases 4 to 6 add roughly 1,500 lines across
 the app, the server and the plugin, plus platform configuration.
 
 ## Testing
 
 *   **Unit (Vitest):** everything in `lib/canvas/` is pure and held to the `lib/` coverage
-    thresholds. The converter is tested against fixtures saved from today's app, including
-    images, PDF pages, deleted elements and the element types that become `legacy`. The
+    thresholds, including the schema's refusal of a malformed or unknown-format scene. The
     input filter is tested with synthetic pointer sequences (pen, palm, pinch).
-*   **Merge:** `merge-scene.test.ts` gains format-2 cases; a converted note merged with an
-    unconverted one must give the same result on both devices.
+*   **Merge:** `merge-scene.test.ts` is moved onto new-format scenes (strokes, shapes and
+    images), keeping every case it has today.
 *   **E2E (Playwright):** the canvas specs are rewritten to draw with synthetic pen events
     (Playwright can set `pointerType` and `pressure`) and measure with `inkPixels()`.
 *   **By hand, on an iPad:** pressure, palm rejection, hover, the magnifier and Scribble
@@ -480,8 +439,3 @@ the app, the server and the plugin, plus platform configuration.
     (success, gone, throttled, bad credentials), never the real services, under the
     server's coverage thresholds. A real send to a real device is checked by hand once
     per platform.
-
-## Open questions
-
-1.  Does anyone besides the owner have notes on another device that might stay on an old
-    version? That decides how long phase 1 must be out before phase 4.
