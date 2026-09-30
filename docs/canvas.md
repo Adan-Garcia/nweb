@@ -36,7 +36,7 @@ Settled on 2026-09-30:
 13. **All of it is built on one branch, `claude/canvas-design`,** and reviewed as one pull
     request at the end.
 14. **Tauri waits.** Nothing Tauri is built until asked. When it is: desktop first, then
-    iPad; bundle id `com.cuervo.planner`; sideloaded on both, no store accounts yet. The
+    iPad; named Cuervo Planner, bundle id `com.cuervo.planner`; sideloaded on both, no store accounts yet. The
     test device is an iPad with an Apple Pencil Pro.
 
 ## Why replace Excalidraw
