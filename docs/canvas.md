@@ -16,8 +16,7 @@ Settled on 2026-09-30:
     comes later and produces the same shape elements.
 3.  **Tauri ships everywhere it runs:** Windows, macOS and Linux desktop, iOS and iPadOS,
     and Android.
-4.  **Reminders under Tauri are remote push**, sent by the server through APNs and FCM,
-    not only notifications scheduled on the device.
+4.  **Notifications under Tauri are out of scope.** They will be designed separately.
 5.  **No existing notes are carried over.** Nobody has notes yet, so there is no converter
     from Excalidraw's format and no version-guard release ahead of the switch. Excalidraw
     is removed in the same change that brings the new canvas in.
@@ -236,7 +235,7 @@ column of the Pencil table above.
 | Offline start | `public/sw.js` caches the build. | Not needed: the build ships inside the app. `registerServiceWorker` returns early when running in Tauri (WKWebView does not run service workers on Tauri's custom scheme). |
 | Origin | The page's `https://` origin. | `tauri://localhost` (Apple) or `http://tauri.localhost` (Windows, Android). The server's `allowedOrigins` (`server/src/app.ts`) must list them, or every sync request fails CORS. |
 | Sync server choice | Settings → Sync server, default `VITE_API_URL`. | Unchanged. There is no page origin to fall back to, so a Tauri build must always have a server set or run local-only. |
-| Reminders | Web Push through the service worker (`lib/push/`). | No Web Push in a native webview. Remote push through APNs and FCM instead; see "Remote push". |
+| Reminders | Web Push through the service worker (`lib/push/`). | Not in this design. A native webview has no Web Push, so a Tauri build offers no reminders until notifications are designed separately; the reminder settings and the "turn on reminders" offer are hidden there rather than shown broken. |
 | Updates | A deploy is picked up on the next load. | A new build per release: App Store review on iOS, the updater plugin on desktop. Old versions live longer, so once people have notes a scene-format change needs an upgrade step, and the unknown-format refusal above keeps an old build from overwriting a newer note. |
 | Storage | IndexedDB in the browser profile; Safari may evict it for a site not added to the home screen. | IndexedDB in the app's own container, kept until the app is deleted. A durability win. |
 | "Keep me signed in" | Non-extractable keys in IndexedDB. | Unchanged. The Keychain is possible later through a plugin but not needed. |
@@ -245,13 +244,12 @@ column of the Pencil table above.
 
 The detection is one function, `lib/platform/is-tauri.ts`, reading `window.__TAURI_INTERNALS__`
 (what `@tauri-apps/api` checks). Nothing else branches on the platform; each seam that
-differs (`service-worker.ts`, `push/`, and the Pencil bridge below) asks it.
+differs (`service-worker.ts`, the reminder offer, and the Pencil bridge below) asks it.
 
 ### The Pencil plugin
 
-The Pencil half of our own plugin, `tauri-plugin-native` (its other half registers for push;
-see "Remote push"). The Pencil half is Swift for iOS and does nothing on every other
-platform. It attaches to the webview and forwards what the web cannot see:
+A plugin of our own, `tauri-plugin-pencil`, in Swift for iOS; it does nothing on every
+other platform. It attaches to the webview and forwards what the web cannot see:
 
 | Feature | Native API | Needs |
 | --- | --- | --- |
@@ -273,66 +271,6 @@ PencilKit itself (`PKCanvasView`) is deliberately not used. It would give Apple'
 engine, but the strokes would live in Apple's format on an iPad only, not in the synced,
 sealed scene every device reads.
 
-### Remote push
-
-Today the server's reminder sweep (`server/src/reminders.ts`) sends a Web Push to every
-subscription in `push_subscriptions`, and the payload says how many things are due and
-when, never what. Native apps cannot receive Web Push, so the server gains two more
-senders beside it, and the sweep sends to whichever kind of target each device registered.
-
-| Platform | Service | Target the device registers |
-| --- | --- | --- |
-| Browsers (as today) | Web Push (VAPID) | endpoint + `p256dh` + `auth` |
-| iOS, iPadOS, macOS | APNs | device token |
-| Android | FCM | registration token |
-| Windows, Linux | none in the first cut | local notifications, below |
-
-**Server.**
-
-*   A new table, `native_push_targets (user_id, platform, token, created_at)`, primary key
-    `(user_id, token)`, created with `if not exists` beside `push_subscriptions` in
-    `server/src/db.ts`. A separate table rather than a `kind` column, because a Web Push
-    subscription's keys have no meaning for a token and the columns would be null half
-    the time.
-*   `POST` and `DELETE /v1/push/native` register and remove a target, with its schema in
-    `shared/sync-contract.ts` beside `pushSubscriptionSchema`.
-*   `server/src/push-apns.ts`: HTTP/2 to `api.push.apple.com` with a token-based (`.p8`)
-    ES256 JWT, both from Node's own `http2` and `crypto`. `server/src/push-fcm.ts`: FCM's
-    HTTP v1 API, with an OAuth access token minted from a service-account key by an RS256
-    JWT, also with `crypto` alone. Neither needs a new package. Each returns the same
-    `"sent" | "gone"` as `deliverPush` (APNs 410 or `BadDeviceToken`, FCM `UNREGISTERED`
-    are "gone"), so the sweep treats every target the same way.
-*   New configuration, all optional: `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY`, `APNS_TOPIC`
-    (the bundle id), `APNS_SANDBOX`, and `FCM_SERVICE_ACCOUNT`. A server without them sends
-    Web Push only, as now, and says so to a native device that asks.
-*   The destination hosts are fixed (Apple's and Google's), so the public-address guard
-    that protects Web Push endpoints is not needed for them. It is kept for Web Push.
-
-**What the payload may say.** Web Push payloads are encrypted to the browser, so the push
-service carries ciphertext. APNs and FCM payloads are not: Apple and Google can read them.
-The payload is therefore held to the same rule as today, and it matters more here: a count
-and a time, nothing sealed, nothing else. A title would need decrypting on the device
-before display (an iOS Notification Service Extension or an Android service with access to
-the keys), and the extension cannot read the webview's IndexedDB, so that is a later
-project of its own and not part of this design.
-
-**Client.**
-
-*   Registering for remote notifications is native code on every platform. It goes in the
-    same plugin as the Pencil work, renamed `tauri-plugin-native` (Swift for Apple, Kotlin
-    for Android): it asks for permission, returns the token, and reports a token change.
-*   `lib/push/` gains a native path beside the Web Push one. `subscribe.ts` asks
-    `is-tauri.ts` which to use; the settings UI and the "turn on reminders" offer do not
-    change.
-*   **Windows and Linux** have no push service the server can reach in this cut (Windows
-    has WNS, which could be a fourth sender later). There, Tauri's notification plugin
-    schedules local notifications from the twigs already on the device, re-planned on
-    every sync. They fire only while the app, or its tray icon, is running.
-
-**What it costs beyond Tauri itself:** an Apple Push key in the developer account, a
-Firebase project for FCM (and its `google-services.json` in the Android build), two new
-sender modules and their tests under the server's coverage thresholds, and one table.
-
 ### Desktop pens
 
 *   **Windows (WebView2):** pen pressure and tilt reach pointer events, so a Surface pen
@@ -347,16 +285,14 @@ sender modules and their tests under the server's coverage thresholds, and one t
 ### What Tauri costs
 
 *   New tooling: Rust, Xcode, the Android SDK and NDK, the Tauri CLI, a paid Apple
-    developer account (device installs, the App Store, the APNs key) and a Google Play
+    developer account (device installs and the App Store) and a Google Play
     developer account. CI needs a macOS runner for Apple builds and signing secrets for
     every platform.
 *   New dependencies (approved with the decision to ship Tauri, listed here so the §9
     audit checks cover them): `@tauri-apps/api`, `@tauri-apps/cli`, and Tauri's
-    notification and updater plugins.
-*   New code: `src-tauri/` (config, Rust entry point, capabilities), `tauri-plugin-native`
-    (~300 lines of Swift for Pencil and push, ~150 of Kotlin for push),
-    `lib/platform/`, `lib/pencil/`, the native path in `lib/push/`, and the server's
-    APNs and FCM senders.
+    updater plugin.
+*   New code: `src-tauri/` (config, Rust entry point, capabilities), `tauri-plugin-pencil`
+    (~250 lines of Swift), `lib/platform/` and `lib/pencil/`.
 *   Store review on every iOS and Android release; code signing and notarization on
     macOS; a signed installer on Windows.
 
@@ -386,9 +322,7 @@ src/components/notes/canvas/
   use-canvas-camera.ts
   use-canvas-scene.ts           the scene in memory, versions, history
 src-tauri/                      Tauri config, Rust entry point, capabilities
-  plugins/native/               Swift (Pencil, APNs) and Kotlin (FCM)
-server/src/push-apns.ts
-server/src/push-fcm.ts
+  plugins/pencil/               Swift (iOS)
 ```
 
 `components/notes/spatial/` keeps its PDF, image-ingest, fullscreen and autosave hooks,
@@ -408,19 +342,15 @@ Each phase ships on its own and leaves the app working.
     protect there is no reason to run the two editors side by side.
 3.  **Export and text boxes.**
 4.  **Tauri on desktop.** Windows, macOS and Linux. No plugin needed, and it proves the
-    origin, CSP and service-worker changes. Local notifications on Windows and Linux.
-5.  **Server push senders.** `native_push_targets`, the two routes, APNs and FCM, tested
-    against recorded responses. Web Push is unchanged, so this ships before any native
-    client uses it.
-6.  **Tauri on iOS, iPadOS and Android.** The native plugin: push registration on both,
-    then the Pencil features on iPad.
-7.  **Recognition** over the stored samples, shape recognition first.
+    origin, CSP and service-worker changes.
+5.  **Tauri on iOS, iPadOS and Android**, then the Pencil plugin on iPad.
+6.  **Recognition** over the stored samples, shape recognition first.
 
-Phases 4 to 6 can run beside phase 3; none of them touches the canvas.
+Phases 4 and 5 can run beside phase 3; none of them touches the canvas.
 
 A rough size for phases 1 and 2: 3,000 to 5,000 lines of code and as much again in tests,
-most of it in pure `lib/canvas/` modules. Phases 4 to 6 add roughly 1,500 lines across
-the app, the server and the plugin, plus platform configuration.
+most of it in pure `lib/canvas/` modules. Phases 4 and 5 add roughly 800 lines across
+the app and the plugin, plus platform configuration.
 
 ## Testing
 
@@ -435,7 +365,3 @@ the app, the server and the plugin, plus platform configuration.
     suppressions, and latency. For the Tauri build, double-tap, squeeze, roll and haptics
     on a Pencil Pro. None of this can be automated here; each release that touches input
     lists what was checked.
-*   **Server push:** the APNs and FCM senders are tested against recorded responses
-    (success, gone, throttled, bad credentials), never the real services, under the
-    server's coverage thresholds. A real send to a real device is checked by hand once
-    per platform.
