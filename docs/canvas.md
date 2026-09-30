@@ -464,12 +464,17 @@ All on `claude/canvas-design`, one commit or more per step, every step leaving t
 
 1.  **Format and pure logic.** `scene-model.ts` and every pure `lib/canvas/` module:
     geometry, both erasers, hit testing, pages, backgrounds, camera, history, clipboard,
-    colours. With tests; no UI change.
+    colours. With tests; no UI change. *Done: every module at full coverage.*
 2.  **Replace the editor.** The canvas surface, input, toolbar, lasso, shapes, both note
     kinds, backgrounds, images and PDF import, in one change that also removes
     Excalidraw, its `overrides` and `notes.css`, rewrites the E2E specs against the new
     canvas, and stops CLAUDE.md, `hierarchy.md`, `backend.md` and
     `docs/feature-checklist.md` naming Excalidraw.
+
+    The merge needs one addition here: if one device deletes a page while another writes
+    on it, the ink survives the merge (an edit beats a delete) but its page does not.
+    `merge-scene.ts` should bring back a page that surviving elements still point at,
+    rather than leave ink the renderer cannot place.
 3.  **The rest of the first release.** Copy and paste, pen presets and the colour picker,
     stylus-only and finger settings, zoom-to-fit, the thumbnail strip, export.
 4.  **Hand check on the iPad** with the Pencil Pro (see "Testing"), and fixes from it.
