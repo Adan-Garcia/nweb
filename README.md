@@ -1,4 +1,4 @@
-# Cuervo Planner (`guerraclient`)
+# Cuervo Planner (`cuervoclient`)
 
 [![CI](https://github.com/Adan-Garcia/nweb/actions/workflows/ci.yml/badge.svg)](https://github.com/Adan-Garcia/nweb/actions/workflows/ci.yml)
 
