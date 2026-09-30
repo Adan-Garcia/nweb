@@ -35,7 +35,13 @@ Settled on 2026-09-30:
     mode for desktop pen tablets, zoom-to-fit, and a page thumbnail strip for paged notes.
 13. **All of it is built on one branch, `claude/canvas-design`,** and reviewed as one pull
     request at the end.
-14. **Tauri waits.** Nothing Tauri is built until asked. When it is: desktop first, then
+14. **Making a drawing note asks which kind**, infinite or paged, with infinite as the
+    default.
+15. **Desktop has single-key shortcuts.**
+16. **Shapes snap:** angles and proportions with Shift, and corners to the background's
+    grid on a dots or grid background.
+17. **Undo history is kept with the note**, so it survives closing and reopening it.
+18. **Tauri waits.** Nothing Tauri is built until asked. When it is: desktop first, then
     iPad; named Cuervo Planner, bundle id `com.cuervo.planner`; sideloaded on both, no store accounts yet. The
     test device is an iPad with an Apple Pencil Pro.
 
@@ -102,7 +108,12 @@ what is inside the string.
 *   **Navigation:** pan and zoom by two fingers, trackpad and wheel; **zoom-to-fit** (all
     ink on an infinite note, the current page on a paged one); a **thumbnail strip** for
     paged notes.
-*   **Undo and redo**, per note, for the session.
+*   **Undo and redo** per note, kept across closing and reopening it (see "Undo history").
+*   **Keyboard shortcuts** on desktop: `P` pen, `H` highlighter, `E` eraser (again to
+    switch stroke/pixel), `S` shapes, `L` lasso, `0` zoom-to-fit, `Ctrl`/`⌘` + `Z`,
+    `Shift`+`Z` or `Y`, `C`, `V`, and `Delete`. Ignored while typing in any input.
+*   **Snapping** for shapes: with `Shift`, lines to 15° steps, rectangles to squares and
+    ellipses to circles; on a dots or grid background, corners snap to the grid.
 *   **Images** (drop and paste) and **PDF import** with the page picker as it is today: in
     a paged note each chosen page becomes a note page with the PDF drawn as its locked
     background, in an infinite note they are placed as images.
@@ -271,12 +282,26 @@ image ids are content hashes, the same picture is still stored once. Pages thems
 not copied. The in-app clipboard lives in memory for the tab, as the open note already
 does.
 
+### Undo history
+
+History is kept per note and per device, in the same unsynced device store as the input
+settings below, sealed through the cipher seam like any other note content. It is not put
+in the scene: the scene syncs and merges, and one device's undo steps mean nothing on
+another.
+
+*   Each step is the set of elements before and after one action (a stroke, an erase, a
+    lasso move, a paste), not a whole-scene snapshot.
+*   Undoing a step only touches elements whose current `version` is still the one that
+    step left. An element changed since — by another device through sync, or on this one
+    — is skipped, so undo never reverts someone else's work.
+*   The last 200 steps are kept, and deleting a note deletes its history.
+
 ### Settings
 
 *   **Pen presets** and **smoothing strength** follow the person, so they go in the synced
     `preferences` row (`lib/preferences/preferences-model.ts`) as new optional fields
     with defaults; old rows still parse.
-*   **Draw with finger** and **stylus-only** are about the device in hand (an iPad and a
+*   **Draw with finger**, **stylus-only** and undo history are about the device in hand (an iPad and a
     desktop with a tablet want opposite answers), so they stay on the device: a small
     unsynced IndexedDB store, which means a `NOTES_DB_VERSION` bump and an upgrade step
     under CLAUDE.md §2.3.
@@ -406,6 +431,9 @@ src/lib/canvas/                 pure, no React
   spatial-index.ts              grid buckets
   camera.ts                     pan, zoom, screen ↔ scene
   history.ts                    undo and redo over element versions
+  history-storage.ts            sealed per-note history in the device store
+  snapping.ts                   Shift constraints and grid snapping
+  shortcuts.ts                  key → tool map
   fractional-index.ts           index between two indexes
   render-scene.ts               draws a scene onto a 2D context
   export-scene.ts               PNG and PDF
