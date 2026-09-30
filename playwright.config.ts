@@ -27,8 +27,10 @@ export default defineConfig({
     viewport: { width: 1280, height: 900 },
   },
   projects: [
-    { name: "e2e", testIgnore: "**/visual.spec.ts" },
+    { name: "e2e", testIgnore: ["**/visual.spec.ts", "**/screenshots.spec.ts"] },
     { name: "visual", testMatch: "**/visual.spec.ts" },
+    // Not a test: writes screenshots of every page and menu to screenshots/ (`npm run screenshots`).
+    { name: "screenshots", testMatch: "**/screenshots.spec.ts" },
   ],
   webServer: {
     command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,

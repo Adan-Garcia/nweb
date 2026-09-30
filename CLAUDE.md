@@ -178,6 +178,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | Format | `npm run format` / `npm run format:check` | Prettier. `format:check` is the CI-style gate. |
 | E2E | `npm run test:e2e` | Playwright against a production build; first run on a machine needs `npx playwright install chromium`. |
 | Visual | `npm run test:visual` | Local pixel comparison; see §4. |
+| Screenshots | `npm run screenshots` | Writes every page and menu to `screenshots/` (git-ignored) for looking at, not comparing. Narrow it with `SHOTS=notes,palette`, `SHOT_SIZE=desktop|mobile`, `SHOT_SCHEME=light|dark`; the target names are in `e2e/screenshots.spec.ts`. |
 | Build | `npm run build` | `tsc -b && vite build` |
 | Build the server | `npm run build:server` | Bundles `server/src/main.ts`; Node cannot resolve `./app` or `@shared/…` on its own. |
 | Run the server | `npm run start:server` | Needs `DATABASE_URL` and `SERVER_SECRET`; see `server/CLAUDE.md` §5. |
