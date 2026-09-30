@@ -30,6 +30,11 @@ function integerPart(key: string): string {
   return key.slice(0, length);
 }
 
+/** Sorts order keys by code unit, which is the order they were made to have. */
+export function compareOrderKeys(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 /** Whether `key` is a well-formed order key. */
 export function isOrderKey(key: string): boolean {
   if (!key || key === SMALLEST_INTEGER || [...key].some((char) => !DIGITS.includes(char))) {

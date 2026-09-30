@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isOrderKey, keyBetween, keysBetween } from "./fractional-index";
+import { compareOrderKeys, isOrderKey, keyBetween, keysBetween } from "./fractional-index";
 
 function isSorted(keys: string[]): boolean {
   return keys.every((key, index) => index === 0 || keys[index - 1] < key);
@@ -117,5 +117,12 @@ describe("isOrderKey", () => {
     ["1", false],
   ])("%s is %s", (key, valid) => {
     expect(isOrderKey(key)).toBe(valid);
+  });
+});
+
+describe("compareOrderKeys", () => {
+  it("sorts by code unit, so uppercase heads come before lowercase ones", () => {
+    expect(["a1", "Zz", "a0V", "a0"].sort(compareOrderKeys)).toEqual(["Zz", "a0", "a0V", "a1"]);
+    expect(compareOrderKeys("a0", "a0")).toBe(0);
   });
 });
