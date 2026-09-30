@@ -20,6 +20,24 @@ Settled on 2026-09-30:
 5.  **No existing notes are carried over.** Nobody has notes yet, so there is no converter
     from Excalidraw's format and no version-guard release ahead of the switch. Excalidraw
     is removed in the same change that brings the new canvas in.
+6.  **A note is infinite or paged, chosen when it is made.** Paged notes offer Letter and
+    A4, portrait or landscape per page. Both kinds take a background: blank, dots, grid or
+    ruled.
+7.  **Both erasers ship first:** the stroke eraser and a pixel eraser that splits strokes.
+8.  **On a device that has reported a pen, fingers pan and the pen draws.** A toggle lets
+    fingers draw.
+9.  **The toolbar floats at the top centre** of the canvas.
+10. **Importing a PDF into a paged note makes each PDF page a note page** you write over.
+    In an infinite note the pages are placed as images, as today.
+11. **Colours are a theme-aware palette plus a free colour picker.** Custom colours are
+    stored as they are and do not adapt to the theme.
+12. **The first release also has** copy and paste across notes, pen presets, a stylus-only
+    mode for desktop pen tablets, zoom-to-fit, and a page thumbnail strip for paged notes.
+13. **All of it is built on one branch, `claude/canvas-design`,** and reviewed as one pull
+    request at the end.
+14. **Tauri waits.** Nothing Tauri is built until asked. When it is: desktop first, then
+    iPad; bundle id `com.cuervo.planner`; sideloaded on both, no store accounts yet. The
+    test device is an iPad with an Apple Pencil Pro.
 
 ## Why replace Excalidraw
 
@@ -63,20 +81,38 @@ what is inside the string.
 
 **First release (replaces Excalidraw):**
 
-*   Pen with pressure and smoothing, highlighter, stroke eraser, lasso select (move,
-    delete, recolour), a small colour set and the width slider.
-*   Shapes: rectangle, ellipse and straight line, drawn by drag, with a stroke colour, a
-    width and an optional fill. Selected with the lasso like strokes; moved and deleted,
-    and resized by corner handles.
-*   Pan and zoom by two fingers, trackpad and wheel; infinite in every direction.
-*   Undo and redo.
-*   Images (drop and paste) and PDF pages, with the page picker as it is today.
-*   Fullscreen, autosave, sync merge and backup, as today.
-*   Export of a note to PNG and PDF.
+*   **Two kinds of note.** Infinite: pan and zoom in every direction. Paged: a vertical
+    stack of Letter or A4 pages, each portrait or landscape, with a page gap between them;
+    ink cannot leave a page. Pages are added at the end or after the current one, deleted,
+    and reordered from the thumbnail strip. The kind is chosen when the note is made and
+    does not change.
+*   **Backgrounds:** blank, dots, grid or ruled, set per note on an infinite note and per
+    page on a paged one. Drawn by the renderer, never stored as ink.
+*   **Pen** with pressure and smoothing, **highlighter** (drawn beneath ink, translucent),
+    **stroke eraser** (removes whole strokes it touches) and **pixel eraser** (cuts the
+    strokes it crosses, leaving the pieces as new strokes).
+*   **Shapes:** rectangle, ellipse and straight line, drawn by drag, with a stroke colour,
+    a width and an optional fill.
+*   **Lasso select:** move, delete, recolour, and resize by corner handles; **copy and
+    paste**, within a note and across notes.
+*   **Colours:** a palette of eight theme-aware inks plus a colour picker. **Pen presets:**
+    up to six saved pen or highlighter setups (tool, colour, width) for one-tap switching.
+*   **Input:** fingers pan once a pen has been seen, with a toggle to let fingers draw;
+    **stylus-only mode** on desktop ignores mouse drawing when a pen tablet is in use.
+*   **Navigation:** pan and zoom by two fingers, trackpad and wheel; **zoom-to-fit** (all
+    ink on an infinite note, the current page on a paged one); a **thumbnail strip** for
+    paged notes.
+*   **Undo and redo**, per note, for the session.
+*   **Images** (drop and paste) and **PDF import** with the page picker as it is today: in
+    a paged note each chosen page becomes a note page with the PDF drawn as its locked
+    background, in an infinite note they are placed as images.
+*   **Fullscreen, autosave, sync merge and backup**, as today.
+*   **Export** to PNG and PDF: a paged note exports page for page; an infinite note
+    exports the bounds of its ink, split into pages for PDF.
+*   **A floating toolbar** at the top centre.
 
 **Later, in this order:** text boxes; shape recognition (a hand-drawn box or circle
-straightened into the shape elements above); a pixel eraser that splits strokes; ruled
-and grid backgrounds; recognition (OCR, math, vocabulary).
+straightened into the shape elements above); recognition (OCR, math, vocabulary).
 
 Arrows, connectors, diamonds, libraries, collaboration cursors and Mermaid import are
 dropped.
@@ -89,23 +125,42 @@ inferred from it.
 ```ts
 type Scene = {
   format: 1;                       // bumped when the shape of an element changes
+  layout: "infinite" | "paged";    // fixed when the note is made
+  background?: Background;         // infinite notes only; pages carry their own
   elements: SceneElement[];
   view?: { x: number; y: number; zoom: number }; // this device's; never merged
 };
+
+type Background = "blank" | "dots" | "grid" | "ruled";
+
+// A colour is a palette token ("ink-blue", resolved per theme) or a custom "#rrggbb",
+// drawn as stored.
+type Color = string;
 
 type ElementBase = {
   id: string;        // UUID
   version: number;   // +1 on every change
   index: string;     // fractional stacking key
-  x: number;         // origin in scene units
+  x: number;         // origin in scene units, or relative to its page
   y: number;
+  pageId?: string;   // paged notes: the page this element sits on
   locked?: boolean;
+};
+
+// A page is an element like any other, so merge handles adding, deleting and
+// reordering pages without code of its own; its `index` is its place in the stack.
+type Page = ElementBase & {
+  type: "page";
+  size: "letter" | "a4";
+  orientation: "portrait" | "landscape";
+  background: Background;
+  pdf?: { fileId: string }; // the imported PDF page drawn under the ink
 };
 
 type Stroke = ElementBase & {
   type: "stroke";
   tool: "pen" | "highlighter";
-  color: string;     // a palette token name, not a hex (theme-aware)
+  color: Color;
   width: number;     // base width; pressure scales it
   // Flat, relative to (x, y): [dx, dy, pressure, tiltX, tiltY, dt] repeated.
   // Tilt and time are kept for recognition and shading, not only for drawing.
@@ -118,9 +173,9 @@ type Shape = ElementBase & {
   width: number;     // bounding box; for a line, the vector from (x, y) to its end
   height: number;
   rotation: number;  // radians about the centre
-  color: string;     // palette token, as for strokes
+  color: Color;
   strokeWidth: number;
-  fill: string | null;
+  fill: Color | null;
 };
 
 type ImageElement = ElementBase & {
@@ -135,6 +190,15 @@ type ImageElement = ElementBase & {
 Samples are a flat number array because a note is thousands of strokes of hundreds of
 points; objects per point would triple the stored size before compression. Coordinates are
 rounded to two decimals and pressure and tilt to three before saving.
+
+Elements on a page store coordinates relative to that page, so inserting, deleting or
+reordering pages moves the ink with them and never rewrites a stroke. A page's position in
+scene space is derived from the stack when it is drawn.
+
+**The pixel eraser** replaces a stroke it cuts with new strokes (new ids) for the pieces
+that remain, and removes the original. If another device edited the original at the same
+time, the merge's "an edit beats a delete" rule brings it back beside the pieces: the
+safe direction, since a duplicate is easy to erase and lost ink is not.
 
 `lib/sync/merge-scene.ts` keeps working because it only reads `id`, `version` and `index`;
 its comments stop naming Excalidraw, and the whole-scene key it copies from the local side
@@ -162,7 +226,8 @@ PointerEvent ─▶ filter ─▶ sampler ─▶ smoother ─▶ outline ─▶ 
         that has reported a pen); otherwise one finger pans.
     *   Two fingers are always pan and pinch-zoom, and cancel a stroke started in the
         last ~100 ms (a pinch often lands one finger first).
-    *   A mouse draws with the left button and pans with the middle.
+    *   A mouse draws with the left button and pans with the middle, except in
+        stylus-only mode, where it only pans and selects.
 *   **Sampler.** Reads `getCoalescedEvents()` where it exists (feature-detected; it is
     not in every Safari) so a fast stroke keeps every sample the hardware delivered, not
     just one per frame.
@@ -188,6 +253,33 @@ Canvas 2D, in two layers (scene and live), device-pixel-ratio aware.
     zoom from those, and a still view is not redrawn.
 *   PDF pages and images are decoded once into `ImageBitmap`s and drawn at the resolution
     the zoom needs.
+*   Order within the scene layer: backgrounds and page sheets, then PDF page backgrounds
+    and images, then highlighter strokes, then pen strokes and shapes. The highlighter is
+    translucent and beneath the ink, so it never dims the writing it marks.
+*   A paged note clips each page's elements to its sheet, and only the pages in or near
+    the viewport are drawn. The thumbnail strip renders pages through the same function
+    at a small scale, cached until the page's elements change.
+
+### Copy and paste
+
+Copying a lasso selection puts it on an in-app clipboard (`lib/canvas/canvas-clipboard.ts`,
+the elements plus the image files they point at) and a PNG of it on the system clipboard,
+so it can also be pasted into another app. Pasting into any note, the same or another,
+gives the elements new ids and indexes above everything else, lands them at the centre of
+the view (or the current page), and adds any images to the target note's files; because
+image ids are content hashes, the same picture is still stored once. Pages themselves are
+not copied. The in-app clipboard lives in memory for the tab, as the open note already
+does.
+
+### Settings
+
+*   **Pen presets** and **smoothing strength** follow the person, so they go in the synced
+    `preferences` row (`lib/preferences/preferences-model.ts`) as new optional fields
+    with defaults; old rows still parse.
+*   **Draw with finger** and **stylus-only** are about the device in hand (an iPad and a
+    desktop with a tablet want opposite answers), so they stay on the device: a small
+    unsynced IndexedDB store, which means a `NOTES_DB_VERSION` bump and an upgrade step
+    under CLAUDE.md §2.3.
 
 Canvas 2D is enough for thousands of strokes. WebGL is the fallback if a real note proves
 otherwise; the renderer sits behind one function so that swap would be local.
@@ -305,7 +397,12 @@ src/lib/canvas/                 pure, no React
   scene-model.ts                Zod schema, types, format constant
   input-filter.ts               which pointer draws
   stroke-geometry.ts            smoothing, pressure → outline
-  hit-test.ts                   eraser and lasso
+  hit-test.ts                   stroke eraser and lasso
+  pixel-erase.ts                cutting strokes into pieces
+  pages.ts                      page sizes, stack layout, page ↔ scene coordinates
+  backgrounds.ts                dots, grid and ruled patterns
+  canvas-clipboard.ts           in-app clipboard
+  colors.ts                     palette tokens → colours per theme
   spatial-index.ts              grid buckets
   camera.ts                     pan, zoom, screen ↔ scene
   history.ts                    undo and redo over element versions
@@ -318,6 +415,9 @@ src/components/notes/canvas/
   canvas-surface.tsx            the two <canvas> layers
   canvas-toolbar.tsx            replaces spatial-notes-toolbar
   lasso-overlay.tsx
+  page-thumbnails.tsx           thumbnail strip, reorder and delete
+  color-picker.tsx              palette plus custom colour
+  pen-presets.tsx
   use-canvas-input.ts           pointer events → filter → sampler
   use-canvas-camera.ts
   use-canvas-scene.ts           the scene in memory, versions, history
@@ -331,34 +431,37 @@ rewritten against the new scene; `excalidraw-adapter.ts`, `use-excalidraw-pen.ts
 
 ## Phases
 
-Each phase ships on its own and leaves the app working.
+All on `claude/canvas-design`, one commit or more per step, every step leaving the checks
+(`format:check`, `typecheck`, `lint`, `test`, `build`) passing. One pull request at the end.
 
-1.  **Format.** `scene-model.ts` and the pure `lib/canvas/` modules, with their tests. No
-    UI change.
-2.  **Replace the editor.** Ink, eraser, lasso, shapes, pan and zoom, undo, images and PDF
-    pages, in one change that also removes Excalidraw, its `overrides` and `notes.css`,
-    rewrites the E2E specs against the new canvas, and stops CLAUDE.md, `hierarchy.md`,
-    `backend.md` and `docs/feature-checklist.md` naming Excalidraw. With no notes to
-    protect there is no reason to run the two editors side by side.
-3.  **Export and text boxes.**
-4.  **Tauri on desktop.** Windows, macOS and Linux. No plugin needed, and it proves the
-    origin, CSP and service-worker changes.
-5.  **Tauri on iOS, iPadOS and Android**, then the Pencil plugin on iPad.
-6.  **Recognition** over the stored samples, shape recognition first.
+1.  **Format and pure logic.** `scene-model.ts` and every pure `lib/canvas/` module:
+    geometry, both erasers, hit testing, pages, backgrounds, camera, history, clipboard,
+    colours. With tests; no UI change.
+2.  **Replace the editor.** The canvas surface, input, toolbar, lasso, shapes, both note
+    kinds, backgrounds, images and PDF import, in one change that also removes
+    Excalidraw, its `overrides` and `notes.css`, rewrites the E2E specs against the new
+    canvas, and stops CLAUDE.md, `hierarchy.md`, `backend.md` and
+    `docs/feature-checklist.md` naming Excalidraw.
+3.  **The rest of the first release.** Copy and paste, pen presets and the colour picker,
+    stylus-only and finger settings, zoom-to-fit, the thumbnail strip, export.
+4.  **Hand check on the iPad** with the Pencil Pro (see "Testing"), and fixes from it.
 
-Phases 4 and 5 can run beside phase 3; none of them touches the canvas.
+Later, each only when asked: text boxes; Tauri on desktop, then iPad with the Pencil
+plugin; recognition, shape recognition first.
 
-A rough size for phases 1 and 2: 3,000 to 5,000 lines of code and as much again in tests,
-most of it in pure `lib/canvas/` modules. Phases 4 and 5 add roughly 800 lines across
-the app and the plugin, plus platform configuration.
+A rough size for phases 1 to 3: 5,000 to 7,000 lines of code and about as much again in
+tests, most of it in pure `lib/canvas/` modules. Paged notes and the pixel eraser are the
+two largest additions over the earlier estimate.
 
 ## Testing
 
 *   **Unit (Vitest):** everything in `lib/canvas/` is pure and held to the `lib/` coverage
     thresholds, including the schema's refusal of a malformed or unknown-format scene. The
     input filter is tested with synthetic pointer sequences (pen, palm, pinch).
-*   **Merge:** `merge-scene.test.ts` is moved onto new-format scenes (strokes, shapes and
-    images), keeping every case it has today.
+*   **Merge:** `merge-scene.test.ts` is moved onto new-format scenes (strokes, shapes,
+    images and pages), keeping every case it has today, plus a page reordered on one side
+    and written on on the other, and a stroke cut by the pixel eraser on one side and
+    recoloured on the other.
 *   **E2E (Playwright):** the canvas specs are rewritten to draw with synthetic pen events
     (Playwright can set `pointerType` and `pressure`) and measure with `inkPixels()`.
 *   **By hand, on an iPad:** pressure, palm rejection, hover, the magnifier and Scribble
