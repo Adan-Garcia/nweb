@@ -1,4 +1,4 @@
-# Engine (`guerraclient`) — Enterprise Engineering Standards
+# Engine (`cuervoclient`) — Enterprise Engineering Standards
 
 Local-first study workspace (notes, calendar, dashboard). Stack: React 19, Vite 8, TypeScript 6, Tailwind CSS v4, shadcn/ui (`base-nova`), React Router 7, React Hook Form + Zod 4, IndexedDB via `idb`, Excalidraw / TipTap / pdf.js.
 
