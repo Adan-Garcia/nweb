@@ -87,6 +87,19 @@ describe("smoothing", () => {
     expect(heavy).toBeLessThan(light);
   });
 
+  it("smooths in screen pixels: the same hand movement at any zoom is smoothed alike", () => {
+    const screen = decodeSamples(encodeSamples(line(40, 3)).samples);
+    // Drawn zoomed out to 25%, the same movement covers four times as much of the scene.
+    const zoomedOut = screen.map((sample) => ({ ...sample, x: sample.x * 4, y: sample.y * 4 }));
+
+    const atScreen = smoothPositions(screen, 0.5, 1);
+    const atScene = smoothPositions(zoomedOut, 0.5, 0.25);
+    atScene.forEach((sample, i) => {
+      expect(sample.x).toBeCloseTo(atScreen[i].x * 4);
+      expect(sample.y).toBeCloseTo(atScreen[i].y * 4);
+    });
+  });
+
   it("averages pressure over the samples a few milliseconds either side", () => {
     const pressures = [0.2, 0.8, 0.2, 0.8, 0.2];
     const samples = [0, 10, 20, 60, 70].map((time, i) => ({
@@ -183,6 +196,24 @@ describe("strokeOutline", () => {
     expect(height(strokeOutline({ samples: light, width: 8, tool: "highlighter" }))).toBeCloseTo(
       height(strokeOutline({ samples, width: 8, tool: "highlighter" })),
     );
+  });
+
+  it("keeps finer detail for a stroke drawn zoomed in, where a scene unit is several pixels", () => {
+    const fine = encodeSamples(line(20).map((sample) => ({ ...sample, x: sample.x / 4 }))).samples;
+    const outline = (zoom: number) => strokeOutline({ samples: fine, width: 1, tool: "pen", zoom });
+
+    expect(outline(4).length).toBeGreaterThan(outline(1).length);
+  });
+
+  it("thins a pen line with pressure as much as its sensitivity says, not at all at 0", () => {
+    const light = encodeSamples(line(20).map((sample) => ({ ...sample, pressure: 0.1 }))).samples;
+    const height = (sensitivity: number, samples = light) => {
+      const ys = strokeOutline({ samples, width: 8, tool: "pen", sensitivity }).map(([, y]) => y);
+      return Math.max(...ys) - Math.min(...ys);
+    };
+
+    expect(height(1)).toBeLessThan(height(0.45));
+    expect(height(0)).toBeCloseTo(height(0, samples));
   });
 
   it("draws a single tap as a dot", () => {

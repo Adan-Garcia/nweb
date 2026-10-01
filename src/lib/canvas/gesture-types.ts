@@ -10,6 +10,8 @@ import type { InputSample } from "./stroke-geometry";
 export type ToolStyle = {
   color: string;
   width: number;
+  /** How much pressure thins a pen's line, 0 to 1. */
+  sensitivity: number;
   shapeKind: ShapeKind;
   fill: string | null;
 };
@@ -24,6 +26,8 @@ export type GestureContext = {
   shift: boolean;
   /** Eraser and hit radius in scene units (a fixed screen size divided by the zoom). */
   radius: number;
+  /** The view's zoom, recorded on a stroke so it is smoothed at the scale it was drawn. */
+  zoom: number;
   /** The placed elements whose bounds touch `rect`; a spatial index, or a scan. */
   nearby: (rect: Rect) => PlacedElement[];
   newId: () => string;

@@ -15,9 +15,10 @@ function context(scene: Scene, overrides: Partial<GestureContext> = {}): Gesture
     scene,
     pages,
     pagesById,
-    style: { color: "ink-blue", width: 2, shapeKind: "rectangle", fill: null },
+    style: { color: "ink-blue", width: 2, sensitivity: 0.45, shapeKind: "rectangle", fill: null },
     shift: false,
     radius: 4,
+    zoom: 1,
     nearby: scanNearby(scene.elements, pagesById),
     newId: () => `new-${(next += 1)}`,
     ...overrides,
@@ -81,6 +82,13 @@ describe("placeFor", () => {
 });
 
 describe("ink", () => {
+  it("records the zoom a stroke was drawn at, so it is smoothed at that scale", () => {
+    const zoomed = context(infinite, { zoom: 2.5 });
+    const gesture = startGesture("pen", at(10, 10), zoomed, none);
+
+    expect(gesture?.end(zoomed).elements?.[0]).toMatchObject({ zoom: 2.5 });
+  });
+
   it("adds a stroke of the current colour on top when the pen lifts", () => {
     const gesture = startGesture("pen", at(10, 10, 0), context(infinite), none);
     expect(gesture?.start).toEqual({});
@@ -91,6 +99,7 @@ describe("ink", () => {
     const { elements } = gesture?.end(context(infinite)) ?? {};
     expect(elements).toHaveLength(1);
     expect(elements?.[0]).toMatchObject({ id: "new-1", tool: "pen", color: "ink-blue", width: 2 });
+    expect(elements?.[0]).toMatchObject({ sensitivity: 0.45, zoom: 1 });
     expect(elements?.[0].type === "stroke" && elements[0].samples.length).toBe(18);
   });
 
@@ -99,6 +108,8 @@ describe("ink", () => {
     const { elements } = gesture?.end(context(paged)) ?? {};
 
     expect(elements?.[1]).toMatchObject({ tool: "highlighter", pageId: "page", x: 408, y: 10 });
+    // A highlighter ignores pressure, so it records no sensitivity.
+    expect(elements?.[1]).not.toHaveProperty("sensitivity");
   });
 
   it("draws nothing for a stroke begun between pages", () => {
@@ -134,7 +145,7 @@ describe("shapes", () => {
     expect(tiny?.end(context(infinite))).toEqual({});
 
     const lineContext = context(paged, {
-      style: { color: "ink-red", width: 3, shapeKind: "line", fill: null },
+      style: { color: "ink-red", width: 3, sensitivity: 0, shapeKind: "line", fill: null },
     });
     const onPage = startGesture("shape", at(0, 10), lineContext, none);
     onPage?.move(at(100, 10), lineContext);

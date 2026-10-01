@@ -299,6 +299,18 @@ describe("drawing elements", () => {
     expect(cachedBounds(image, cache)).toEqual({ x: 0, y: 0, width: 10, height: 10 });
   });
 
+  it("re-outlines a stroke when the smoothing setting changes", () => {
+    const cache: OutlineCache = new Map();
+    const ink = stroke("s", "pen", "a0");
+    cachedBounds(ink, cache, 0.5);
+    const first = cache.get("s");
+
+    cachedBounds(ink, cache, 0.5);
+    expect(cache.get("s")).toBe(first);
+    cachedBounds(ink, cache, 0);
+    expect(cache.get("s")).not.toBe(first);
+  });
+
   it("layers images under highlighter under everything else", () => {
     expect(
       [image, stroke("h", "highlighter", "a0"), stroke("p", "pen", "a0"), shape("line")].map(

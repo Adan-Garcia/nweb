@@ -110,6 +110,14 @@ describe("serializeScene and readScene", () => {
     ]);
   });
 
+  it("keeps a stroke's pressure sensitivity and the zoom it was drawn at", () => {
+    const read = readScene(
+      serializeScene(sceneWith({ ...stroke, sensitivity: 0.7, zoom: 1.23456 })),
+    );
+
+    expect(read.ok && read.scene.elements[0]).toMatchObject({ sensitivity: 0.7, zoom: 1.235 });
+  });
+
   it("rounds positions, pressure, tilt and time to what is worth keeping", () => {
     const read = readScene(serializeScene(sceneWith(stroke)));
     const [saved] = read.ok ? read.scene.elements : [];

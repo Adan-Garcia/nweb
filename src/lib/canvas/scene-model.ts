@@ -44,6 +44,16 @@ export const strokeSchema = placedSchema.extend({
   tool: z.enum(["pen", "highlighter"]),
   color: colorSchema,
   width: z.number().positive(),
+  /**
+   * How much pressure thins the line, from 0 (not at all) to 1. Absent on a highlighter,
+   * which ignores pressure, and on a pen it means the default.
+   */
+  sensitivity: z.number().min(0).max(1).optional(),
+  /**
+   * The view's zoom when it was drawn. Smoothing works in screen pixels, where the hand's
+   * jitter is, so a stroke drawn zoomed out is smoothed over more of the scene.
+   */
+  zoom: z.number().positive().optional(),
   samples: z
     .array(z.number())
     .min(SAMPLE_STRIDE)
@@ -157,6 +167,7 @@ function roundElement(element: SceneElement): SceneElement {
   if (placed.type === "stroke") {
     return {
       ...placed,
+      ...(placed.zoom === undefined ? {} : { zoom: round(placed.zoom, 3) }),
       samples: placed.samples.map((value, i) => round(value, SAMPLE_PLACES[i % SAMPLE_STRIDE])),
     };
   }

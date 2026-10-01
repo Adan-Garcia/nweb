@@ -1,12 +1,11 @@
 import { FilePlus2, FileUp, Maximize2, Minimize2, Redo2, Undo2 } from "lucide-react";
 
 import { CanvasColorSwatches } from "@/components/notes/spatial/canvas-color-swatches";
+import { CanvasPenPanel } from "@/components/notes/spatial/canvas-pen-panel";
+import { CanvasPenSettings } from "@/components/notes/spatial/canvas-pen-settings";
+import { CanvasPresetButtons } from "@/components/notes/spatial/canvas-preset-buttons";
 import { CanvasToolButtons } from "@/components/notes/spatial/canvas-tool-buttons";
-import {
-  type CanvasTools,
-  MAX_WIDTH,
-  MIN_WIDTH,
-} from "@/components/notes/spatial/use-canvas-tools";
+import type { CanvasTools } from "@/components/notes/spatial/use-canvas-tools";
 import { Button } from "@/components/ui/button";
 
 type CanvasToolbarProps = {
@@ -57,18 +56,14 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
             onShapeKindChange={tools.setShapeKind}
           />
           <CanvasColorSwatches color={tools.style.color} onColorChange={props.onColorPicked} />
-          <label className="flex items-center gap-1.5 text-caption text-muted-foreground">
-            Width
-            <input
-              type="range"
-              min={MIN_WIDTH}
-              max={MAX_WIDTH}
-              step={0.5}
-              value={tools.style.width}
-              onChange={(event) => tools.setWidth(Number(event.currentTarget.value))}
-              className="w-20 accent-primary"
-            />
-          </label>
+          <CanvasPresetButtons
+            presets={tools.presets}
+            activeId={tools.activePresetId}
+            onApply={tools.applyPreset}
+          />
+          <CanvasPenSettings>
+            <CanvasPenPanel tools={tools} />
+          </CanvasPenSettings>
           <div className="flex items-center" role="group" aria-label="History">
             {icon("Undo", props.onUndo, Undo2, !props.canUndo)}
             {icon("Redo", props.onRedo, Redo2, !props.canRedo)}

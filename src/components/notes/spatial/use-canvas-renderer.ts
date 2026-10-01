@@ -8,6 +8,7 @@ import type { PlacedPage } from "@/lib/canvas/pages";
 import type { OutlineCache } from "@/lib/canvas/render-elements";
 import { renderPreview, renderScene } from "@/lib/canvas/render-scene";
 import type { PlacedElement, Scene } from "@/lib/canvas/scene-model";
+import { usePreferencesStore } from "@/stores/use-preferences-store";
 
 type RendererOptions = {
   hostRef: RefObject<HTMLElement | null>;
@@ -45,6 +46,7 @@ function prepare(canvas: HTMLCanvasElement | null, viewport: Viewport, dpr: numb
  */
 export function useCanvasRenderer(options: RendererOptions) {
   const { isDark } = useAppearance();
+  const smoothing = usePreferencesStore((state) => state.preferences.penSmoothing);
   const cacheRef = useRef<OutlineCache>(new Map());
   const frameRef = useRef<number | null>(null);
   const { hostRef, sceneCanvasRef, liveCanvasRef, scene, pages, pagesById, camera, viewport } =
@@ -62,8 +64,9 @@ export function useCanvasRenderer(options: RendererOptions) {
       theme,
       images,
       cache: cacheRef.current,
+      smoothing,
     };
-  }, [camera, hostRef, images, isDark, viewport]);
+  }, [camera, hostRef, images, isDark, smoothing, viewport]);
 
   useEffect(() => {
     if (!viewport.width || !viewport.height) {

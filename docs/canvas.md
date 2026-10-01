@@ -175,6 +175,8 @@ type Stroke = ElementBase & {
   tool: "pen" | "highlighter";
   color: Color;
   width: number;     // base width; pressure scales it
+  sensitivity?: number; // pen only, 0–1: how much pressure thins it (absent: 0.45)
+  zoom?: number;     // the view's zoom when drawn; smoothing works in its screen pixels
   // Flat, relative to (x, y): [dx, dy, pressure, tiltX, tiltY, dt] repeated.
   // Tilt and time are kept for recognition and shading, not only for drawing.
   samples: number[];
@@ -247,20 +249,25 @@ PointerEvent ─▶ filter ─▶ sampler ─▶ smoother ─▶ outline ─▶ 
 *   **Smoother** (`lib/canvas/stroke-geometry.ts`, pure). The raw samples are what is
     stored (except that a pen's touch-down sample, which reports 0 before the sensor
     reads, takes the first real pressure); everything below runs again at render time, so
-    it can change without rewriting notes. In order:
-    *   a one-euro filter on position, its strength a setting;
+    it can change without rewriting notes. Every distance below is in screen pixels at
+    the zoom the stroke was drawn at, which the stroke records: the hand's jitter is a
+    pixel or so wherever the view is, so a stroke drawn zoomed out to 25% is smoothed over
+    four times as much of the scene, and one drawn at 400% keeps detail a quarter the
+    size. In order:
+    *   a one-euro filter on position, its strength the smoothing setting;
     *   pressure averaged over ±24 ms, by time rather than by count, so a 240 Hz pen's
         sensor noise does not ripple the edges and a quick stroke's few samples do not
         jump in width;
-    *   samples closer than 1.5 units to the last one kept are dropped: the outline's edge
+    *   samples closer than 1.5 pixels to the last one kept are dropped: the outline's edge
         is set square to each step, and on a slow stroke steps that short point every
         which way with the jitter;
-    *   the path is filled in along a Catmull-Rom curve to at most two units a step,
+    *   the path is filled in along a Catmull-Rom curve to at most two pixels a step,
         because Safari on an iPad delivers one sample per frame and a fast curve between
         them would otherwise be straight lines;
     *   a centred average over those points, which does not lag the pen as a filter
-        would, takes out what corners are left. It runs after the filling in, so it only
-        ever averages short steps and never flattens a quick stroke's few samples.
+        would, takes out what corners are left: two passes at the default smoothing, none
+        at 0. It runs after the filling in, so it only ever averages short steps and never
+        flattens a quick stroke's few samples.
 *   **Outline.** Pressure → width along the path, with tapered ends, producing a closed
     polygon filled in one call, traced through the midpoints of its edges with quadratic
     curves so it shows no facets. This is `perfect-freehand`'s `getStroke`, called from
@@ -315,8 +322,16 @@ another.
 ### Settings
 
 *   **Pen presets** and **smoothing strength** follow the person, so they go in the synced
-    `preferences` row (`lib/preferences/preferences-model.ts`) as new optional fields
-    with defaults; old rows still parse.
+    `preferences` row (`lib/preferences/preferences-model.ts`) as `penPresets` and
+    `penSmoothing`, with defaults; old rows still parse, and a preset that does not read
+    costs only itself. Their bounds are in `lib/canvas/pen-settings.ts`, kept apart from
+    the rest of the canvas because the preferences are read for the first paint.
+    *   A preset is a pen or highlighter with its colour, width and pressure
+        sensitivity; up to six, shown beside the palette for one tap. The pen settings
+        panel (width, pressure, smoothing) saves the pen in hand as one and removes them.
+    *   Smoothing applies to all ink, everywhere it is drawn, and changing it redraws
+        what is on screen. Pressure sensitivity is the pen's, stored on each stroke,
+        because "a fineliner" and "a brush" are different pens, not a different view.
 *   **Draw with finger**, **stylus-only** and undo history are about the device in hand (an iPad and a
     desktop with a tablet want opposite answers), so they stay on the device: a small
     unsynced IndexedDB store, which means a `NOTES_DB_VERSION` bump and an upgrade step
@@ -443,6 +458,7 @@ src/lib/canvas/                 pure, no React (built)
   geometry.ts, camera.ts        points, rectangles; pan, zoom, pinch, fit, opening view
   pages.ts, backgrounds.ts      the page stack; dots, grid and ruled marks
   colors.ts                     palette tokens → colours per theme
+  pen-settings.ts               pen presets, smoothing and width bounds
   stroke-geometry.ts            sample encoding, smoothing, pressure → outline
   element-bounds.ts, hit-test.ts, spatial-index.ts
   pixel-erase.ts, snapping.ts, history.ts, canvas-clipboard.ts
@@ -458,16 +474,18 @@ src/components/notes/spatial/   the canvas's React side (built)
   canvas-editor.tsx             toolbar, surface and the hooks that tie them together
   canvas-surface.tsx            the scene and live <canvas> layers
   canvas-toolbar.tsx, canvas-tool-buttons.tsx, canvas-color-swatches.tsx
+  canvas-preset-buttons.tsx, canvas-pen-settings.tsx, canvas-pen-panel.tsx
+  canvas-labels.ts              what a colour or a preset is called on a button
   canvas-theme.ts               design tokens → colours a 2D context can use
   use-canvas-scene.ts           scene, files, history, selection; gestures as one step
   use-canvas-camera.ts, use-canvas-wheel.ts
   use-canvas-pointer.ts         pointer events → input rules → gestures
   use-canvas-renderer.ts, use-canvas-images.ts
-  use-canvas-tools.ts           tool, and colour and width per kind of mark
+  use-canvas-tools.ts           tool; colour, width, pressure per kind of mark; presets
   use-canvas-shortcuts.ts       keys, and zoom-to-fit
   use-canvas-image-drop.ts, use-canvas-pdf-import.ts
   use-spatial-autosave.ts       saves the scene, each new image once
-  page-thumbnails.tsx, color-picker.tsx, pen-presets.tsx   (step 3)
+  page-thumbnails.tsx           (step 3)
 src/lib/pencil/pencil-bridge.ts web no-op, Tauri events (Tauri)
 src/lib/platform/is-tauri.ts    (Tauri)
 src-tauri/                      Tauri config, Rust entry point, capabilities (Tauri)
@@ -498,7 +516,9 @@ All on `claude/canvas-design`, one commit or more per step, every step leaving t
     rather than leave ink the renderer cannot place. *Done, including that.* Moved to step
     3: resizing a selection by its corners, and a toolbar that fits a phone in one row.
 3.  **The rest of the first release.** Resizing a selection, copy and paste, pen presets and the colour picker,
-    stylus-only and finger settings, zoom-to-fit, the thumbnail strip, export.
+    stylus-only and finger settings, zoom-to-fit, the thumbnail strip, export. *Done so
+    far: pen presets, the colour picker, pressure and smoothing settings, and smoothing
+    measured at the zoom a stroke was drawn at.*
 4.  **Hand check on the iPad** with the Pencil Pro (see "Testing"), and fixes from it.
 
 Later, each only when asked: text boxes; Tauri on desktop, then iPad with the Pencil

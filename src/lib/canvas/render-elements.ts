@@ -1,8 +1,9 @@
 import { resolveColor } from "./colors";
 import { localBounds } from "./element-bounds";
 import type { Rect } from "./geometry";
+import { DEFAULT_SMOOTHING } from "./pen-settings";
 import type { PlacedElement, Shape, Stroke } from "./scene-model";
-import { DEFAULT_SMOOTHING, strokeBounds, strokeOutline } from "./stroke-geometry";
+import { strokeBounds, strokeOutline } from "./stroke-geometry";
 
 /** The part of a 2D context the canvas draws with; a test can hand in a recording fake. */
 export type DrawingContext = Pick<
@@ -55,7 +56,14 @@ export type CanvasTheme = {
  */
 export type OutlineCache = Map<
   string,
-  { version: number; samples: readonly number[]; outline: Array<[number, number]>; bounds: Rect }
+  {
+    version: number;
+    samples: readonly number[];
+    /** The smoothing setting it was outlined with; changing the setting re-outlines it. */
+    smoothing: number;
+    outline: Array<[number, number]>;
+    bounds: Rect;
+  }
 >;
 
 /**
@@ -85,13 +93,18 @@ function traceSmoothOutline(
 
 function outlineOf(stroke: Stroke, cache: OutlineCache, smoothing: number) {
   const cached = cache.get(stroke.id);
-  if (cached?.version === stroke.version && cached.samples === stroke.samples) {
+  if (
+    cached?.version === stroke.version &&
+    cached.samples === stroke.samples &&
+    cached.smoothing === smoothing
+  ) {
     return cached;
   }
 
   const entry = {
     version: stroke.version,
     samples: stroke.samples,
+    smoothing,
     outline: strokeOutline(stroke, smoothing),
     bounds: strokeBounds(stroke),
   };

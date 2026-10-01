@@ -80,6 +80,7 @@ export function useCanvasPointer(options: PointerOptions) {
         style,
         shift,
         radius: ERASER_SCREEN_RADIUS / cameraRef.current.zoom,
+        zoom: cameraRef.current.zoom,
         nearby: scanNearby(scene.elements, pagesById),
         newId: () => crypto.randomUUID(),
       };

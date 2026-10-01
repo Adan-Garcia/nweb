@@ -1,6 +1,7 @@
 import { getStroke } from "perfect-freehand";
 
 import { expandRect, type Point, type Rect, rectFromPoints } from "./geometry";
+import { DEFAULT_SENSITIVITY, DEFAULT_SMOOTHING } from "./pen-settings";
 import { SAMPLE_STRIDE, type Stroke } from "./scene-model";
 
 /** One pen sample as the input layer reports it, in the stroke's coordinate space. */
@@ -16,9 +17,6 @@ export type InputSample = {
 
 /** A stored sample, read back: position relative to the stroke's origin, time from its start. */
 export type StrokeSample = InputSample;
-
-/** How much a stroke is smoothed, from 0 (raw) to 1. A setting; this is its default. */
-export const DEFAULT_SMOOTHING = 0.5;
 
 /**
  * Each sample's pressure, between 0 and 1. A pointer with no pressure sensor (a mouse,
@@ -95,6 +93,7 @@ function smoothingAlpha(cutoffHz: number, dtSeconds: number): number {
 export function smoothPositions(
   samples: readonly StrokeSample[],
   strength: number,
+  zoom = 1,
 ): StrokeSample[] {
   if (strength <= 0 || samples.length < 3) {
     return [...samples];
@@ -110,7 +109,8 @@ export function smoothPositions(
     const previous = smoothed[i - 1];
     const sample = samples[i];
     const dt = Math.max(sample.time - samples[i - 1].time, 1) / 1000;
-    const rawSpeed = Math.hypot(sample.x - previous.x, sample.y - previous.y) / dt;
+    // In screen pixels a second: how fast the hand moved, whatever the zoom.
+    const rawSpeed = (Math.hypot(sample.x - previous.x, sample.y - previous.y) * zoom) / dt;
     speed = lowPass(speed, rawSpeed, smoothingAlpha(derivativeCutoff, dt));
     const alpha = smoothingAlpha(minCutoff + beta * speed, dt);
 
@@ -152,21 +152,25 @@ export function smoothPressure(samples: readonly StrokeSample[]): StrokeSample[]
 }
 
 /** The shortest step kept between samples before the outline is built. */
+/** The shortest step kept between samples, in screen pixels at the zoom it was drawn. */
 const MIN_STEP = 1.5;
 
 /**
- * Drops samples closer than a unit and a half to the last one kept. A slow stroke
+ * Drops samples closer than `minStep` to the last one kept. A slow stroke
  * reports many samples a hair apart, and the outline's edge is set square to the step
  * between neighbours: steps that short point every which way with the sensor's jitter, and
  * the edge comes out lumpy. The last sample always stays, so the line still ends where
  * the pen lifted.
  */
-export function dropCrowdedSamples(samples: readonly StrokeSample[]): StrokeSample[] {
+export function dropCrowdedSamples(
+  samples: readonly StrokeSample[],
+  minStep = MIN_STEP,
+): StrokeSample[] {
   const kept: StrokeSample[] = [];
 
   samples.forEach((sample, i) => {
     const previous = kept.at(-1);
-    if (!previous || Math.hypot(sample.x - previous.x, sample.y - previous.y) >= MIN_STEP) {
+    if (!previous || Math.hypot(sample.x - previous.x, sample.y - previous.y) >= minStep) {
       kept.push(sample);
     } else if (i === samples.length - 1 && kept.length > 1) {
       kept[kept.length - 1] = sample;
@@ -177,13 +181,13 @@ export function dropCrowdedSamples(samples: readonly StrokeSample[]): StrokeSamp
 }
 
 /**
- * Moves each sample halfway toward the midpoint of its neighbours, twice. A
+ * Moves each sample halfway toward the midpoint of its neighbours, `passes` times. A
  * centred average, unlike the one-euro filter, does not lag the pen; it takes out the
  * small corners the sensor's jitter leaves on a slow stroke. The ends stay where they are.
  */
-export function relaxPath(samples: readonly StrokeSample[]): StrokeSample[] {
+export function relaxPath(samples: readonly StrokeSample[], passes = 2): StrokeSample[] {
   let path = [...samples];
-  for (let pass = 0; pass < 2; pass += 1) {
+  for (let pass = 0; pass < passes; pass += 1) {
     path = path.map((sample, i) => {
       const before = path[i - 1];
       const after = path[i + 1];
@@ -203,6 +207,7 @@ export function relaxPath(samples: readonly StrokeSample[]): StrokeSample[] {
 }
 
 /** The longest straight step left between two samples once a stroke is densified. */
+/** The longest straight step left once a stroke is densified, in screen pixels. */
 const MAX_STEP = 2;
 
 /**
@@ -211,7 +216,7 @@ const MAX_STEP = 2;
  * instead of turning a fast curve into a few straight facets. Pressure is interpolated
  * along it; the samples themselves are kept as they are.
  */
-export function densify(samples: readonly StrokeSample[]): StrokeSample[] {
+export function densify(samples: readonly StrokeSample[], maxStep = MAX_STEP): StrokeSample[] {
   if (samples.length < 2) {
     return [...samples];
   }
@@ -222,7 +227,7 @@ export function densify(samples: readonly StrokeSample[]): StrokeSample[] {
     const p1 = samples[i];
     const p2 = samples[i + 1];
     const p3 = samples[Math.min(samples.length - 1, i + 2)];
-    const steps = Math.ceil(Math.hypot(p2.x - p1.x, p2.y - p1.y) / MAX_STEP);
+    const steps = Math.ceil(Math.hypot(p2.x - p1.x, p2.y - p1.y) / maxStep);
 
     for (let step = 1; step < steps; step += 1) {
       const t = step / steps;
@@ -253,18 +258,22 @@ export function densify(samples: readonly StrokeSample[]): StrokeSample[] {
  * already run, and two smoothers in a row lag the pen.
  */
 export function strokeOutline(
-  stroke: Pick<Stroke, "samples" | "width" | "tool">,
+  stroke: Pick<Stroke, "samples" | "width" | "tool" | "sensitivity" | "zoom">,
   smoothing: number = DEFAULT_SMOOTHING,
 ): Array<[number, number]> {
-  const smoothed = smoothPressure(smoothPositions(decodeSamples(stroke.samples), smoothing));
-  const samples = relaxPath(densify(dropCrowdedSamples(smoothed)));
+  // Steps are measured on the screen it was drawn on: a scene unit is a fifth of a pixel
+  // zoomed out to 20%, and five pixels zoomed in to 500%.
+  const zoom = stroke.zoom ?? 1;
+  const positions = smoothPositions(decodeSamples(stroke.samples), smoothing, zoom);
+  const kept = dropCrowdedSamples(smoothPressure(positions), MIN_STEP / zoom);
+  const samples = relaxPath(densify(kept, MAX_STEP / zoom), Math.round(smoothing * 4));
   const isPen = stroke.tool === "pen";
 
   return getStroke(
     samples.map((sample) => [sample.x, sample.y, sample.pressure]),
     {
       size: stroke.width,
-      thinning: isPen ? 0.45 : 0,
+      thinning: isPen ? (stroke.sensitivity ?? DEFAULT_SENSITIVITY) : 0,
       smoothing: 0.5,
       streamline: 0,
       simulatePressure: false,

@@ -85,7 +85,7 @@ function setup(
       sceneState,
       camera,
       tool,
-      style: { color: "ink-blue", width: 2, shapeKind: "rectangle", fill: null },
+      style: { color: "ink-blue", width: 2, sensitivity: 0.45, shapeKind: "rectangle", fill: null },
       settings,
       isReadOnly,
       drawLive,

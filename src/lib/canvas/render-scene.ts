@@ -71,7 +71,7 @@ function drawLayered(
   options: RenderOptions,
 ) {
   const visible = elements.filter((element) =>
-    rectsIntersect(cachedBounds(element, options.cache), area),
+    rectsIntersect(cachedBounds(element, options.cache, options.smoothing), area),
   );
   for (const layer of [0, 1, 2]) {
     for (const element of visible) {

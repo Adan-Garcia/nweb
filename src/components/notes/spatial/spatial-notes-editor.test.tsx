@@ -79,17 +79,19 @@ describe("SpatialNotesEditor", () => {
 
     await user.click(colours.getByRole("button", { name: "Blue" }));
     expect(colours.getByRole("button", { name: "Blue" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "Pen settings" }));
+    const width = () => screen.getByRole("slider", { name: "Width" });
     // A range input takes no typing; set it the way a drag would.
-    fireEvent.change(screen.getByRole("slider"), { target: { value: "6" } });
-    expect(screen.getByRole("slider")).toHaveValue("6");
+    fireEvent.change(width(), { target: { value: "6" } });
+    expect(width()).toHaveValue("6");
 
     await user.click(screen.getByRole("button", { name: "Highlighter" }));
     expect(colours.getByRole("button", { name: "Yellow" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("slider")).toHaveValue("16");
+    expect(width()).toHaveValue("16");
 
     await user.click(screen.getByRole("button", { name: "Pen" }));
     expect(colours.getByRole("button", { name: "Blue" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("slider")).toHaveValue("6");
+    expect(width()).toHaveValue("6");
   });
 
   it("adds a page to a paged note, and undoes and redoes it", async () => {

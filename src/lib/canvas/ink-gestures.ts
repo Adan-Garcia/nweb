@@ -33,6 +33,8 @@ export function startInk(
       tool,
       color: context.style.color,
       width: context.style.width,
+      ...(tool === "pen" ? { sensitivity: context.style.sensitivity } : {}),
+      zoom: context.zoom,
       x: origin.x,
       y: origin.y,
       samples: encoded,
