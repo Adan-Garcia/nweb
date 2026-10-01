@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const getDocument = vi.fn();
 const workerOptions = { workerSrc: "" };
 
-vi.mock("pdfjs-dist", () => ({
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
   GlobalWorkerOptions: workerOptions,
   getDocument: (options: unknown) => getDocument(options) as unknown,
 }));

@@ -1,4 +1,6 @@
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+// The legacy build: the modern one calls Map.getOrInsertComputed, which browsers shipped
+// only recently, and without it every page render throws. The legacy build polyfills it.
+import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 import {
   fitWithinBounds,
@@ -17,7 +19,7 @@ export type RenderedPdfPage = {
 };
 
 export async function renderPdfPagesToPng(pdfFile: File) {
-  const pdfjs = await import("pdfjs-dist");
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
   const loadingTask = pdfjs.getDocument({

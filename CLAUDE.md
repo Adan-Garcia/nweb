@@ -226,7 +226,7 @@ The data hierarchy is defined in `docs/hierarchy.md`. That file is the source of
 ## 9. Dependencies
 
 *   **Never run `npm audit fix --force`.** It bumps `pdfjs-dist` a major. `[REQUIRED]`
-*   Pinned constraints: `pdfjs-dist` stays on v6 (fixes a high-severity malicious-PDF advisory; `destroy()` is on the loading task, not `PDFDocumentProxy`).
+*   Pinned constraints: `pdfjs-dist` stays on v6 (fixes a high-severity malicious-PDF advisory; `destroy()` is on the loading task, not `PDFDocumentProxy`). Import its **legacy** build (`pdfjs-dist/legacy/build/pdf.mjs` and its worker): the modern one calls `Map.prototype.getOrInsertComputed`, which browsers shipped only recently, and without it every page render throws.
 *   `perfect-freehand` turns a stroke's samples into a pressure-shaped outline, and nothing else; only `lib/canvas/stroke-geometry.ts` imports it.
 *   **`brotli-wasm`** is there because no browser exposes Brotli through `CompressionStream`. Its ESM entry loads the `.wasm` by fetching a URL relative to the module, which Vite rewrites but Node cannot resolve for a `file:` URL — so `vite.config.ts` aliases the package to its own Node build **for tests only**. Keep that alias if the package is upgraded. The WASM is behind a dynamic `import()` in `lib/media/text-compression.ts`, so it is fetched on the first save and never on a path that does not compress.
 *   After **any** dependency change run `npm run format:check`, `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`, and `npm audit`; also confirm `npm ls pdfjs-dist` still shows v6.
