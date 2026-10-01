@@ -6,7 +6,10 @@ import { blobToDataUrl, dataUrlToBlob } from "../media/blob-utils";
  * count references by this id before deleting anything.
  */
 export async function contentFileId(blob: Blob): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  // Viewed through a typed array of this realm: a Blob from another one (jsdom's, in tests)
+  // hands back an ArrayBuffer that older Node WebCrypto refuses as not an ArrayBuffer.
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
 
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
