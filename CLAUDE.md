@@ -174,6 +174,7 @@ Imports flow **downward only**. A layer never imports from a layer above it. `[R
 | --- | --- | --- |
 | Dev server | `npm run dev` | |
 | Dev server, signed in | `npm run dev:open` | Port 5174, with a throwaway local account (`Dev`, passphrase `dev session passphrase`) made on first load and unlocked on every load, so the workspace pages open straight away. Dev server only: `main.tsx` guards it with `import.meta.env.DEV`, so no build contains it. Its own port is its own origin, so its IndexedDB never mixes with `npm run dev`'s. |
+| Test on a phone or iPad | `npm run dev:tunnel` | With `npm run dev:open` running, in a second terminal. Needs `cloudflared` installed (`brew install cloudflared`); prints a `https://….trycloudflare.com` address that reaches the dev server from any device. HTTPS matters: WebCrypto, and so the lock, only works on a secure origin. Anyone with the address reaches the dev server while it runs. |
 | Typecheck | `npm run typecheck` | `tsc -b`. The root `tsconfig.json` is solution-style, so build mode (`-b`) is required; a bare `tsc --noEmit` checks zero files. |
 | Lint | `npm run lint` | `eslint .`; **type-aware** (`recommendedTypeChecked`), so it needs the tsconfigs and takes a few seconds. |
 | Format | `npm run format` / `npm run format:check` | Prettier. `format:check` is the CI-style gate. |

@@ -11,6 +11,7 @@
     "typecheck": "tsc -b",
     "dev": "vite",
     "dev:open": "vite --mode devsession --port 5174 --strictPort",
+    "dev:tunnel": "cloudflared tunnel --url http://localhost:5174",
     "build": "tsc -b && vite build",
     "build:server": "vite build --config server/vite.config.ts",
     "start:server": "node dist-server/main.js",
