@@ -15,7 +15,14 @@ function context(scene: Scene, overrides: Partial<GestureContext> = {}): Gesture
     scene,
     pages,
     pagesById,
-    style: { color: "ink-blue", width: 2, sensitivity: 0.45, shapeKind: "rectangle", fill: null },
+    style: {
+      color: "ink-blue",
+      width: 2,
+      sensitivity: 0.45,
+      smoothing: 0.5,
+      shapeKind: "rectangle",
+      fill: null,
+    },
     shift: false,
     radius: 4,
     zoom: 1,
@@ -99,7 +106,7 @@ describe("ink", () => {
     const { elements } = gesture?.end(context(infinite)) ?? {};
     expect(elements).toHaveLength(1);
     expect(elements?.[0]).toMatchObject({ id: "new-1", tool: "pen", color: "ink-blue", width: 2 });
-    expect(elements?.[0]).toMatchObject({ sensitivity: 0.45, zoom: 1 });
+    expect(elements?.[0]).toMatchObject({ sensitivity: 0.45, smoothing: 0.5, zoom: 1 });
     expect(elements?.[0].type === "stroke" && elements[0].samples.length).toBe(18);
   });
 
@@ -145,7 +152,14 @@ describe("shapes", () => {
     expect(tiny?.end(context(infinite))).toEqual({});
 
     const lineContext = context(paged, {
-      style: { color: "ink-red", width: 3, sensitivity: 0, shapeKind: "line", fill: null },
+      style: {
+        color: "ink-red",
+        width: 3,
+        sensitivity: 0,
+        smoothing: 0.5,
+        shapeKind: "line",
+        fill: null,
+      },
     });
     const onPage = startGesture("shape", at(0, 10), lineContext, none);
     onPage?.move(at(100, 10), lineContext);

@@ -120,9 +120,13 @@ what is inside the string.
 *   **Fullscreen, autosave, sync merge and backup**, as today. Where the browser will not
     make the canvas fullscreen (Safari on an iPhone, and on an iPad when it refuses), it
     covers the window instead.
-*   **Export** to PNG and PDF: a paged note exports page for page; an infinite note
-    exports the bounds of its ink, split into pages for PDF.
-*   **A floating toolbar** at the top centre.
+*   **Export** to PNG and PDF, always drawn as on paper (light inks on white) whatever
+    the theme: a PNG is the page in view of a paged note, or all the ink of an infinite
+    one; a PDF is page for page, or the ink scaled to a Letter sheet's width and cut into
+    sheets down. The PDF is one JPEG per page, written by `lib/canvas/pdf-writer.ts`
+    rather than a library: pdf.js only reads.
+*   **A floating toolbar** at the top centre, with what has no room in it (zoom to fit,
+    pages, PDF import, export, input settings) under "More".
 
 **Later, in this order:** text boxes; shape recognition (a hand-drawn box or circle
 straightened into the shape elements above); recognition (OCR, math, vocabulary).
@@ -176,6 +180,7 @@ type Stroke = ElementBase & {
   color: Color;
   width: number;     // base width; pressure scales it
   sensitivity?: number; // pen only, 0–1: how much pressure thins it (absent: 0.45)
+  smoothing?: number;   // 0–1: the smoothing setting when it was drawn (absent: 0.5)
   zoom?: number;     // the view's zoom when drawn; smoothing works in its screen pixels
   // Flat, relative to (x, y): [dx, dy, pressure, tiltX, tiltY, dt] repeated.
   // Tilt and time are kept for recognition and shading, not only for drawing.
@@ -246,7 +251,7 @@ PointerEvent ─▶ filter ─▶ sampler ─▶ smoother ─▶ outline ─▶ 
 *   **Sampler.** Reads `getCoalescedEvents()` where it exists (feature-detected; it is
     not in every Safari) so a fast stroke keeps every sample the hardware delivered, not
     just one per frame.
-*   **Smoother** (`lib/canvas/stroke-geometry.ts`, pure). The raw samples are what is
+*   **Smoother** (`lib/canvas/stroke-path.ts` and `stroke-geometry.ts`, pure). The raw samples are what is
     stored (except that a pen's touch-down sample, which reports 0 before the sensor
     reads, takes the first real pressure); everything below runs again at render time, so
     it can change without rewriting notes. Every distance below is in screen pixels at
@@ -254,13 +259,23 @@ PointerEvent ─▶ filter ─▶ sampler ─▶ smoother ─▶ outline ─▶ 
     pixel or so wherever the view is, so a stroke drawn zoomed out to 25% is smoothed over
     four times as much of the scene, and one drawn at 400% keeps detail a quarter the
     size. In order:
-    *   a one-euro filter on position, its strength the smoothing setting;
+    *   a centred, weighted average along the line (a Gaussian by distance, not by
+        count), its reach up to 12 pixels times the stroke's smoothing, shortened where
+        the pen moved quickly (halved at a quarter of a pixel a millisecond) so slow,
+        careful lines lose their shake and quick handwriting keeps its loops. The line is
+        continued past each end by its own reflection, so the ends stay where the pen
+        was. This replaced a one-euro filter: running with the pen, it lagged on slow
+        strokes and then caught up in jumps that drew as straight runs between kinks;
     *   pressure averaged over ±24 ms, by time rather than by count, so a 240 Hz pen's
         sensor noise does not ripple the edges and a quick stroke's few samples do not
         jump in width;
-    *   samples closer than 1.5 pixels to the last one kept are dropped: the outline's edge
-        is set square to each step, and on a slow stroke steps that short point every
-        which way with the jitter;
+    *   samples closer than 1.5 pixels to the last one kept are dropped, the last one
+        too: the outline's edge is set square to each step, and on a slow stroke steps
+        that short point every which way with the jitter;
+    *   hooks are trimmed: within 4 pixels plus half the width of either end, steps that
+        turn back on the line's heading go. A pen settling as it lifts flicks back a
+        fraction, and the outline puts a round cap on any sharp turn, which drew as a
+        ball at the end of the line;
     *   the path is filled in along a Catmull-Rom curve to at most two pixels a step,
         because Safari on an iPad delivers one sample per frame and a fast curve between
         them would otherwise be straight lines;
@@ -294,6 +309,13 @@ Canvas 2D, in two layers (scene and live), device-pixel-ratio aware.
     the viewport are drawn. The thumbnail strip renders pages through the same function
     at a small scale, cached until the page's elements change.
 
+### Selection
+
+The lasso's selection box has a handle on each corner. Dragging one scales the selection
+about the opposite corner by one factor for both axes, widths included, so handwriting
+stays handwriting. Along the bottom of the canvas, while the lasso is the tool, a bar
+holds copy, paste and delete for a tablet with no keyboard.
+
 ### Copy and paste
 
 Copying a lasso selection puts it on an in-app clipboard (`lib/canvas/canvas-clipboard.ts`,
@@ -303,7 +325,10 @@ gives the elements new ids and indexes above everything else, lands them at the 
 the view (or the current page), and adds any images to the target note's files; because
 image ids are content hashes, the same picture is still stored once. Pages themselves are
 not copied. The in-app clipboard lives in memory for the tab, as the open note already
-does.
+does, and holds each image's bytes, so a picture still pastes after its note has closed.
+Beside the PNG goes a marker naming the copy: a paste whose system clipboard carries the
+marker (or no picture at all) pastes the in-app copy, and one carrying another app's
+picture is left to the image paste.
 
 ### Undo history
 
@@ -318,6 +343,11 @@ another.
     step left. An element changed since — by another device through sync, or on this one
     — is skipped, so undo never reverts someone else's work.
 *   The last 200 steps are kept, and deleting a note deletes its history.
+*   The history is read when the note opens and written a second after each change and
+    when it closes, never before it has been read. Steps made while it loads go on top
+    of the saved ones. A history that cannot be read (a passphrase changed under it, a
+    row from a newer build) is dropped rather than reported: it costs undo steps, never
+    the note.
 
 ### Settings
 
@@ -329,13 +359,16 @@ another.
     *   A preset is a pen or highlighter with its colour, width and pressure
         sensitivity; up to six, shown beside the palette for one tap. The pen settings
         panel (width, pressure, smoothing) saves the pen in hand as one and removes them.
-    *   Smoothing applies to all ink, everywhere it is drawn, and changing it redraws
-        what is on screen. Pressure sensitivity is the pen's, stored on each stroke,
-        because "a fineliner" and "a brush" are different pens, not a different view.
+    *   Smoothing and pressure sensitivity are both stored on each stroke as it is
+        drawn: changing either changes the next line, never the ones already on the
+        page. "A fineliner" and "a brush" are different pens, not a different view.
 *   **Draw with finger**, **stylus-only** and undo history are about the device in hand (an iPad and a
-    desktop with a tablet want opposite answers), so they stay on the device: a small
-    unsynced IndexedDB store, which means a `NOTES_DB_VERSION` bump and an upgrade step
-    under CLAUDE.md §2.3.
+    desktop with a tablet want opposite answers), so they stay on the device, in two
+    unsynced stores added at `NOTES_DB_VERSION` 16: `canvas-settings` (one row, not
+    sealed, nothing in it is content) and `canvas-history` (a row per note, its steps
+    sealed whole and moved by a rekey like the rest of the content). Both live in the
+    More menu, where "Draw with finger" off means the default: fingers draw until a pen
+    has been seen.
 
 Canvas 2D is enough for thousands of strokes. WebGL is the fallback if a real note proves
 otherwise; the renderer sits behind one function so that swap would be local.
@@ -459,7 +492,8 @@ src/lib/canvas/                 pure, no React (built)
   pages.ts, backgrounds.ts      the page stack; dots, grid and ruled marks
   colors.ts                     palette tokens → colours per theme
   pen-settings.ts               pen presets, smoothing and width bounds
-  stroke-geometry.ts            sample encoding, smoothing, pressure → outline
+  stroke-geometry.ts            sample encoding, pressure → outline
+  stroke-path.ts                smoothing, crowded samples, end hooks, filling in
   element-bounds.ts, hit-test.ts, spatial-index.ts
   pixel-erase.ts, snapping.ts, history.ts, canvas-clipboard.ts
   input-filter.ts, shortcuts.ts, tools.ts
@@ -468,13 +502,15 @@ src/lib/canvas/                 pure, no React (built)
   media-placement.ts            where dropped images and imported PDF pages go
   canvas-files.ts               content-hash ids for dropped images
   render-elements.ts, render-scene.ts   drawing onto any 2D context
-  history-storage.ts, export-scene.ts   (step 3)
+  resize-gestures.ts            corner handles; scaling a selection
+  history-storage.ts, input-settings-storage.ts   this device's undo steps and input
+  export-scene.ts, pdf-writer.ts   what an export draws; a PDF of JPEG pages
 src/components/notes/spatial/   the canvas's React side (built)
   spatial-notes-editor.tsx      the note: its canvas, or why it cannot be shown
   canvas-editor.tsx             toolbar, surface and the hooks that tie them together
   canvas-surface.tsx            the scene and live <canvas> layers
   canvas-toolbar.tsx, canvas-tool-buttons.tsx, canvas-color-swatches.tsx
-  canvas-preset-buttons.tsx, canvas-pen-settings.tsx, canvas-pen-panel.tsx
+  canvas-preset-buttons.tsx, canvas-pen-panel.tsx
   canvas-labels.ts              what a colour or a preset is called on a button
   canvas-theme.ts               design tokens → colours a 2D context can use
   use-canvas-scene.ts           scene, files, history, selection; gestures as one step
@@ -485,7 +521,13 @@ src/components/notes/spatial/   the canvas's React side (built)
   use-canvas-shortcuts.ts       keys, and zoom-to-fit
   use-canvas-image-drop.ts, use-canvas-pdf-import.ts
   use-spatial-autosave.ts       saves the scene, each new image once
-  page-thumbnails.tsx           (step 3)
+  use-canvas-editor.ts          every hook above tied to one scene, for canvas-editor.tsx
+  use-canvas-clipboard.ts       copy (in-app and a PNG), paste, delete
+  use-canvas-history-storage.ts, use-canvas-input-settings.ts
+  use-canvas-export.ts, canvas-raster.ts   PNG and PDF export; any region to a canvas
+  use-canvas-pages.ts           the page in view; add, move, delete, go to
+  page-thumbnails.tsx, page-thumbnail.tsx   the strip, each page redrawn only when it changes
+  canvas-popover.tsx, canvas-more-menu.tsx, canvas-menu-items.tsx, canvas-selection-bar.tsx
 src/lib/pencil/pencil-bridge.ts web no-op, Tauri events (Tauri)
 src/lib/platform/is-tauri.ts    (Tauri)
 src-tauri/                      Tauri config, Rust entry point, capabilities (Tauri)
@@ -516,9 +558,10 @@ All on `claude/canvas-design`, one commit or more per step, every step leaving t
     rather than leave ink the renderer cannot place. *Done, including that.* Moved to step
     3: resizing a selection by its corners, and a toolbar that fits a phone in one row.
 3.  **The rest of the first release.** Resizing a selection, copy and paste, pen presets and the colour picker,
-    stylus-only and finger settings, zoom-to-fit, the thumbnail strip, export. *Done so
-    far: pen presets, the colour picker, pressure and smoothing settings, and smoothing
-    measured at the zoom a stroke was drawn at.*
+    stylus-only and finger settings, zoom-to-fit, the thumbnail strip, export, undo
+    history kept with the note, and a toolbar that fits a phone in one row (narrower than
+    640 pixels, the colours and presets move into the pen panel and fullscreen into
+    More). *Done.*
 4.  **Hand check on the iPad** with the Pencil Pro (see "Testing"), and fixes from it.
 
 Later, each only when asked: text boxes; Tauri on desktop, then iPad with the Pencil

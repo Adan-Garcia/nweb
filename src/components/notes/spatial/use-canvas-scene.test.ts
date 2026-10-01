@@ -103,4 +103,24 @@ describe("useCanvasScene", () => {
 
     expect(result.current.selection).toEqual(new Set(["a"]));
   });
+
+  it("takes on a saved history under the steps made since the note opened", () => {
+    const { result, ids } = setup();
+    const saved = {
+      undo: [{ changes: [{ id: "old", before: null, after: stroke("old") }] }],
+      redo: [{ changes: [{ id: "gone", before: null, after: stroke("gone") }] }],
+    };
+
+    act(() => result.current.adoptHistory(saved));
+    expect(result.current.canRedo).toBe(true);
+
+    act(() => result.current.commit([stroke("a")]));
+    act(() => result.current.adoptHistory(saved));
+    expect(result.current.history.undo).toHaveLength(3);
+    // A step made since the note opened leaves nothing to redo, as it would have.
+    expect(result.current.canRedo).toBe(false);
+
+    act(() => result.current.undo());
+    expect(ids()).toEqual([]);
+  });
 });

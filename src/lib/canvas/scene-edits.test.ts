@@ -9,10 +9,11 @@ import {
   removeElements,
   removePage,
   replaceElement,
+  scaleElements,
   sortByIndex,
   translateElements,
 } from "./scene-edits";
-import { createPage, type ImageElement, type Stroke } from "./scene-model";
+import { createPage, type ImageElement, type Shape, type Stroke } from "./scene-model";
 
 const stroke = (id: string, index: string, pageId?: string): Stroke => ({
   id,
@@ -99,5 +100,59 @@ describe("edits", () => {
     ];
 
     expect(referencedFileIds({ elements: withPdf })).toEqual(new Set(["pdf-1", "photo"]));
+  });
+});
+
+describe("scaling", () => {
+  const shape: Shape = {
+    id: "box",
+    version: 1,
+    index: "a4",
+    type: "shape",
+    kind: "rectangle",
+    x: 10,
+    y: 10,
+    width: 20,
+    height: 10,
+    rotation: 0,
+    color: "ink-black",
+    strokeWidth: 2,
+    fill: null,
+  };
+  const ink: Stroke = {
+    ...stroke("ink", "a1"),
+    x: 10,
+    y: 10,
+    samples: [0, 0, 0.5, 1, 2, 0, 4, 6, 0.7, 3, 4, 8],
+  };
+  const all = new Set(["ink", "box", "img", "on-page"]);
+  const offsets = (element: { pageId?: string }) =>
+    element.pageId === "lost" ? null : element.pageId ? { x: 100, y: 0 } : { x: 0, y: 0 };
+
+  it("scales position, size and width about the anchor, bumping versions", () => {
+    const [scaledInk, box, img] = scaleElements(
+      [ink, shape, image],
+      all,
+      { x: 0, y: 0 },
+      2,
+      offsets,
+    );
+
+    expect(scaledInk).toMatchObject({ x: 20, y: 20, width: 4, version: 2 });
+    // Positions double; pressure, tilt and time do not.
+    expect(scaledInk.type === "stroke" && scaledInk.samples).toEqual([
+      0, 0, 0.5, 1, 2, 0, 8, 12, 0.7, 3, 4, 8,
+    ]);
+    expect(box).toMatchObject({ x: 20, y: 20, width: 40, height: 20, strokeWidth: 4 });
+    expect(img).toMatchObject({ x: 10, y: 10, width: 20, height: 20 });
+  });
+
+  it("scales ink on a page about the anchor in the page's own space", () => {
+    const onPage = { ...stroke("on-page", "a2", "page"), x: 10, y: 0 };
+    const lost = { ...stroke("ink", "a3", "lost"), x: 10, y: 0 };
+    const [scaled, untouched] = scaleElements([onPage, lost], all, { x: 100, y: 0 }, 3, offsets);
+
+    expect(scaled).toMatchObject({ x: 30, y: 0 });
+    expect(untouched).toMatchObject({ x: 10, y: 0 });
   });
 });

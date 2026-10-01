@@ -2,12 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   decodeSamples,
-  densify,
-  dropCrowdedSamples,
   encodeSamples,
   type InputSample,
-  relaxPath,
-  smoothPositions,
   smoothPressure,
   strokeBounds,
   strokeOutline,
@@ -65,41 +61,7 @@ describe("encodeSamples and decodeSamples", () => {
   });
 });
 
-describe("smoothing", () => {
-  it("leaves the samples alone at strength 0 or when there are too few", () => {
-    const samples = decodeSamples(encodeSamples(line(10, 3)).samples);
-
-    expect(smoothPositions(samples, 0)).toEqual(samples);
-    expect(smoothPositions(samples.slice(0, 2), 1)).toEqual(samples.slice(0, 2));
-  });
-
-  it("takes jitter out of a slow line, more at a higher strength", () => {
-    const samples = decodeSamples(encodeSamples(line(40, 3)).samples);
-    const wobble = (points: typeof samples) =>
-      points
-        .slice(10)
-        .reduce((sum, point, i, rest) => sum + Math.abs(point.y - (rest[i - 1]?.y ?? point.y)), 0);
-
-    const light = wobble(smoothPositions(samples, 0.2));
-    const heavy = wobble(smoothPositions(samples, 1));
-
-    expect(light).toBeLessThan(wobble(samples));
-    expect(heavy).toBeLessThan(light);
-  });
-
-  it("smooths in screen pixels: the same hand movement at any zoom is smoothed alike", () => {
-    const screen = decodeSamples(encodeSamples(line(40, 3)).samples);
-    // Drawn zoomed out to 25%, the same movement covers four times as much of the scene.
-    const zoomedOut = screen.map((sample) => ({ ...sample, x: sample.x * 4, y: sample.y * 4 }));
-
-    const atScreen = smoothPositions(screen, 0.5, 1);
-    const atScene = smoothPositions(zoomedOut, 0.5, 0.25);
-    atScene.forEach((sample, i) => {
-      expect(sample.x).toBeCloseTo(atScreen[i].x * 4);
-      expect(sample.y).toBeCloseTo(atScreen[i].y * 4);
-    });
-  });
-
+describe("smoothPressure", () => {
   it("averages pressure over the samples a few milliseconds either side", () => {
     const pressures = [0.2, 0.8, 0.2, 0.8, 0.2];
     const samples = [0, 10, 20, 60, 70].map((time, i) => ({
@@ -114,60 +76,6 @@ describe("smoothing", () => {
     const smoothed = smoothPressure(samples).map((s) => s.pressure);
     // The first three are within 24 ms of each other; the last two only of each other.
     [0.4, 0.4, 0.4, 0.5, 0.5].forEach((expected, i) => expect(smoothed[i]).toBeCloseTo(expected));
-  });
-});
-
-describe("dropCrowdedSamples and relaxPath", () => {
-  const at = (x: number, y = 0) => ({ x, y, pressure: 0.5, tiltX: 0, tiltY: 0, time: x });
-
-  it("drops samples a hair from the last kept one, but always keeps the last", () => {
-    const kept = dropCrowdedSamples([at(0), at(0.5), at(2), at(2.4), at(4), at(4.3)]);
-
-    expect(kept.map((sample) => sample.x)).toEqual([0, 2, 4.3]);
-    expect(dropCrowdedSamples([at(0), at(0.2)]).map((sample) => sample.x)).toEqual([0]);
-  });
-
-  it("evens out a jittery path without moving its ends or bending a straight one", () => {
-    const zigzag = [at(0), at(2, 1), at(4, -1), at(6, 1), at(8)];
-    const relaxed = relaxPath(zigzag);
-    const swing = (path: typeof zigzag) => Math.max(...path.map((sample) => Math.abs(sample.y)));
-
-    expect(swing(relaxed)).toBeLessThan(swing(zigzag) / 2);
-    expect([relaxed[0], relaxed[4]]).toEqual([zigzag[0], zigzag[4]]);
-    expect(relaxPath([at(0), at(2), at(4)])).toEqual([at(0), at(2), at(4)]);
-  });
-});
-
-describe("densify", () => {
-  const sparse = [
-    { x: 0, y: 0, pressure: 0.2, tiltX: 0, tiltY: 0, time: 0 },
-    { x: 20, y: 0, pressure: 0.6, tiltX: 0, tiltY: 0, time: 16 },
-    { x: 20, y: 20, pressure: 0.6, tiltX: 0, tiltY: 0, time: 32 },
-  ];
-
-  it("keeps every sample and fills the gaps so no step is longer than two units", () => {
-    const dense = densify(sparse);
-
-    expect(dense).toEqual(expect.arrayContaining(sparse));
-    dense.slice(1).forEach((sample, i) => {
-      expect(Math.hypot(sample.x - dense[i].x, sample.y - dense[i].y)).toBeLessThanOrEqual(2.5);
-    });
-  });
-
-  it("rounds a corner rather than cutting straight across it, and blends the pressure", () => {
-    const dense = densify(sparse);
-    const between = dense.slice(1, dense.indexOf(sparse[1]));
-
-    // Heading for the turn, the curve swings out past the straight line between samples.
-    expect(between.some((sample) => sample.y < 0)).toBe(true);
-    const pressures = between.map((sample) => sample.pressure);
-    expect(pressures).toEqual([...pressures].sort((a, b) => a - b));
-    expect(Math.min(...pressures)).toBeGreaterThan(0.2);
-  });
-
-  it("leaves a dot or a stroke with nothing to fill alone", () => {
-    expect(densify(sparse.slice(0, 1))).toEqual(sparse.slice(0, 1));
-    expect(densify(line(3).map((sample) => ({ ...sample, x: sample.x / 4 })))).toHaveLength(3);
   });
 });
 
@@ -219,7 +127,9 @@ describe("strokeOutline", () => {
   it("draws a single tap as a dot", () => {
     const dot = encodeSamples(line(1)).samples;
 
-    expect(strokeOutline({ samples: dot, width: 6, tool: "pen" }, 0).length).toBeGreaterThan(3);
+    expect(
+      strokeOutline({ samples: dot, width: 6, tool: "pen", smoothing: 0 }).length,
+    ).toBeGreaterThan(3);
   });
 });
 

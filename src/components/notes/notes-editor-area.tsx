@@ -55,6 +55,7 @@ export function NotesEditorArea({ workspace, isReadOnly = false }: NotesEditorAr
       {notice}
       <SpatialNotesEditor
         key={`${workspace.activeDocumentId ?? "notes-empty"}-${workspace.spatialEditorReloadKey}`}
+        documentId={workspace.activeDocumentId}
         initialData={workspace.spatialInitialData}
         onChange={workspace.handleSpatialChange}
         optimizeImage={workspace.optimizeImage}

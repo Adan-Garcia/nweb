@@ -2,6 +2,8 @@ import { type DBSchema, type IDBPDatabase, openDB } from "idb";
 
 import type { AccountRecord } from "../account/account-record";
 import type { LocalAccount } from "../account/local-account";
+import type { CanvasHistoryRecord } from "../canvas/history-storage";
+import type { CanvasSettingsRecord } from "../canvas/input-settings-storage";
 import type { FeedRecord } from "../feeds/feed-model";
 import type { Branch, Flight, Nest, Wing } from "../hierarchy/entity-model";
 import type { Pebble } from "../hierarchy/pebble-model";
@@ -88,8 +90,14 @@ const NOTES_DB_NAME = "cuervo-notes";
  * 15 added `remembered-unlock`: the keys a "Keep me signed in" unlock left on this device
  * (`lib/lock/remembered-unlock.ts`). One row at most, never synced or backed up. Rewrites
  * no rows: without one, every load asks for the passphrase, as every load always has.
+ *
+ * 16 added two stores for the drawing canvas that stay on this device: `canvas-history`,
+ * each note's undo steps sealed as one string (`lib/canvas/history-storage.ts`), and
+ * `canvas-settings`, whether fingers draw and stylus-only mode. Neither syncs or goes into
+ * a backup. Rewrites no rows: a note with no history opens with nothing to undo, as every
+ * note did before this.
  */
-export const NOTES_DB_VERSION = 15;
+export const NOTES_DB_VERSION = 16;
 
 export interface NotesDbSchema extends DBSchema {
   "notes-documents": {
@@ -164,6 +172,14 @@ export interface NotesDbSchema extends DBSchema {
     key: string;
     value: RememberedUnlock;
   };
+  "canvas-history": {
+    key: string;
+    value: CanvasHistoryRecord;
+  };
+  "canvas-settings": {
+    key: string;
+    value: CanvasSettingsRecord;
+  };
 }
 
 const STORE_NAMES = [
@@ -185,6 +201,8 @@ const STORE_NAMES = [
   "local-account",
   "feeds",
   "remembered-unlock",
+  "canvas-history",
+  "canvas-settings",
 ] as const;
 
 let dbPromise: Promise<IDBPDatabase<NotesDbSchema>> | null = null;

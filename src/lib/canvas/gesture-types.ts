@@ -12,6 +12,8 @@ export type ToolStyle = {
   width: number;
   /** How much pressure thins a pen's line, 0 to 1. */
   sensitivity: number;
+  /** How much a new pen or highlighter line is smoothed, 0 to 1. */
+  smoothing: number;
   shapeKind: ShapeKind;
   fill: string | null;
 };

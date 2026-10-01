@@ -34,6 +34,7 @@ export function startInk(
       color: context.style.color,
       width: context.style.width,
       ...(tool === "pen" ? { sensitivity: context.style.sensitivity } : {}),
+      smoothing: context.style.smoothing,
       zoom: context.zoom,
       x: origin.x,
       y: origin.y,

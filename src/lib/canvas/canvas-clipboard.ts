@@ -1,8 +1,9 @@
+import type { CanvasFile } from "./canvas-files";
 import { elementBounds, pageOffset } from "./element-bounds";
 import { keysBetween } from "./fractional-index";
 import { type Point, type Rect, unionRects } from "./geometry";
-import type { PlacedPage } from "./pages";
-import type { PlacedElement } from "./scene-model";
+import { type PlacedPage, toPagePoint } from "./pages";
+import type { PlacedElement, Scene } from "./scene-model";
 
 /**
  * A copied selection. Elements are stored centred on (0, 0) with no page, so they can be
@@ -88,16 +89,71 @@ export function pasteBounds(content: ClipboardContent, at: Point): Rect {
 }
 
 /**
+ * Where a paste lands for a view centred on `center`: there, on an infinite note; on a
+ * paged one, on the page under it (or the nearest, when the view is centred on a gap), at
+ * the same place on that page or its nearest edge.
+ */
+export function pastePlace(
+  scene: Pick<Scene, "layout">,
+  pages: readonly PlacedPage[],
+  center: Point,
+): { at: Point; pageId?: string } {
+  const gap = (placed: PlacedPage) =>
+    Math.max(0, placed.rect.y - center.y, center.y - (placed.rect.y + placed.rect.height));
+  const placed =
+    scene.layout === "paged"
+      ? pages.reduce<PlacedPage | null>(
+          (nearest, page) => (!nearest || gap(page) < gap(nearest) ? page : nearest),
+          null,
+        )
+      : null;
+  if (!placed) {
+    return { at: center };
+  }
+
+  const local = toPagePoint(placed, center);
+  const clamp = (value: number, max: number) => Math.min(max, Math.max(0, value));
+
+  return {
+    at: { x: clamp(local.x, placed.rect.width), y: clamp(local.y, placed.rect.height) },
+    pageId: placed.page.id,
+  };
+}
+
+/**
+ * A copy as the in-app clipboard holds it: the elements, the files their images draw (each
+ * with its bytes, so it can be saved into another note after this one has closed), and the
+ * marker written beside the PNG on the system clipboard, which is how a paste tells its
+ * own copy from a picture copied in another app since.
+ */
+export type ClipboardEntry = {
+  content: ClipboardContent;
+  files: readonly CanvasFile[];
+  marker: string;
+};
+
+/**
  * The in-app clipboard: the last copy, in memory for the tab, as the open note already is.
  * The system clipboard gets a PNG of the same selection (the canvas writes that), so a copy
  * also pastes into other apps.
  */
-let current: ClipboardContent | null = null;
+let current: ClipboardEntry | null = null;
+const listeners = new Set<() => void>();
 
-export function setClipboard(content: ClipboardContent | null): void {
-  current = content;
+export function setClipboard(entry: ClipboardEntry | null): void {
+  current = entry;
+  for (const listener of listeners) {
+    listener();
+  }
 }
 
-export function getClipboard(): ClipboardContent | null {
+export function getClipboard(): ClipboardEntry | null {
   return current;
+}
+
+/** Calls `listener` whenever the clipboard changes; returns the unsubscribe. */
+export function subscribeClipboard(listener: () => void): () => void {
+  listeners.add(listener);
+
+  return () => listeners.delete(listener);
 }

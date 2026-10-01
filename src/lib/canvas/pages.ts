@@ -1,6 +1,6 @@
 import { compareOrderKeys, keyBetween } from "./fractional-index";
 import { type Point, type Rect, rectContains } from "./geometry";
-import type { Page, PageSize, Scene, SceneElement } from "./scene-model";
+import type { Page, PageSize, SceneElement } from "./scene-model";
 
 /**
  * Paged notes: a vertical stack of Letter or A4 sheets. A scene unit is a CSS pixel, so a
@@ -23,7 +23,7 @@ export function pageDimensions(page: Pick<Page, "size" | "orientation">) {
 }
 
 /** The pages of a scene in stack order. */
-export function orderedPages(scene: Pick<Scene, "elements">): Page[] {
+export function orderedPages(scene: { elements: readonly SceneElement[] }): Page[] {
   return scene.elements
     .filter((element): element is Page => element.type === "page")
     .sort((a, b) => compareOrderKeys(a.index, b.index));
@@ -118,4 +118,20 @@ export function movedPageIndex(pages: readonly Page[], id: string, to: number): 
   const after = others[target] ?? null;
 
   return keyBetween(before?.index ?? null, after?.index ?? null);
+}
+
+/** The scene with page `id` moved to position `to`; null if it goes nowhere. */
+export function movePage(
+  elements: readonly SceneElement[],
+  id: string,
+  to: number,
+): SceneElement[] | null {
+  const index = movedPageIndex(orderedPages({ elements }), id, to);
+  if (index === null) {
+    return null;
+  }
+
+  return elements.map((element) =>
+    element.id === id ? { ...element, index, version: element.version + 1 } : element,
+  );
 }

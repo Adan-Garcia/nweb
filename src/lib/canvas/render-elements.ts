@@ -1,7 +1,6 @@
 import { resolveColor } from "./colors";
 import { localBounds } from "./element-bounds";
 import type { Rect } from "./geometry";
-import { DEFAULT_SMOOTHING } from "./pen-settings";
 import type { PlacedElement, Shape, Stroke } from "./scene-model";
 import { strokeBounds, strokeOutline } from "./stroke-geometry";
 
@@ -59,8 +58,6 @@ export type OutlineCache = Map<
   {
     version: number;
     samples: readonly number[];
-    /** The smoothing setting it was outlined with; changing the setting re-outlines it. */
-    smoothing: number;
     outline: Array<[number, number]>;
     bounds: Rect;
   }
@@ -91,21 +88,16 @@ function traceSmoothOutline(
   ctx.closePath();
 }
 
-function outlineOf(stroke: Stroke, cache: OutlineCache, smoothing: number) {
+function outlineOf(stroke: Stroke, cache: OutlineCache) {
   const cached = cache.get(stroke.id);
-  if (
-    cached?.version === stroke.version &&
-    cached.samples === stroke.samples &&
-    cached.smoothing === smoothing
-  ) {
+  if (cached?.version === stroke.version && cached.samples === stroke.samples) {
     return cached;
   }
 
   const entry = {
     version: stroke.version,
     samples: stroke.samples,
-    smoothing,
-    outline: strokeOutline(stroke, smoothing),
+    outline: strokeOutline(stroke),
     bounds: strokeBounds(stroke),
   };
   cache.set(stroke.id, entry);
@@ -114,24 +106,12 @@ function outlineOf(stroke: Stroke, cache: OutlineCache, smoothing: number) {
 }
 
 /** Bounds in the element's own space, from the cache for strokes. */
-export function cachedBounds(
-  element: PlacedElement,
-  cache: OutlineCache,
-  smoothing = DEFAULT_SMOOTHING,
-): Rect {
-  return element.type === "stroke"
-    ? outlineOf(element, cache, smoothing).bounds
-    : localBounds(element);
+export function cachedBounds(element: PlacedElement, cache: OutlineCache): Rect {
+  return element.type === "stroke" ? outlineOf(element, cache).bounds : localBounds(element);
 }
 
-function drawStroke(
-  ctx: DrawingContext,
-  stroke: Stroke,
-  theme: CanvasTheme,
-  cache: OutlineCache,
-  smoothing: number,
-) {
-  const { outline } = outlineOf(stroke, cache, smoothing);
+function drawStroke(ctx: DrawingContext, stroke: Stroke, theme: CanvasTheme, cache: OutlineCache) {
+  const { outline } = outlineOf(stroke, cache);
   if (!outline.length) {
     return;
   }
@@ -195,13 +175,10 @@ export function drawElement(
     theme: CanvasTheme;
     images: ReadonlyMap<string, CanvasImageSource>;
     cache: OutlineCache;
-    smoothing?: number;
   },
 ) {
-  const smoothing = options.smoothing ?? DEFAULT_SMOOTHING;
-
   if (element.type === "stroke") {
-    drawStroke(ctx, element, options.theme, options.cache, smoothing);
+    drawStroke(ctx, element, options.theme, options.cache);
     return;
   }
   if (element.type === "shape") {

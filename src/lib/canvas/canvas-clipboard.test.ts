@@ -1,11 +1,13 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   copyElements,
   getClipboard,
   pasteBounds,
   pasteElements,
+  pastePlace,
   setClipboard,
+  subscribeClipboard,
 } from "./canvas-clipboard";
 import { layoutById, layoutPages } from "./pages";
 import { createPage, type ImageElement, type Shape } from "./scene-model";
@@ -105,11 +107,39 @@ describe("pasteElements", () => {
   });
 });
 
+describe("where a paste lands", () => {
+  const pages = layoutPages([createPage("a0", "p1"), createPage("a1", "p2")]);
+
+  it("lands in the middle of the view on an infinite note", () => {
+    expect(pastePlace({ layout: "infinite" }, [], { x: 5, y: 6 })).toEqual({ at: { x: 5, y: 6 } });
+  });
+
+  it("lands on the page in view, or the nearest one, inside its edges", () => {
+    expect(pastePlace({ layout: "paged" }, pages, { x: 0, y: 100 })).toEqual({
+      at: { x: 408, y: 100 },
+      pageId: "p1",
+    });
+    expect(pastePlace({ layout: "paged" }, pages, { x: 9000, y: 1080 })).toEqual({
+      at: { x: 816, y: 0 },
+      pageId: "p2",
+    });
+    expect(pastePlace({ layout: "paged" }, [], { x: 1, y: 2 })).toEqual({ at: { x: 1, y: 2 } });
+  });
+});
+
 describe("the in-app clipboard", () => {
-  it("holds the last copy", () => {
+  it("holds the last copy and tells whoever listens that it changed", () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeClipboard(listener);
     expect(getClipboard()).toBeNull();
     const content = copyElements([box], new Set(["b"]), new Map());
-    setClipboard(content);
-    expect(getClipboard()).toBe(content);
+    const entry = content && { content, files: [], marker: "copy-1" };
+    setClipboard(entry);
+    expect(getClipboard()).toBe(entry);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+    setClipboard(null);
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });

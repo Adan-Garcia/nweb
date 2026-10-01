@@ -1,3 +1,5 @@
+import { base64ToBytes } from "../crypto/base64";
+
 export function revokeObjectUrls(urls: readonly string[]) {
   for (const url of urls) {
     URL.revokeObjectURL(url);
@@ -6,7 +8,11 @@ export function revokeObjectUrls(urls: readonly string[]) {
 
 /** Hands the browser a generated file to save, then releases the object URL. */
 export function downloadTextFile(contents: string, fileName: string, mimeType: string) {
-  const url = URL.createObjectURL(new Blob([contents], { type: mimeType }));
+  downloadBlob(new Blob([contents], { type: mimeType }), fileName);
+}
+
+export function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
 
   anchor.href = url;
@@ -36,4 +42,18 @@ export function blobToDataUrl(blob: Blob): Promise<string> {
 
     reader.readAsDataURL(blob);
   });
+}
+
+/** The inverse of `blobToDataUrl` for a base64 data URL; null for anything else. */
+export function dataUrlToBlob(dataUrl: string): Blob | null {
+  const match = /^data:([^;,]*);base64,(.*)$/.exec(dataUrl);
+  if (!match) {
+    return null;
+  }
+
+  try {
+    return new Blob([base64ToBytes(match[2])], { type: match[1] });
+  } catch {
+    return null;
+  }
 }

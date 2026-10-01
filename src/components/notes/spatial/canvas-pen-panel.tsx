@@ -44,7 +44,8 @@ const percent = (value: number) => `${Math.round(value * 100)}%`;
 
 /**
  * Width, pressure and smoothing for the tool in hand, and the saved presets. Pressure is
- * the pen's alone (the highlighter ignores it); smoothing applies to all ink, everywhere.
+ * the pen's alone (the highlighter ignores it). Smoothing applies to the next line drawn
+ * with either, and leaves the lines already drawn as they are.
  */
 export function CanvasPenPanel({ tools }: { tools: CanvasTools }) {
   const { style } = tools;

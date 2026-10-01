@@ -112,6 +112,20 @@ describe("useCanvasImageDrop", () => {
     expect(image.type === "image" && image.pageId).toEqual(expect.any(String));
   });
 
+  it("leaves a paste the canvas's own copy has claimed", () => {
+    const { host, optimizeImage } = setup();
+    const claimed = withFiles(new Event("paste", { cancelable: true }), "clipboardData", [
+      picture(),
+    ]);
+    claimed.preventDefault();
+
+    act(() => {
+      host.dispatchEvent(claimed);
+    });
+
+    expect(optimizeImage).not.toHaveBeenCalled();
+  });
+
   it("ignores a drag or paste with no files, and an image that will not decode", async () => {
     const { host, result, optimizeImage } = setup({ broken: true });
 

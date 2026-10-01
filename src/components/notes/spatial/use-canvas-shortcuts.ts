@@ -1,11 +1,12 @@
 import { type RefObject, useCallback, useEffect } from "react";
 
 import type { CanvasCamera } from "@/components/notes/spatial/use-canvas-camera";
+import type { CanvasClipboard } from "@/components/notes/spatial/use-canvas-clipboard";
 import type { CanvasSceneState } from "@/components/notes/spatial/use-canvas-scene";
 import { fitRect, toScene } from "@/lib/canvas/camera";
 import { contentBounds } from "@/lib/canvas/element-bounds";
 import { layoutById, layoutPages, orderedPages, pageAt } from "@/lib/canvas/pages";
-import { isPlaced, removeElements } from "@/lib/canvas/scene-edits";
+import { isPlaced } from "@/lib/canvas/scene-edits";
 import { commandForKey } from "@/lib/canvas/shortcuts";
 import type { CanvasTool } from "@/lib/canvas/tools";
 import { isTypingTarget } from "@/lib/utils";
@@ -36,6 +37,7 @@ export function useFitView(sceneState: CanvasSceneState, camera: CanvasCamera) {
 export function useCanvasShortcuts({
   hostRef,
   sceneState,
+  clipboard,
   tool,
   setTool,
   fitView,
@@ -43,12 +45,14 @@ export function useCanvasShortcuts({
 }: {
   hostRef: RefObject<HTMLElement | null>;
   sceneState: CanvasSceneState;
+  clipboard: Pick<CanvasClipboard, "copy" | "remove">;
   tool: CanvasTool;
   setTool: (tool: CanvasTool) => void;
   fitView: () => void;
   isReadOnly: boolean;
 }) {
-  const { liveRef, selection, setSelection, commit, undo, redo } = sceneState;
+  const { undo, redo } = sceneState;
+  const { copy, remove } = clipboard;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -61,7 +65,8 @@ export function useCanvasShortcuts({
         return;
       }
       const command = commandForKey(event, tool);
-      if (!command || (isReadOnly && command.type !== "fit")) {
+      // A paste is left to the browser, whose paste event carries what is on the clipboard.
+      if (!command || command.type === "paste" || (isReadOnly && command.type !== "fit")) {
         return;
       }
 
@@ -74,25 +79,14 @@ export function useCanvasShortcuts({
         redo();
       } else if (command.type === "fit") {
         fitView();
-      } else if (command.type === "delete" && selection.size) {
-        commit(removeElements(liveRef.current.scene.elements, selection));
-        setSelection(new Set());
+      } else if (command.type === "copy") {
+        void copy();
+      } else if (command.type === "delete") {
+        remove();
       }
     };
     host.addEventListener("keydown", onKeyDown);
 
     return () => host.removeEventListener("keydown", onKeyDown);
-  }, [
-    commit,
-    fitView,
-    hostRef,
-    isReadOnly,
-    liveRef,
-    redo,
-    selection,
-    setSelection,
-    setTool,
-    tool,
-    undo,
-  ]);
+  }, [copy, fitView, hostRef, isReadOnly, redo, remove, setTool, tool, undo]);
 }

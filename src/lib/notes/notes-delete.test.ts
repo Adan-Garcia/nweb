@@ -61,12 +61,14 @@ describe("softDeleteNote", () => {
     expect(stored?.deletedAt).toEqual(expect.any(Number));
   });
 
-  it("drops the document and its media, so a tombstone keeps no content", async () => {
+  it("drops the document, its media and its undo history, so a tombstone keeps no content", async () => {
     const entry = await seedNoteWithMedia("Notes A");
+    await (await getNotesDb()).put("canvas-history", { id: entry.id, updatedAt: 1, steps: "{}" });
 
     await softDeleteNote(entry.id);
 
     const database = await getNotesDb();
+    expect(await database.get("canvas-history", entry.id)).toBeUndefined();
     expect(await database.get("notes-documents", entry.id)).toBeUndefined();
     expect(await database.get("notes-media", "media-Notes A")).toBeUndefined();
   });

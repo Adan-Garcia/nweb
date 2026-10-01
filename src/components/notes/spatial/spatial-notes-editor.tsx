@@ -2,6 +2,8 @@ import { CanvasEditor } from "@/components/notes/spatial/canvas-editor";
 import type { NotesSpatialInitialData, SpatialSnapshot } from "@/components/notes/types";
 
 type SpatialNotesEditorProps = {
+  /** The note's id: where this device keeps its undo history. */
+  documentId: string | null;
   initialData: NotesSpatialInitialData;
   onChange: (snapshot: SpatialSnapshot) => void;
   optimizeImage: (file: File) => Promise<Blob>;
@@ -13,6 +15,7 @@ type SpatialNotesEditorProps = {
  * is not opened at all, so autosave can never write an empty canvas over it.
  */
 export function SpatialNotesEditor({
+  documentId,
   initialData,
   onChange,
   optimizeImage,
@@ -36,6 +39,7 @@ export function SpatialNotesEditor({
 
   return (
     <CanvasEditor
+      documentId={documentId}
       initial={initialData}
       onChange={onChange}
       optimizeImage={optimizeImage}

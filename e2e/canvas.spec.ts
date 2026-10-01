@@ -105,12 +105,15 @@ test.describe("the drawing canvas", () => {
 
     await drawStroke(page, { x: 0.4, y: 0.4 });
     await expect.poll(() => inkPixels(page)).toBeGreaterThan(50);
+    await page.getByRole("button", { name: "More" }).click();
     await page.getByRole("button", { name: "Add page" }).click();
     await waitForAutosave(page);
 
     await reload(page);
     await expect(page.getByRole("button", { name: "Paged E2E" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Add page" })).toBeVisible();
     await expect.poll(() => inkPixels(page)).toBeGreaterThan(50);
+    await page.getByRole("button", { name: "More" }).click();
+    await page.getByRole("button", { name: "Page thumbnails" }).click();
+    await expect(page.getByRole("button", { name: "Page 2" })).toBeVisible();
   });
 });

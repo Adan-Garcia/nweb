@@ -6,6 +6,7 @@ import {
   diffElements,
   EMPTY_HISTORY,
   type History,
+  HISTORY_LIMIT,
   recordStep,
   redo,
   undo,
@@ -125,9 +126,23 @@ export function useCanvasScene(
     [publish],
   );
 
+  /**
+   * Takes on the history saved with the note, which arrives after it opens: its steps go
+   * under any made since, and undo's version checks skip whatever has changed since then.
+   */
+  const adoptHistory = useCallback((saved: History) => {
+    const live = liveRef.current;
+    const undo = [...saved.undo, ...live.history.undo].slice(-HISTORY_LIMIT);
+    const redo = live.history.undo.length ? live.history.redo : saved.redo;
+    liveRef.current = { ...live, history: { undo, redo } };
+    setHistory(liveRef.current.history);
+  }, []);
+
   return {
     scene,
     files,
+    history,
+    adoptHistory,
     selection,
     setSelection,
     canUndo: history.undo.length > 0,

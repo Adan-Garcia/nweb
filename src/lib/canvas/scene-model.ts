@@ -50,6 +50,12 @@ export const strokeSchema = placedSchema.extend({
    */
   sensitivity: z.number().min(0).max(1).optional(),
   /**
+   * How much the line was smoothed, 0 to 1: the setting when it was drawn, kept with it so
+   * changing the setting changes the next line and never the ones already on the page.
+   * Absent means the default.
+   */
+  smoothing: z.number().min(0).max(1).optional(),
+  /**
    * The view's zoom when it was drawn. Smoothing works in screen pixels, where the hand's
    * jitter is, so a stroke drawn zoomed out is smoothed over more of the scene.
    */

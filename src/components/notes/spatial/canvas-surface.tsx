@@ -1,7 +1,6 @@
 import { type RefObject, useMemo, useRef, useState } from "react";
 
 import type { CanvasCamera } from "@/components/notes/spatial/use-canvas-camera";
-import { useCanvasImages } from "@/components/notes/spatial/use-canvas-images";
 import { useCanvasPointer } from "@/components/notes/spatial/use-canvas-pointer";
 import { useCanvasRenderer } from "@/components/notes/spatial/use-canvas-renderer";
 import type { CanvasSceneState } from "@/components/notes/spatial/use-canvas-scene";
@@ -12,14 +11,13 @@ import type { InputSettings } from "@/lib/canvas/input-filter";
 import { layoutById, layoutPages, orderedPages } from "@/lib/canvas/pages";
 import { selectionBounds } from "@/lib/canvas/select-gestures";
 
-/** Until the settings to change it arrive, fingers draw until a pen has been seen. */
-const INPUT_SETTINGS: InputSettings = { fingerDraws: "auto", stylusOnly: false };
-
 type CanvasSurfaceProps = {
   hostRef: RefObject<HTMLDivElement | null>;
   sceneState: CanvasSceneState;
   camera: CanvasCamera;
   tools: CanvasTools;
+  images: ReadonlyMap<string, CanvasImageSource>;
+  inputSettings: InputSettings;
   isReadOnly: boolean;
 };
 
@@ -32,12 +30,14 @@ export function CanvasSurface({
   sceneState,
   camera,
   tools,
+  images,
+  inputSettings,
   isReadOnly,
 }: CanvasSurfaceProps) {
   const sceneCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const liveCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
-  const { scene, files, selection } = sceneState;
+  const { scene, selection } = sceneState;
 
   const pages = useMemo(() => layoutPages(orderedPages(scene)), [scene]);
   const pagesById = useMemo(() => layoutById(pages), [pages]);
@@ -45,7 +45,6 @@ export function CanvasSurface({
     () => (selection.size ? selectionBounds({ scene, pagesById }, selection) : null),
     [pagesById, scene, selection],
   );
-  const images = useCanvasImages(files);
 
   const { drawLive } = useCanvasRenderer({
     hostRef,
@@ -66,7 +65,7 @@ export function CanvasSurface({
     camera,
     tool: tools.tool,
     style: tools.style,
-    settings: INPUT_SETTINGS,
+    settings: inputSettings,
     isReadOnly,
     drawLive,
     setHidden,

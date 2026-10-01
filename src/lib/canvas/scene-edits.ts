@@ -1,5 +1,5 @@
 import { compareOrderKeys, keyBetween } from "./fractional-index";
-import type { PlacedElement, Scene, SceneElement } from "./scene-model";
+import { type PlacedElement, SAMPLE_STRIDE, type Scene, type SceneElement } from "./scene-model";
 
 /**
  * Small, pure edits every tool is made of. Each changed element gets its version bumped,
@@ -111,4 +111,57 @@ export function removePage(elements: readonly SceneElement[], pageId: string): S
   return elements.filter(
     (element) => element.id !== pageId && !(isPlaced(element) && element.pageId === pageId),
   );
+}
+
+/**
+ * Scales elements by `factor` about `anchor` (scene space). Each element is scaled in its
+ * own space, so ink on a page stays on that page; widths scale with it, so a stroke made
+ * twice as large is also twice as thick, as it would be on a photocopier.
+ */
+export function scaleElements(
+  elements: readonly SceneElement[],
+  ids: ReadonlySet<string>,
+  anchor: { x: number; y: number },
+  factor: number,
+  pageOffsetOf: (element: PlacedElement) => { x: number; y: number } | null,
+): SceneElement[] {
+  return updateElements(elements, ids, (element) => {
+    const offset = pageOffsetOf(element);
+    if (!offset) {
+      return element;
+    }
+
+    const local = { x: anchor.x - offset.x, y: anchor.y - offset.y };
+    const moved = {
+      x: local.x + (element.x - local.x) * factor,
+      y: local.y + (element.y - local.y) * factor,
+    };
+    switch (element.type) {
+      case "stroke":
+        return {
+          ...element,
+          ...moved,
+          width: element.width * factor,
+          // Every sample's dx and dy, the first two of each; pressure, tilt and time stay.
+          samples: element.samples.map((value, i) =>
+            i % SAMPLE_STRIDE < 2 ? value * factor : value,
+          ),
+        };
+      case "shape":
+        return {
+          ...element,
+          ...moved,
+          width: element.width * factor,
+          height: element.height * factor,
+          strokeWidth: element.strokeWidth * factor,
+        };
+      case "image":
+        return {
+          ...element,
+          ...moved,
+          width: element.width * factor,
+          height: element.height * factor,
+        };
+    }
+  });
 }

@@ -69,8 +69,9 @@ async function seedWorkspace() {
 }
 
 describe("cascading deletes", () => {
-  it("takes everything under a wing with it, and drops the bytes", async () => {
+  it("takes everything under a wing with it, and drops the bytes and undo history", async () => {
     const { wing, note } = await seedWorkspace();
+    await (await getNotesDb()).put("canvas-history", { id: note.id, updatedAt: 1, steps: "{}" });
 
     expect(await softDeleteWing(wing.id)).toEqual({
       flights: 1,
@@ -89,6 +90,7 @@ describe("cascading deletes", () => {
     const database = await getNotesDb();
     expect(await database.get("notes-documents", note.id)).toBeUndefined();
     expect(await database.get("notes-media", "media-1")).toBeUndefined();
+    expect(await database.get("canvas-history", note.id)).toBeUndefined();
   });
 
   it("tombstones rather than removing, so a sync can tell deleted from never-created", async () => {

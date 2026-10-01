@@ -1,19 +1,14 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useRef } from "react";
 
+import { CanvasMoreMenu } from "@/components/notes/spatial/canvas-more-menu";
+import { CanvasSelectionBar } from "@/components/notes/spatial/canvas-selection-bar";
 import { CanvasSurface } from "@/components/notes/spatial/canvas-surface";
 import { CanvasToolbar } from "@/components/notes/spatial/canvas-toolbar";
-import { useCanvasCamera } from "@/components/notes/spatial/use-canvas-camera";
-import { useCanvasImageDrop } from "@/components/notes/spatial/use-canvas-image-drop";
-import { useCanvasPdfImport } from "@/components/notes/spatial/use-canvas-pdf-import";
-import { useCanvasScene } from "@/components/notes/spatial/use-canvas-scene";
-import { useCanvasShortcuts, useFitView } from "@/components/notes/spatial/use-canvas-shortcuts";
-import { useCanvasTools } from "@/components/notes/spatial/use-canvas-tools";
-import { useElementFullscreen } from "@/components/notes/spatial/use-element-fullscreen";
-import type { SpatialSnapshot } from "@/components/notes/types";
-import type { CanvasFiles } from "@/lib/canvas/canvas-files";
-import { insertPage, layoutPages, orderedPages } from "@/lib/canvas/pages";
-import { recolorElements } from "@/lib/canvas/scene-edits";
-import type { Scene } from "@/lib/canvas/scene-model";
+import { PageThumbnails } from "@/components/notes/spatial/page-thumbnails";
+import {
+  type CanvasEditorOptions,
+  useCanvasEditor,
+} from "@/components/notes/spatial/use-canvas-editor";
 import { cn } from "@/lib/utils";
 
 const SHELL_CLASSES =
@@ -25,62 +20,21 @@ const SHELL_CLASSES =
 const COVERING_CLASSES =
   "fixed inset-0 z-50 h-dvh min-h-dvh max-[961px]:h-dvh max-[961px]:min-h-dvh rounded-none border-0";
 
-type CanvasEditorProps = {
-  initial: { scene: Scene; files: CanvasFiles };
-  onChange: (snapshot: SpatialSnapshot) => void;
-  optimizeImage: (file: File) => Promise<Blob>;
-  isReadOnly: boolean;
-};
+type CanvasEditorProps = Omit<CanvasEditorOptions, "shellRef" | "hostRef">;
 
 /** The drawing canvas: toolbar, surface, and the hooks that tie them to one scene. */
-export function CanvasEditor({ initial, onChange, optimizeImage, isReadOnly }: CanvasEditorProps) {
+export function CanvasEditor(props: CanvasEditorProps) {
   const shellRef = useRef<HTMLElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const sceneState = useCanvasScene(initial, onChange);
-  const tools = useCanvasTools();
-  const firstPage = useMemo(
-    () => layoutPages(orderedPages(initial.scene))[0]?.rect ?? null,
-    [initial.scene],
-  );
-  const camera = useCanvasCamera(hostRef, firstPage);
-  const { isFullscreen, isCovering, toggleFullscreen } = useElementFullscreen(shellRef);
-  const {
-    inputRef: pdfInputRef,
-    isImporting: isImportingPdf,
-    openPicker: openPdfPicker,
-    onInputChange: onPdfChange,
-  } = useCanvasPdfImport(sceneState, camera);
-  const fitView = useFitView(sceneState, camera);
-  const { liveRef, selection, commit } = sceneState;
-
-  useCanvasImageDrop({ hostRef, sceneState, camera, optimizeImage, isReadOnly });
-  useCanvasShortcuts({
-    hostRef,
-    sceneState,
-    tool: tools.tool,
-    setTool: tools.setTool,
-    fitView,
-    isReadOnly,
-  });
-
-  const addPage = useCallback(() => {
-    const elements = liveRef.current.scene.elements;
-    commit([...elements, insertPage(orderedPages({ elements }), null)]);
-  }, [commit, liveRef]);
-
-  /** A colour picked with something selected recolours it, as well as the tool. */
-  const pickColor = useCallback(
-    (color: string) => {
-      tools.setColor(color);
-      if (selection.size) {
-        commit(recolorElements(liveRef.current.scene.elements, selection, color));
-      }
-    },
-    [commit, liveRef, selection, tools],
-  );
+  const editor = useCanvasEditor({ ...props, shellRef, hostRef });
+  const { sceneState, tools, fullscreen, pdfInputRef, onPdfChange, isCompact } = editor;
+  const { isReadOnly } = props;
 
   return (
-    <section ref={shellRef} className={cn(SHELL_CLASSES, isCovering && COVERING_CLASSES)}>
+    <section
+      ref={shellRef}
+      className={cn(SHELL_CLASSES, fullscreen.isCovering && COVERING_CLASSES)}
+    >
       <input
         ref={pdfInputRef}
         type="file"
@@ -92,24 +46,36 @@ export function CanvasEditor({ initial, onChange, optimizeImage, isReadOnly }: C
       <CanvasToolbar
         tools={tools}
         isReadOnly={isReadOnly}
+        isCompact={isCompact}
         canUndo={sceneState.canUndo}
         canRedo={sceneState.canRedo}
         onUndo={sceneState.undo}
         onRedo={sceneState.redo}
-        onAddPage={sceneState.scene.layout === "paged" ? addPage : undefined}
-        onImportPdf={openPdfPicker}
-        isImportingPdf={isImportingPdf}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={() => void toggleFullscreen()}
-        onColorPicked={pickColor}
+        isFullscreen={fullscreen.isFullscreen}
+        onToggleFullscreen={editor.toggleFullscreen}
+        onColorPicked={editor.pickColor}
+        more={(close) => <CanvasMoreMenu actions={editor.more} onDone={close} />}
       />
+      {editor.showPages ? (
+        <PageThumbnails
+          scene={sceneState.scene}
+          pages={editor.pages}
+          images={editor.images}
+          isReadOnly={isReadOnly}
+        />
+      ) : null}
       <CanvasSurface
         hostRef={hostRef}
         sceneState={sceneState}
-        camera={camera}
+        camera={editor.camera}
         tools={tools}
+        images={editor.images}
+        inputSettings={editor.input.settings}
         isReadOnly={isReadOnly}
       />
+      {tools.tool === "lasso" && !isReadOnly ? (
+        <CanvasSelectionBar clipboard={editor.clipboard} />
+      ) : null}
     </section>
   );
 }

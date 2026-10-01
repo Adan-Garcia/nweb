@@ -1,3 +1,5 @@
+import { blobToDataUrl, dataUrlToBlob } from "../media/blob-utils";
+
 /**
  * The id of a file dropped onto a canvas: a hash of its bytes, so the same picture dropped
  * into two notes is one stored row. `notes-document-storage.ts` and `notes-delete.ts`
@@ -20,3 +22,19 @@ export type CanvasFile = {
 };
 
 export type CanvasFiles = ReadonlyMap<string, CanvasFile>;
+
+/**
+ * A file that can outlive the note it was copied from: its bytes in hand, so the note it is
+ * pasted into can save it, and a data URL rather than an object URL, which the source note
+ * revokes when it closes. Null when neither the bytes nor the URL can be read.
+ */
+export async function portableFile(file: CanvasFile): Promise<CanvasFile | null> {
+  const blob = file.blob ?? dataUrlToBlob(file.url);
+  if (!blob) {
+    return null;
+  }
+
+  const url = file.url.startsWith("data:") ? file.url : await blobToDataUrl(blob);
+
+  return { ...file, url, blob };
+}

@@ -29,8 +29,6 @@ function Harness({
       canRedo={false}
       onUndo={vi.fn()}
       onRedo={vi.fn()}
-      onImportPdf={vi.fn()}
-      isImportingPdf={false}
       isFullscreen={false}
       onToggleFullscreen={vi.fn()}
       onColorPicked={tools.setColor}
@@ -55,10 +53,41 @@ function slide(name: string, value: number) {
 }
 
 describe("CanvasToolbar", () => {
-  it("says a PDF is importing, and holds the button until it has", () => {
-    renderToolbar({ isImportingPdf: true });
+  it("opens one panel at a time, and closes More when what it holds says so", async () => {
+    const { user } = renderToolbar({
+      more: (close) => (
+        <button type="button" onClick={close}>
+          Do it
+        </button>
+      ),
+    });
 
-    expect(screen.getByRole("button", { name: "Importing PDF…" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Pen settings" }));
+    await user.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.queryByRole("group", { name: "Pen settings" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Do it" }));
+    expect(screen.queryByRole("group", { name: "More" })).not.toBeInTheDocument();
+  });
+
+  it("fits a phone in one row: colours in the pen panel, no fullscreen button", async () => {
+    const { user } = renderToolbar({ isCompact: true });
+
+    expect(screen.queryByRole("button", { name: "Blue" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Enter canvas fullscreen" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Pen settings" }));
+    const panel = screen.getByRole("group", { name: "Pen settings" });
+    expect(within(panel).getByRole("button", { name: "Blue" })).toBeInTheDocument();
+  });
+
+  it("shows a note shared to read nothing to draw with", () => {
+    renderToolbar({ isReadOnly: true });
+
+    expect(screen.queryByRole("button", { name: "Pen" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Enter canvas fullscreen" })).toBeInTheDocument();
   });
 
   it("offers the way out of fullscreen while in it", () => {

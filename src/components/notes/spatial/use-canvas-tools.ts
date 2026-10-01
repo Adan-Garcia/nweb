@@ -43,7 +43,7 @@ export function useCanvasTools() {
   const kind = inkKind(tool);
   const ink = inks[kind];
 
-  const style: ToolStyle = { ...ink, shapeKind, fill: null };
+  const style: ToolStyle = { ...ink, smoothing: preferences.penSmoothing, shapeKind, fill: null };
   const change = (patch: Partial<Ink>) =>
     setInks((current) => ({ ...current, [kind]: { ...current[kind], ...patch } }));
 

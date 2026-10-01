@@ -99,6 +99,10 @@ export function useCanvasImageDrop({
       void addImages(files, at, urls);
     };
     const onPaste = (event: ClipboardEvent) => {
+      // Claimed already by a paste of the canvas's own copy.
+      if (event.defaultPrevented) {
+        return;
+      }
       const files = Array.from(event.clipboardData?.files ?? []);
       if (files.length) {
         event.preventDefault();

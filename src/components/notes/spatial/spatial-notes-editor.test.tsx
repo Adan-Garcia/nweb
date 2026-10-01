@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SpatialSnapshot } from "@/components/notes/types";
+import { setClipboard } from "@/lib/canvas/canvas-clipboard";
 import { createScene } from "@/lib/canvas/scene-model";
 
 import { SpatialNotesEditor } from "./spatial-notes-editor";
@@ -19,6 +20,7 @@ function renderEditor(layout: "infinite" | "paged" = "infinite", isReadOnly = fa
   const onChange = vi.fn<(snapshot: SpatialSnapshot) => void>();
   render(
     <SpatialNotesEditor
+      documentId="note"
       initialData={{ status: "ready", scene: createScene(layout), files: new Map() }}
       onChange={onChange}
       optimizeImage={vi.fn()}
@@ -30,6 +32,12 @@ function renderEditor(layout: "infinite" | "paged" = "infinite", isReadOnly = fa
   return { onChange, lastScene };
 }
 
+/** Opens "More" and picks one of its rows. */
+async function fromMore(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole("button", { name: "More" }));
+  await user.click(screen.getByRole("button", { name }));
+}
+
 const pressed = (name: string) => screen.getByRole("button", { name }).getAttribute("aria-pressed");
 
 describe("SpatialNotesEditor", () => {
@@ -39,6 +47,7 @@ describe("SpatialNotesEditor", () => {
   ] as const)("says why a %s drawing cannot be opened, and offers no tools", (reason, message) => {
     render(
       <SpatialNotesEditor
+        documentId="note"
         initialData={{ status: "unreadable", reason }}
         onChange={vi.fn()}
         optimizeImage={vi.fn()}
@@ -101,7 +110,7 @@ describe("SpatialNotesEditor", () => {
       lastScene()?.elements.filter((element) => element.type === "page").length;
     expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "Add page" }));
+    await fromMore(user, "Add page");
     expect(pageCount()).toBe(2);
     expect(onChange.mock.lastCall?.[0].revision).toBe(1);
 
@@ -151,18 +160,27 @@ describe("SpatialNotesEditor", () => {
     expect(lastScene()?.elements[0]).toMatchObject({ type: "stroke", color: "ink-red" });
   });
 
-  it("offers no pages to add on an infinite canvas", () => {
+  it("offers no pages to add on an infinite canvas", async () => {
+    const user = userEvent.setup();
     renderEditor("infinite");
+    await user.click(screen.getByRole("button", { name: "More" }));
 
     expect(screen.queryByRole("button", { name: "Add page" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Page thumbnails" })).not.toBeInTheDocument();
   });
 
-  it("offers nothing but fullscreen for a note shared to read", () => {
+  it("offers only ways to look at a note shared to read", async () => {
+    const user = userEvent.setup();
     renderEditor("infinite", true);
 
     expect(screen.queryByRole("group", { name: "Tools" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Enter canvas fullscreen" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Drawing (read only)" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByRole("button", { name: "Export as PDF" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Insert PDF" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /Stylus only/ })).not.toBeInTheDocument();
   });
 
   it("answers single-key shortcuts while the canvas has focus", async () => {
@@ -176,7 +194,7 @@ describe("SpatialNotesEditor", () => {
     await user.keyboard("e");
     expect(pressed("Stroke eraser")).toBe("true");
     await user.keyboard("0");
-    await user.click(screen.getByRole("button", { name: "Add page" }));
+    await fromMore(user, "Add page");
     act(() => host?.focus());
     await user.keyboard("{Control>}z{/Control}");
     expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
@@ -202,8 +220,115 @@ describe("SpatialNotesEditor", () => {
     const input = screen.getByLabelText("PDF to insert");
     const click = vi.spyOn(input, "click");
 
-    await user.click(screen.getByRole("button", { name: "Insert PDF" }));
+    await fromMore(user, "Insert PDF");
 
     expect(click).toHaveBeenCalledOnce();
+  });
+
+  it("shows a paged note's pages small, and adds, moves, deletes and goes to them", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(HTMLDivElement.prototype, "getBoundingClientRect").mockReturnValue(
+      DOMRect.fromRect({ width: 800, height: 600 }),
+    );
+    const { lastScene } = renderEditor("paged");
+    const order = () =>
+      lastScene()
+        ?.elements.filter((element) => element.type === "page")
+        .sort((a, b) => (a.index < b.index ? -1 : 1))
+        .map((page) => page.id);
+    await fromMore(user, "Page thumbnails");
+    const strip = within(screen.getByRole("navigation", { name: "Pages" }));
+    expect(strip.getByRole("button", { name: "Delete page" })).toBeDisabled();
+
+    await user.click(strip.getByRole("button", { name: "Add page after this one" }));
+    const [first, added] = order() ?? [];
+    expect(strip.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
+
+    await user.click(strip.getByRole("button", { name: "Move page up" }));
+    expect(order()).toEqual([added, first]);
+    expect(strip.getByRole("button", { name: "Move page up" })).toBeDisabled();
+
+    await user.click(strip.getByRole("button", { name: "Page 2" }));
+    expect(strip.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
+    expect(strip.getByRole("button", { name: "Move page down" })).toBeDisabled();
+    await user.click(strip.getByRole("button", { name: "Page 1" }));
+    await user.click(strip.getByRole("button", { name: "Move page down" }));
+    expect(order()).toEqual([first, added]);
+
+    // The page moved is the one followed, and so the one in view to delete.
+    await user.click(strip.getByRole("button", { name: "Delete page" }));
+    expect(order()).toEqual([first]);
+
+    await fromMore(user, "Page thumbnails");
+    expect(screen.queryByRole("navigation", { name: "Pages" })).not.toBeInTheDocument();
+  });
+
+  it("copies, pastes and deletes a selection from the bar under the lasso", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(HTMLCanvasElement.prototype, "getBoundingClientRect").mockReturnValue(
+      DOMRect.fromRect({ width: 400, height: 300 }),
+    );
+    const { lastScene } = renderEditor();
+    const canvas = screen.getByRole("img", { name: "Drawing canvas" });
+    const press = (type: string, x: number, y: number) =>
+      act(() => {
+        fireEvent(
+          canvas,
+          new PointerEvent(type, {
+            pointerId: 1,
+            pointerType: "pen",
+            clientX: x,
+            clientY: y,
+            bubbles: true,
+          }),
+        );
+      });
+    press("pointerdown", 200, 150);
+    press("pointermove", 240, 150);
+    press("pointerup", 240, 150);
+
+    await user.click(screen.getByRole("button", { name: "Lasso" }));
+    const bar = within(screen.getByRole("toolbar", { name: "Selection" }));
+    expect(bar.getByRole("button", { name: "Copy" })).toBeDisabled();
+    for (const [type, x, y] of [
+      ["pointerdown", 190, 140],
+      ["pointermove", 250, 140],
+      ["pointermove", 250, 160],
+      ["pointermove", 190, 160],
+      ["pointerup", 190, 160],
+    ] as const) {
+      press(type, x, y);
+    }
+
+    await user.click(bar.getByRole("button", { name: "Copy" }));
+    await waitFor(() => expect(bar.getByRole("button", { name: "Paste" })).toBeEnabled());
+    await user.click(bar.getByRole("button", { name: "Paste" }));
+    expect(lastScene()?.elements).toHaveLength(2);
+
+    await user.click(bar.getByRole("button", { name: "Delete" }));
+    expect(lastScene()?.elements).toHaveLength(1);
+    setClipboard(null);
+  });
+
+  it("fits a phone's toolbar in one row", () => {
+    vi.spyOn(HTMLDivElement.prototype, "getBoundingClientRect").mockReturnValue(
+      DOMRect.fromRect({ width: 360, height: 600 }),
+    );
+    renderEditor();
+
+    expect(
+      screen.queryByRole("button", { name: "Enter canvas fullscreen" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Colour" })).not.toBeInTheDocument();
+  });
+
+  it("exports from the menu, and says when there is nothing to export", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await fromMore(user, "Export as PNG");
+    await fromMore(user, "Export as PDF");
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "More" })).toBeEnabled());
   });
 });

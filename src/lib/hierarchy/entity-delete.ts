@@ -29,6 +29,7 @@ const CASCADE_STORES = [
   "notes-media",
   "twigs",
   "pebbles",
+  "canvas-history",
 ] as const;
 
 /**
@@ -142,6 +143,7 @@ async function cascadeDelete(scope: {
     }
 
     await documentStore.delete(entry.id);
+    await transaction.objectStore("canvas-history").delete(entry.id);
     await directoryStore.put(tombstone(entry));
     summary.notes += 1;
   }

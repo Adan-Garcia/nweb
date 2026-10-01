@@ -2,7 +2,8 @@ import { getNotesDb } from "../db/notes-db";
 import { isReadOnlyKey } from "../keys/access";
 
 /**
- * Tombstones a note and drops its bytes, in one transaction.
+ * Tombstones a note and drops its bytes and this device's undo history for it, in one
+ * transaction.
  *
  * The directory entry stays as a marker so a future sync can tell "deleted here" from
  * "never created here". The document row and its media do not: a tombstone that kept them
@@ -15,7 +16,7 @@ import { isReadOnlyKey } from "../keys/access";
 export async function softDeleteNote(documentId: string): Promise<boolean> {
   const database = await getNotesDb();
   const transaction = database.transaction(
-    ["notes-directory", "notes-documents", "notes-media", "pebbles"],
+    ["notes-directory", "notes-documents", "notes-media", "pebbles", "canvas-history"],
     "readwrite",
   );
 
@@ -37,6 +38,8 @@ export async function softDeleteNote(documentId: string): Promise<boolean> {
   const doomedMediaIds = (documentRecord?.sceneFiles ?? []).map((sceneFile) => sceneFile.id);
 
   await documentStore.delete(documentId);
+  // Its undo steps hold its strokes, and there is nothing left to undo them on.
+  await transaction.objectStore("canvas-history").delete(documentId);
 
   if (doomedMediaIds.length) {
     const stillReferenced = new Set<string>();

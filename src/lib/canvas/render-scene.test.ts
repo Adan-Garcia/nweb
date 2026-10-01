@@ -227,16 +227,17 @@ describe("renderScene", () => {
     expect(plainCalls).not.toContain("drawImage(5)");
   });
 
-  it("outlines the selection with a dashed box", () => {
+  it("outlines the selection with a dashed box and four corner handles", () => {
     const { ctx, calls } = recorder();
 
-    renderScene(ctx, createScene("infinite"), [], {
+    renderScene(ctx, { ...createScene("infinite"), background: "blank" }, [], {
       ...options(),
       selection: { x: 0, y: 0, width: 5, height: 5 },
     });
 
     expect(calls).toContain("setLineDash(1)");
     expect(calls).toContain("strokeRect(4)");
+    expect(calls.filter((call) => call === "rect(4)")).toHaveLength(4);
   });
 
   it("treats a scene with no background as blank", () => {
@@ -299,16 +300,13 @@ describe("drawing elements", () => {
     expect(cachedBounds(image, cache)).toEqual({ x: 0, y: 0, width: 10, height: 10 });
   });
 
-  it("re-outlines a stroke when the smoothing setting changes", () => {
+  it("outlines a stroke with its own smoothing, whatever the setting is now", () => {
     const cache: OutlineCache = new Map();
-    const ink = stroke("s", "pen", "a0");
-    cachedBounds(ink, cache, 0.5);
-    const first = cache.get("s");
+    const bent = [0, 0, 0.5, 0, 0, 0, 10, 8, 0.5, 0, 0, 8, 20, 0, 0.5, 0, 0, 8];
+    cachedBounds({ ...stroke("raw", "pen", "a0"), samples: bent, smoothing: 0 }, cache);
+    cachedBounds({ ...stroke("smooth", "pen", "a0"), samples: bent, smoothing: 1 }, cache);
 
-    cachedBounds(ink, cache, 0.5);
-    expect(cache.get("s")).toBe(first);
-    cachedBounds(ink, cache, 0);
-    expect(cache.get("s")).not.toBe(first);
+    expect(cache.get("smooth")?.outline).not.toEqual(cache.get("raw")?.outline);
   });
 
   it("layers images under highlighter under everything else", () => {

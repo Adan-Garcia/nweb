@@ -10,8 +10,12 @@ import {
   layerOf,
   type OutlineCache,
 } from "./render-elements";
+import { cornerPoint, CORNERS } from "./resize-gestures";
 import { isPlaced, sortByIndex } from "./scene-edits";
 import type { Background, PlacedElement, Scene } from "./scene-model";
+
+/** A selection's corner handles, in screen pixels. */
+const HANDLE_SIZE = 9;
 
 export type RenderOptions = {
   camera: Camera;
@@ -21,7 +25,6 @@ export type RenderOptions = {
   theme: CanvasTheme;
   images: ReadonlyMap<string, CanvasImageSource>;
   cache: OutlineCache;
-  smoothing?: number;
 };
 
 function applyCamera(ctx: DrawingContext, { camera, dpr }: RenderOptions) {
@@ -71,7 +74,7 @@ function drawLayered(
   options: RenderOptions,
 ) {
   const visible = elements.filter((element) =>
-    rectsIntersect(cachedBounds(element, options.cache, options.smoothing), area),
+    rectsIntersect(cachedBounds(element, options.cache), area),
   );
   for (const layer of [0, 1, 2]) {
     for (const element of visible) {
@@ -171,6 +174,18 @@ function drawSelectionBox(ctx: DrawingContext, box: Rect, options: RenderOptions
   ctx.lineWidth = 1.5 / options.camera.zoom;
   ctx.setLineDash([6 / options.camera.zoom, 4 / options.camera.zoom]);
   ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+  // Corner handles to resize by, a fixed size on screen whatever the zoom.
+  const size = HANDLE_SIZE / options.camera.zoom;
+  ctx.setLineDash([]);
+  ctx.fillStyle = options.theme.paper;
+  ctx.beginPath();
+  for (const corner of CORNERS) {
+    const { x, y } = cornerPoint(box, corner);
+    ctx.rect(x - size / 2, y - size / 2, size, size);
+  }
+  ctx.fill();
+  ctx.stroke();
   ctx.restore();
 }
 

@@ -7,6 +7,7 @@ import {
   layoutById,
   layoutPages,
   movedPageIndex,
+  movePage,
   orderedPages,
   PAGE_GAP,
   pageAt,
@@ -122,5 +123,25 @@ describe("movedPageIndex", () => {
   it("returns null when the page does not move or does not exist", () => {
     expect(movedPageIndex(pages, "p2", 1)).toBeNull();
     expect(movedPageIndex(pages, "nope", 0)).toBeNull();
+  });
+});
+
+describe("movePage", () => {
+  const pages = [letter, a4Landscape, createPage("a2", "p3")];
+
+  it("moves a page in the stack, bumping its version, and leaves the rest alone", () => {
+    const moved = movePage(pages, "p3", 0);
+
+    expect(moved && orderedPages({ elements: moved }).map((page) => page.id)).toEqual([
+      "p3",
+      "p1",
+      "p2",
+    ]);
+    expect(moved?.[2].version).toBe(2);
+    expect(moved?.[0]).toBe(letter);
+  });
+
+  it("returns null for a page that stays where it is", () => {
+    expect(movePage(pages, "p1", 0)).toBeNull();
   });
 });

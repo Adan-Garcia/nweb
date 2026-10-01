@@ -1,10 +1,12 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { getClipboard, setClipboard } from "@/lib/canvas/canvas-clipboard";
 import { createPage, createScene, type Scene, type Stroke } from "@/lib/canvas/scene-model";
 import type { CanvasTool } from "@/lib/canvas/tools";
 
 import { useCanvasCamera } from "./use-canvas-camera";
+import { useCanvasClipboard } from "./use-canvas-clipboard";
 import { useCanvasScene } from "./use-canvas-scene";
 import { useCanvasShortcuts, useFitView } from "./use-canvas-shortcuts";
 
@@ -31,13 +33,24 @@ function setup({
   host.getBoundingClientRect = () => DOMRect.fromRect({ width: 400, height: 300 });
   const setTool = vi.fn();
   const onChange = vi.fn();
+  const onPasted = vi.fn();
   const hook = renderHook(() => {
     const sceneState = useCanvasScene({ scene, files: new Map() }, onChange);
     const camera = useCanvasCamera({ current: host }, null);
     const fitView = useFitView(sceneState, camera);
-    useCanvasShortcuts({
-      hostRef: { current: withHost ? host : null },
+    const hostRef = { current: withHost ? host : null };
+    const clipboard = useCanvasClipboard({
+      hostRef,
       sceneState,
+      camera,
+      images: new Map(),
+      isReadOnly,
+      onPasted,
+    });
+    useCanvasShortcuts({
+      hostRef,
+      sceneState,
+      clipboard,
       tool,
       setTool,
       fitView,
@@ -53,7 +66,7 @@ function setup({
     return event;
   };
 
-  return { host, setTool, onChange, press, ...hook };
+  return { host, setTool, onChange, onPasted, press, ...hook };
 }
 
 describe("useCanvasShortcuts", () => {
@@ -97,6 +110,18 @@ describe("useCanvasShortcuts", () => {
     press("Backspace");
     expect(result.current.sceneState.scene.elements.map((element) => element.id)).toEqual(["b"]);
     expect(result.current.sceneState.selection.size).toBe(0);
+  });
+
+  it("copies the selection, and leaves a paste to the browser's paste event", async () => {
+    const { result, press } = setup({
+      scene: { ...createScene("infinite"), elements: [stroke("a", 0)] },
+    });
+    act(() => result.current.sceneState.setSelection(new Set(["a"])));
+
+    expect(press("c", { ctrlKey: true }).defaultPrevented).toBe(true);
+    await waitFor(() => expect(getClipboard()).not.toBeNull());
+    expect(press("v", { ctrlKey: true }).defaultPrevented).toBe(false);
+    setClipboard(null);
   });
 
   it("only fits the view on a note shared to read", () => {
