@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   decodeSamples,
   densify,
+  dropCrowdedSamples,
   encodeSamples,
   type InputSample,
+  relaxPath,
   smoothPositions,
   smoothPressure,
   strokeBounds,
@@ -36,12 +38,21 @@ describe("encodeSamples and decodeSamples", () => {
   });
 
   it("draws a pointer without a pressure sensor at the pen's base width", () => {
-    const { samples } = encodeSamples([
-      { x: 0, y: 0, pressure: 0, tiltX: 0, tiltY: 0, time: 0 },
-      { x: 1, y: 0, pressure: 1.4, tiltX: 0, tiltY: 0, time: 5 },
-    ]);
+    const flat = (pressure: number) =>
+      encodeSamples(line(2).map((sample) => ({ ...sample, pressure }))).samples;
 
-    expect([samples[2], samples[8]]).toEqual([0.5, 1]);
+    expect([flat(0)[2], flat(0)[8]]).toEqual([0.5, 0.5]);
+    expect(flat(1.4)[2]).toBe(1);
+  });
+
+  it("gives a pen's touch-down sample, before the sensor reads, the first real pressure", () => {
+    const pressures = [0, 0.3, 0, 0.7];
+    const { samples } = encodeSamples(
+      line(4).map((sample, i) => ({ ...sample, pressure: pressures[i] })),
+    );
+
+    // A reading that drops out mid-stroke keeps the one before it.
+    expect(decodeSamples(samples).map((sample) => sample.pressure)).toEqual([0.3, 0.3, 0.3, 0.7]);
   });
 
   it("never records time running backwards, and has no origin for no samples", () => {
@@ -76,14 +87,41 @@ describe("smoothing", () => {
     expect(heavy).toBeLessThan(light);
   });
 
-  it("averages pressure with its neighbours", () => {
-    const samples = decodeSamples(encodeSamples(line(3)).samples).map((sample, i) => ({
-      ...sample,
-      pressure: [0.2, 0.8, 0.2][i],
+  it("averages pressure over the samples a few milliseconds either side", () => {
+    const pressures = [0.2, 0.8, 0.2, 0.8, 0.2];
+    const samples = [0, 10, 20, 60, 70].map((time, i) => ({
+      x: i,
+      y: 0,
+      pressure: pressures[i],
+      tiltX: 0,
+      tiltY: 0,
+      time,
     }));
 
-    const pressures = smoothPressure(samples).map((s) => s.pressure);
-    [0.5, 0.4, 0.5].forEach((expected, i) => expect(pressures[i]).toBeCloseTo(expected));
+    const smoothed = smoothPressure(samples).map((s) => s.pressure);
+    // The first three are within 24 ms of each other; the last two only of each other.
+    [0.4, 0.4, 0.4, 0.5, 0.5].forEach((expected, i) => expect(smoothed[i]).toBeCloseTo(expected));
+  });
+});
+
+describe("dropCrowdedSamples and relaxPath", () => {
+  const at = (x: number, y = 0) => ({ x, y, pressure: 0.5, tiltX: 0, tiltY: 0, time: x });
+
+  it("drops samples a hair from the last kept one, but always keeps the last", () => {
+    const kept = dropCrowdedSamples([at(0), at(0.5), at(2), at(2.4), at(4), at(4.3)]);
+
+    expect(kept.map((sample) => sample.x)).toEqual([0, 2, 4.3]);
+    expect(dropCrowdedSamples([at(0), at(0.2)]).map((sample) => sample.x)).toEqual([0]);
+  });
+
+  it("evens out a jittery path without moving its ends or bending a straight one", () => {
+    const zigzag = [at(0), at(2, 1), at(4, -1), at(6, 1), at(8)];
+    const relaxed = relaxPath(zigzag);
+    const swing = (path: typeof zigzag) => Math.max(...path.map((sample) => Math.abs(sample.y)));
+
+    expect(swing(relaxed)).toBeLessThan(swing(zigzag) / 2);
+    expect([relaxed[0], relaxed[4]]).toEqual([zigzag[0], zigzag[4]]);
+    expect(relaxPath([at(0), at(2), at(4)])).toEqual([at(0), at(2), at(4)]);
   });
 });
 

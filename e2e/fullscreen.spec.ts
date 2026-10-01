@@ -19,3 +19,31 @@ test("the canvas shell enters and leaves fullscreen from the toolbar", async ({ 
   await expect.poll(() => canvasIsFullscreen(page)).toBe(false);
   await expect(page.getByRole("button", { name: "Enter canvas fullscreen" })).toBeVisible();
 });
+
+test("the canvas covers the window where the browser has no fullscreen for it", async ({
+  page,
+}) => {
+  // Safari on an iPhone has no element fullscreen at all.
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(Element.prototype, "requestFullscreen");
+  });
+  await openNotes(page);
+  await createNote(page, "Covering E2E", "spatial");
+  const shell = page.locator("section").filter({ has: page.getByRole("toolbar") });
+  const viewport = page.viewportSize();
+
+  await page.getByRole("button", { name: "Enter canvas fullscreen" }).click();
+
+  await expect
+    .poll(async () => {
+      const box = await shell.boundingBox();
+      return box && { x: box.x, y: box.y, width: box.width, height: box.height };
+    })
+    .toEqual({ x: 0, y: 0, width: viewport?.width, height: viewport?.height });
+
+  await page.getByRole("button", { name: "Exit canvas fullscreen" }).click();
+
+  await expect
+    .poll(async () => (await shell.boundingBox())?.width)
+    .toBeLessThan(viewport?.width ?? 0);
+});

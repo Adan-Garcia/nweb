@@ -14,11 +14,16 @@ import type { CanvasFiles } from "@/lib/canvas/canvas-files";
 import { insertPage, layoutPages, orderedPages } from "@/lib/canvas/pages";
 import { recolorElements } from "@/lib/canvas/scene-edits";
 import type { Scene } from "@/lib/canvas/scene-model";
+import { cn } from "@/lib/utils";
 
 const SHELL_CLASSES =
   "relative h-[calc(100svh_-_18rem)] min-h-[calc(100svh_-_18rem)] overflow-hidden rounded-[1rem] " +
   "border border-border bg-card max-[961px]:h-[calc(100svh_-_16.6rem)] " +
   "max-[961px]:min-h-[calc(100svh_-_16.6rem)] [&:fullscreen]:h-svh [&:fullscreen]:min-h-svh [&:fullscreen]:rounded-none";
+
+/** Standing in for fullscreen where the browser will not grant it: over the whole window. */
+const COVERING_CLASSES =
+  "fixed inset-0 z-50 h-dvh min-h-dvh max-[961px]:h-dvh max-[961px]:min-h-dvh rounded-none border-0";
 
 type CanvasEditorProps = {
   initial: { scene: Scene; files: CanvasFiles };
@@ -38,7 +43,7 @@ export function CanvasEditor({ initial, onChange, optimizeImage, isReadOnly }: C
     [initial.scene],
   );
   const camera = useCanvasCamera(hostRef, firstPage);
-  const { isFullscreen, toggleFullscreen } = useElementFullscreen(shellRef);
+  const { isFullscreen, isCovering, toggleFullscreen } = useElementFullscreen(shellRef);
   const {
     inputRef: pdfInputRef,
     isImporting: isImportingPdf,
@@ -75,7 +80,7 @@ export function CanvasEditor({ initial, onChange, optimizeImage, isReadOnly }: C
   );
 
   return (
-    <section ref={shellRef} className={SHELL_CLASSES}>
+    <section ref={shellRef} className={cn(SHELL_CLASSES, isCovering && COVERING_CLASSES)}>
       <input
         ref={pdfInputRef}
         type="file"

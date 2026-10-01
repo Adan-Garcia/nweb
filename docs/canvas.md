@@ -117,7 +117,9 @@ what is inside the string.
 *   **Images** (drop and paste) and **PDF import** with the page picker as it is today: in
     a paged note each chosen page becomes a note page with the PDF drawn as its locked
     background, in an infinite note they are placed as images.
-*   **Fullscreen, autosave, sync merge and backup**, as today.
+*   **Fullscreen, autosave, sync merge and backup**, as today. Where the browser will not
+    make the canvas fullscreen (Safari on an iPhone, and on an iPad when it refuses), it
+    covers the window instead.
 *   **Export** to PNG and PDF: a paged note exports page for page; an infinite note
     exports the bounds of its ink, split into pages for PDF.
 *   **A floating toolbar** at the top centre.
@@ -242,12 +244,23 @@ PointerEvent ─▶ filter ─▶ sampler ─▶ smoother ─▶ outline ─▶ 
 *   **Sampler.** Reads `getCoalescedEvents()` where it exists (feature-detected; it is
     not in every Safari) so a fast stroke keeps every sample the hardware delivered, not
     just one per frame.
-*   **Smoother** (`lib/canvas/stroke-geometry.ts`, pure). A one-euro filter on position,
-    and a short moving average on pressure, both with the strength exposed as a setting.
-    The raw samples are what is stored; smoothing is applied again at render time, so the
-    setting can change without rewriting notes. The smoothed path is then filled in along a
-    Catmull-Rom curve to at most two units a step, because Safari on an iPad delivers one
-    sample per frame and a fast curve between them would otherwise be straight lines.
+*   **Smoother** (`lib/canvas/stroke-geometry.ts`, pure). The raw samples are what is
+    stored (except that a pen's touch-down sample, which reports 0 before the sensor
+    reads, takes the first real pressure); everything below runs again at render time, so
+    it can change without rewriting notes. In order:
+    *   a one-euro filter on position, its strength a setting;
+    *   pressure averaged over ±24 ms, by time rather than by count, so a 240 Hz pen's
+        sensor noise does not ripple the edges and a quick stroke's few samples do not
+        jump in width;
+    *   samples closer than 1.5 units to the last one kept are dropped: the outline's edge
+        is set square to each step, and on a slow stroke steps that short point every
+        which way with the jitter;
+    *   the path is filled in along a Catmull-Rom curve to at most two units a step,
+        because Safari on an iPad delivers one sample per frame and a fast curve between
+        them would otherwise be straight lines;
+    *   a centred average over those points, which does not lag the pen as a filter
+        would, takes out what corners are left. It runs after the filling in, so it only
+        ever averages short steps and never flattens a quick stroke's few samples.
 *   **Outline.** Pressure → width along the path, with tapered ends, producing a closed
     polygon filled in one call, traced through the midpoints of its edges with quadratic
     curves so it shows no facets. This is `perfect-freehand`'s `getStroke`, called from
