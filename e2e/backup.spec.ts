@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import { visit } from "./account";
 import { expect, test } from "./fixtures";
-import { createNote, openNotes } from "./helpers";
+import { createNote, dropImage, openNotes } from "./helpers";
 
 /**
  * jsdom cannot cover this: fake-indexeddb's structured clone strips a jsdom Blob down to a
@@ -16,35 +16,7 @@ test.describe("exporting and restoring the workspace", () => {
     await openNotes(page);
     await createNote(page, "Backup E2E", "spatial");
 
-    await page.evaluate(async () => {
-      const source = document.createElement("canvas");
-      source.width = 60;
-      source.height = 40;
-      const context = source.getContext("2d");
-      if (!context) throw new Error("no 2d context");
-      context.fillStyle = "#0033cc";
-      context.fillRect(0, 0, 60, 40);
-      const blob = await new Promise<Blob | null>((resolve) => source.toBlob(resolve, "image/png"));
-      if (!blob) throw new Error("could not encode the test image");
-
-      const transfer = new DataTransfer();
-      transfer.items.add(new File([blob], "square.png", { type: "image/png" }));
-
-      const target = document.querySelector(".notes-canvas-shell .excalidraw");
-      if (!target) throw new Error("canvas not found");
-      const { left, top, width, height } = target.getBoundingClientRect();
-      for (const type of ["dragenter", "dragover", "drop"]) {
-        target.dispatchEvent(
-          new DragEvent(type, {
-            bubbles: true,
-            cancelable: true,
-            dataTransfer: transfer,
-            clientX: left + width / 2,
-            clientY: top + height / 2,
-          }),
-        );
-      }
-    });
+    await dropImage(page);
 
     await expect(page.getByText(/^Autosaved at/)).toBeVisible();
 

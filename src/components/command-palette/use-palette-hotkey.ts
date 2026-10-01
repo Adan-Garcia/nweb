@@ -1,11 +1,6 @@
 import { useEffect } from "react";
 
-function isTyping(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
-  );
-}
+import { isTypingTarget as isTyping } from "@/lib/utils";
 
 /**
  * ⌘K on a Mac and Ctrl+K elsewhere, from anywhere; "/" too, but only when it would not

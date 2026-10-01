@@ -1,8 +1,3 @@
-export const MIN_PEN_WIDTH = 0.5;
-export const MAX_PEN_WIDTH = 8;
-export const DEFAULT_PEN_WIDTH = 1;
-export const PEN_WIDTH_STEP = 0.25;
-
 export function fitWithinBounds(
   width: number,
   height: number,
@@ -22,44 +17,6 @@ export function fitWithinBounds(
     width: Math.max(1, Math.round(width * scale)),
     height: Math.max(1, Math.round(height * scale)),
   };
-}
-
-export function isPdfEmbeddableUrl(url: string | null | undefined) {
-  if (!url) {
-    return false;
-  }
-
-  try {
-    const parsed = new URL(url, "https://example.com");
-    const pathname = parsed.pathname.toLowerCase();
-
-    // An embed is rendered as a frame, and a drawing may come from somebody else's shared
-    // course. A `javascript:` or `data:` address can end in ".pdf" as easily as a real one,
-    // so the scheme is checked before the path is believed.
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-      return false;
-    }
-
-    if (pathname.endsWith(".pdf")) {
-      return true;
-    }
-
-    const format = parsed.searchParams.get("format")?.toLowerCase();
-    const extension = parsed.searchParams.get("ext")?.toLowerCase();
-    const mime = parsed.searchParams.get("mime")?.toLowerCase();
-
-    return format === "pdf" || extension === "pdf" || mime === "application/pdf";
-  } catch {
-    return false;
-  }
-}
-
-export function clampPenWidth(value: number) {
-  if (Number.isNaN(value)) {
-    return DEFAULT_PEN_WIDTH;
-  }
-
-  return Math.min(MAX_PEN_WIDTH, Math.max(MIN_PEN_WIDTH, value));
 }
 
 export function parsePdfPageSelection(input: string, totalPages: number) {

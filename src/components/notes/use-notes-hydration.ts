@@ -1,15 +1,29 @@
 import { useCallback, useState } from "react";
-import { getSceneVersion } from "@excalidraw/excalidraw";
-import type { ExcalidrawInitialDataState } from "@excalidraw/excalidraw/types";
 
 import { defaultLinearContent } from "@/components/notes/constants";
-import { parseStoredScene, restoreSceneFiles } from "@/components/notes/spatial/excalidraw-adapter";
 import type { NotesDocumentMode, NotesSpatialInitialData } from "@/components/notes/types";
 import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
+import type { CanvasFile } from "@/lib/canvas/canvas-files";
+import { createScene, readScene } from "@/lib/canvas/scene-model";
 import { revokeObjectUrls } from "@/lib/media/blob-utils";
 import type { MediaWorkerClient } from "@/lib/media/media-worker-client";
 import { loadNotesDocument } from "@/lib/notes/notes-document-storage";
+import type { LoadedSceneFile } from "@/lib/notes/notes-model";
 import { notesTrace, notesTraceError } from "@/lib/notes/notes-trace";
+
+/** A spatial note with nothing stored yet: an empty infinite canvas. */
+function emptyDrawing(): NotesSpatialInitialData {
+  return { status: "ready", scene: createScene("infinite"), files: new Map() };
+}
+
+function canvasFiles(loaded: Record<string, LoadedSceneFile>): Map<string, CanvasFile> {
+  return new Map(
+    Object.values(loaded).map((file) => [
+      file.id,
+      { id: file.id, mimeType: file.mimeType, created: file.created, url: file.dataUrl },
+    ]),
+  );
+}
 
 type UseNotesHydrationOptions = {
   refs: NotesSessionRefs;
@@ -32,16 +46,18 @@ export function useNotesHydration({
     linearSaveTimeoutRef,
     loadRequestRef,
     pendingSpatialSceneVersionRef,
+    persistedFileIdsRef,
     spatialSaveTimeoutRef,
   } = refs;
   const [isHydratingDocument, setIsHydratingDocument] = useState(false);
-  const [spatialInitialData, setSpatialInitialData] = useState<NotesSpatialInitialData>(null);
+  const [spatialInitialData, setSpatialInitialData] =
+    useState<NotesSpatialInitialData>(emptyDrawing);
   const [isSpatialEditorReloading, setIsSpatialEditorReloading] = useState(false);
   const [spatialEditorReloadKey, setSpatialEditorReloadKey] = useState(0);
 
   const recycleSpatialEditor = useCallback(async () => {
     setIsSpatialEditorReloading(true);
-    setSpatialInitialData(null);
+    setSpatialInitialData(emptyDrawing());
 
     await new Promise<void>((resolve) => {
       if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
@@ -85,6 +101,7 @@ export function useNotesHydration({
       latestSpatialSnapshotRef.current = null;
       pendingSpatialSceneVersionRef.current = null;
       latestSpatialSceneVersionRef.current = 0;
+      persistedFileIdsRef.current = new Set();
 
       try {
         const loadedDocument = await loadNotesDocument(documentId);
@@ -122,33 +139,33 @@ export function useNotesHydration({
             return;
           }
 
-          const parsedScene = parseStoredScene(decompressedScene);
-          const restoredFiles = restoreSceneFiles(loadedDocument.sceneFiles);
+          const read = readScene(decompressedScene);
 
-          notesTrace("notes-workspace", "hydrateDocument:restored-scene-files", {
+          notesTrace("notes-workspace", "hydrateDocument:restored-scene", {
             documentId,
             requestId,
+            readable: read.ok,
             storedSceneFileRefs: loadedDocument.document.sceneFiles.length,
-            restoredSceneFiles: Object.keys(restoredFiles).length,
-            restoredMimeTypes: Object.values(loadedDocument.sceneFiles).map(
-              (file) => file.mimeType,
-            ),
+            loadedSceneFiles: Object.keys(loadedDocument.sceneFiles).length,
           });
 
           revokeObjectUrls(activeObjectUrlsRef.current);
           activeObjectUrlsRef.current = loadedDocument.objectUrls;
+          persistedFileIdsRef.current = new Set(Object.keys(loadedDocument.sceneFiles));
 
-          setSpatialInitialData({
-            elements: parsedScene.elements,
-            appState: parsedScene.appState,
-            files: restoredFiles,
-          } satisfies ExcalidrawInitialDataState);
-          latestSpatialSceneVersionRef.current = getSceneVersion(parsedScene.elements);
+          setSpatialInitialData(
+            read.ok
+              ? {
+                  status: "ready",
+                  scene: read.scene,
+                  files: canvasFiles(loadedDocument.sceneFiles),
+                }
+              : { status: "unreadable", reason: read.reason },
+          );
         } else {
           revokeObjectUrls(activeObjectUrlsRef.current);
           activeObjectUrlsRef.current = [];
-          setSpatialInitialData(null);
-          latestSpatialSceneVersionRef.current = 0;
+          setSpatialInitialData(emptyDrawing());
         }
       } catch (error) {
         notesTraceError("notes-workspace", "hydrateDocument:failed", error, {
@@ -162,8 +179,8 @@ export function useNotesHydration({
         revokeObjectUrls(activeObjectUrlsRef.current);
         activeObjectUrlsRef.current = [];
         resetLinearContent(defaultLinearContent);
-        setSpatialInitialData(null);
-        latestSpatialSceneVersionRef.current = 0;
+        // Never an empty canvas: autosave would write it over the note that failed to open.
+        setSpatialInitialData({ status: "unreadable", reason: "invalid" });
       } finally {
         if (requestId === loadRequestRef.current) {
           setIsHydratingDocument(false);
@@ -186,6 +203,7 @@ export function useNotesHydration({
       linearSaveTimeoutRef,
       loadRequestRef,
       pendingSpatialSceneVersionRef,
+      persistedFileIdsRef,
       spatialSaveTimeoutRef,
       resetLinearContent,
     ],

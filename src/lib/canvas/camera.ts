@@ -89,3 +89,21 @@ export function fitRect(rect: Rect, viewport: Viewport, padding = 48): Camera {
     y: rect.y + rect.height / 2 - viewport.height / 2 / zoom,
   };
 }
+
+/**
+ * The view a note opens on: an infinite canvas centred on its origin at 100%, a paged note
+ * with its first page across the width (never past 100%) and a little space above it.
+ */
+export function openingCamera(firstPage: Rect | null, viewport: Viewport, margin = 24): Camera {
+  if (!firstPage) {
+    return { x: -viewport.width / 2, y: -viewport.height / 2, zoom: 1 };
+  }
+
+  const zoom = clampZoom(Math.min(1, (viewport.width - margin * 2) / firstPage.width));
+
+  return {
+    zoom,
+    x: firstPage.x + firstPage.width / 2 - viewport.width / 2 / zoom,
+    y: firstPage.y - margin / zoom,
+  };
+}

@@ -1,18 +1,13 @@
 import { useCallback } from "react";
-import { getSceneVersion, serializeAsJSON } from "@excalidraw/excalidraw";
-import type { ExcalidrawProps } from "@excalidraw/excalidraw/types";
 
-import {
-  collectReferencedFileIds,
-  convertSceneFilesForStorage,
-} from "@/components/notes/spatial/scene-utils";
 import type { NotesDocumentMode, SpatialSnapshot } from "@/components/notes/types";
 import type { NotesSessionRefs } from "@/components/notes/use-notes-session";
+import { referencedFileIds } from "@/lib/canvas/scene-edits";
+import { createScene, type SceneLayout, serializeScene } from "@/lib/canvas/scene-model";
 import type { MediaWorkerClient } from "@/lib/media/media-worker-client";
 import { saveSpatialDocumentPayload } from "@/lib/notes/notes-document-storage";
+import type { PersistedSceneFile } from "@/lib/notes/notes-model";
 import { notesTrace } from "@/lib/notes/notes-trace";
-
-type HandleSpatialChange = NonNullable<ExcalidrawProps["onChange"]>;
 
 type UseSpatialAutosaveOptions = {
   refs: NotesSessionRefs;
@@ -24,7 +19,7 @@ type UseSpatialAutosaveOptions = {
   markSaved: () => void;
 };
 
-/** Tracks Excalidraw scene changes and persists them, debounced. */
+/** Tracks the canvas's changes and persists them, debounced. */
 export function useSpatialAutosave({
   refs,
   mediaWorker,
@@ -38,14 +33,9 @@ export function useSpatialAutosave({
     latestSpatialSceneVersionRef,
     latestSpatialSnapshotRef,
     pendingSpatialSceneVersionRef,
+    persistedFileIdsRef,
     spatialSaveTimeoutRef,
   } = refs;
-  const optimizeImageBlob = useCallback(
-    async (blob: Blob) => {
-      return await mediaWorker.optimizeImageBlob(blob);
-    },
-    [mediaWorker],
-  );
 
   const persistSpatialSnapshot = useCallback(
     async (
@@ -53,6 +43,7 @@ export function useSpatialAutosave({
       createdMode?: NotesDocumentMode,
       snapshotOverride?: SpatialSnapshot | null,
       snapshotVersionOverride?: number | null,
+      announce = true,
     ) => {
       const snapshot = snapshotOverride ?? latestSpatialSnapshotRef.current;
       const snapshotVersion = snapshotVersionOverride ?? pendingSpatialSceneVersionRef.current;
@@ -61,49 +52,41 @@ export function useSpatialAutosave({
         return;
       }
 
-      const referencedFileIds = collectReferencedFileIds(snapshot.elements);
+      const referenced = referencedFileIds(snapshot.scene);
+      // Only files added since the note was opened carry a blob, and only those not yet
+      // written need writing; the storage keeps the rest because they are still referenced.
+      const newFiles: PersistedSceneFile[] = [...snapshot.files.values()].flatMap((file) =>
+        file.blob && referenced.has(file.id) && !persistedFileIdsRef.current.has(file.id)
+          ? [{ id: file.id, blob: file.blob, mimeType: file.mimeType, created: file.created }]
+          : [],
+      );
 
       notesTrace("notes-workspace", "persistSpatialSnapshot:start", {
         documentId,
         createdMode,
         snapshotVersion,
-        elementCount: snapshot.elements.length,
-        sceneFileCount: Object.keys(snapshot.files).length,
-        referencedFileCount: referencedFileIds.size,
+        elementCount: snapshot.scene.elements.length,
+        newFileCount: newFiles.length,
+        referencedFileCount: referenced.size,
       });
 
-      const serializedScene = serializeAsJSON(snapshot.elements, snapshot.appState, {}, "database");
-
-      const compressedScene = await mediaWorker.compressText(serializedScene);
-
-      const persistedFiles = await convertSceneFilesForStorage({
-        files: snapshot.files,
-        referencedFileIds,
-        optimizeImageBlob,
-      });
-
-      notesTrace("notes-workspace", "persistSpatialSnapshot:files-converted", {
-        documentId,
-        referencedFileCount: referencedFileIds.size,
-        persistedFileCount: persistedFiles.length,
-        persistedMimeTypes: persistedFiles.map((file) => file.mimeType),
-      });
+      const compressedScene = await mediaWorker.compressText(serializeScene(snapshot.scene));
 
       await saveSpatialDocumentPayload({
         documentId,
         createdMode,
         compressionAlgorithm: compressedScene.algorithm,
         compressed: compressedScene.bytes,
-        files: persistedFiles,
-        referencedFileIds: Array.from(referencedFileIds),
+        files: newFiles,
+        referencedFileIds: Array.from(referenced),
       });
 
-      notesTrace("notes-workspace", "persistSpatialSnapshot:stored", {
-        documentId,
-        persistedFileCount: persistedFiles.length,
-      });
-
-      markSaved();
+      for (const file of newFiles) {
+        persistedFileIdsRef.current.add(file.id);
+      }
+      if (announce) {
+        markSaved();
+      }
 
       if (pendingSpatialSceneVersionRef.current === snapshotVersion) {
         pendingSpatialSceneVersionRef.current = null;
@@ -112,10 +95,27 @@ export function useSpatialAutosave({
     [
       markSaved,
       mediaWorker,
-      optimizeImageBlob,
       latestSpatialSnapshotRef,
       pendingSpatialSceneVersionRef,
+      persistedFileIdsRef,
     ],
+  );
+
+  /**
+   * Writes a new drawing note's first, empty scene, so it opens as the kind it was made.
+   * Not announced as a save: nobody has written anything yet.
+   */
+  const writeNewScene = useCallback(
+    async (documentId: string, layout: SceneLayout) => {
+      await persistSpatialSnapshot(
+        documentId,
+        "spatial",
+        { scene: createScene(layout), files: new Map(), revision: 0 },
+        null,
+        false,
+      );
+    },
+    [persistSpatialSnapshot],
   );
 
   const scheduleSpatialPersist = useCallback(() => {
@@ -154,31 +154,22 @@ export function useSpatialAutosave({
     spatialSaveTimeoutRef,
   ]);
 
-  const handleSpatialChange = useCallback<HandleSpatialChange>(
-    (elements, appState, files) => {
-      const sceneVersion = getSceneVersion(elements);
+  const handleSpatialChange = useCallback(
+    (snapshot: SpatialSnapshot) => {
+      latestSpatialSnapshotRef.current = snapshot;
 
-      latestSpatialSnapshotRef.current = {
-        elements,
-        appState,
-        files,
-      };
-
-      if (sceneVersion === latestSpatialSceneVersionRef.current) {
+      if (snapshot.revision === latestSpatialSceneVersionRef.current) {
         return;
       }
 
-      const referencedFileIds = collectReferencedFileIds(elements);
-
       notesTrace("notes-workspace", "handleSpatialChange:scene-updated", {
-        sceneVersion,
-        elementCount: elements.length,
-        totalSceneFiles: Object.keys(files).length,
-        referencedFileCount: referencedFileIds.size,
+        revision: snapshot.revision,
+        elementCount: snapshot.scene.elements.length,
+        fileCount: snapshot.files.size,
       });
 
-      latestSpatialSceneVersionRef.current = sceneVersion;
-      pendingSpatialSceneVersionRef.current = sceneVersion;
+      latestSpatialSceneVersionRef.current = snapshot.revision;
+      pendingSpatialSceneVersionRef.current = snapshot.revision;
 
       scheduleSpatialPersist();
     },
@@ -190,5 +181,5 @@ export function useSpatialAutosave({
     ],
   );
 
-  return { persistSpatialSnapshot, handleSpatialChange };
+  return { persistSpatialSnapshot, handleSpatialChange, writeNewScene };
 }

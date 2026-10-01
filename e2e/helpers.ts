@@ -15,13 +15,15 @@ export async function openNotes(page: Page) {
 /**
  * Adds a note through the location bar (the last path segment's "Add Note..." menu item).
  * `openFrom` is the note already open, since that is what the menu's trigger is labelled
- * with; it only needs passing when creating a second note in one test.
+ * with; it only needs passing when creating a second note in one test. A spatial note is
+ * an infinite canvas unless `layout` asks for pages.
  */
 export async function createNote(
   page: Page,
   name: string,
   mode: "linear" | "spatial",
   openFrom = "Untitled note",
+  layout: "infinite" | "paged" = "infinite",
 ) {
   // The last path button shows the current note's name.
   await page.getByRole("button", { name: openFrom }).click();
@@ -31,13 +33,26 @@ export async function createNote(
   await page
     .getByRole("button", { name: mode === "spatial" ? "Spatial Note" : "Linear Note" })
     .click();
+  if (mode === "spatial") {
+    await page
+      .getByRole("button", {
+        name: layout === "paged" ? "Pages (Letter or A4)" : "Infinite canvas",
+      })
+      .click();
+  }
   await page.getByRole("button", { name: "Create and Open Note" }).click();
   await expect(page.getByRole("button", { name })).toBeVisible();
+  // The dialog fades out over the page: a press before it has gone lands on its backdrop.
+  await expect(page.getByRole("dialog")).toBeHidden();
 
   if (mode === "spatial") {
-    await expect(page.locator(".notes-canvas-shell .excalidraw")).toBeVisible();
-    await expect(page.locator(".notes-canvas-shell canvas.static")).toBeVisible();
+    await expect(drawingCanvas(page)).toBeVisible();
   }
+}
+
+/** The canvas that takes input. The scene is drawn on the one beneath it. */
+export function drawingCanvas(page: Page) {
+  return page.getByRole("img", { name: "Drawing canvas" });
 }
 
 /** Waits for an autosave to be reported, so a reload will find the data. */
@@ -46,26 +61,47 @@ export async function waitForAutosave(page: Page) {
 }
 
 /**
- * How many pixels of Excalidraw's drawing canvas differ from its background. Zero means an empty
- * canvas; strokes, shapes and images all raise it.
+ * How many pixels of the drawn scene are ink: opaque, and on a paged note unlike its
+ * paper (the most common colour). Zero means nothing drawn; the faint background dots and
+ * lines are translucent, so they never count. Strokes, shapes and images all do.
  */
 export async function inkPixels(page: Page): Promise<number> {
-  return page.evaluate(() => {
-    const canvas = document.querySelector<HTMLCanvasElement>(".notes-canvas-shell canvas.static");
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context) {
+  return drawingCanvas(page).evaluate((live) => {
+    const canvas = live.previousElementSibling;
+    if (!(canvas instanceof HTMLCanvasElement)) {
+      return -1;
+    }
+    const context = canvas.getContext("2d");
+    if (!context) {
       return -1;
     }
 
     const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+    const counts = new Map<number, number>();
+    let opaque = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] >= 200) {
+        opaque += 1;
+        const key = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+    // Paper covers most of a paged note's view; an infinite canvas has none behind its ink.
+    const hasPaper = opaque * 4 > data.length * 0.5;
+    const [paper] = hasPaper
+      ? ([...counts.entries()].sort((a, b) => b[1] - a[1])[0] ?? [-1])
+      : [-1];
+
     let inked = 0;
     for (let i = 0; i < data.length; i += 4) {
       const difference =
-        Math.abs(data[i] - data[0]) +
-        Math.abs(data[i + 1] - data[1]) +
-        Math.abs(data[i + 2] - data[2]) +
-        Math.abs(data[i + 3] - data[3]);
-      if (difference > 60) {
+        paper < 0
+          ? 255
+          : Math.abs(data[i] - ((paper >> 16) & 255)) +
+            Math.abs(data[i + 1] - ((paper >> 8) & 255)) +
+            Math.abs(data[i + 2] - (paper & 255));
+      // Above what the faint dots blend to on paper (about 90), far below dark ink (700).
+      if (data[i + 3] >= 200 && difference > 150) {
         inked += 1;
       }
     }
@@ -74,26 +110,51 @@ export async function inkPixels(page: Page): Promise<number> {
   });
 }
 
-/** Draws one freehand stroke across the middle of the canvas with the pen tool. */
-export async function drawStroke(page: Page) {
-  const canvas = page.locator(".notes-canvas-shell canvas.interactive");
-  const box = await canvas.boundingBox();
+/** Draws one freehand stroke across the middle of the canvas with the pen. */
+export async function drawStroke(page: Page, from = { x: 0.4, y: 0.6 }) {
+  const box = await drawingCanvas(page).boundingBox();
   if (!box) {
     throw new Error("canvas is not visible");
   }
 
-  // Start right of centre: choosing a tool opens Excalidraw's properties panel over the left of
-  // the canvas, and whether it has rendered yet depends on load.
-  const startX = box.x + box.width * 0.5;
-  const startY = box.y + box.height * 0.6;
-
-  // The tool buttons are radio inputs hidden behind a styled label; click the label like a user.
-  await page.locator("label.ToolIcon", { has: page.getByTestId("toolbar-freedraw") }).click();
-  await expect(page.getByTestId("toolbar-freedraw")).toBeChecked();
+  await page.getByRole("button", { name: "Pen", exact: true }).click();
+  const startX = box.x + box.width * from.x;
+  const startY = box.y + box.height * from.y;
   await page.mouse.move(startX, startY);
   await page.mouse.down();
   await page.mouse.move(startX + box.width * 0.25, startY + 40, { steps: 12 });
   await page.mouse.up();
+}
+
+/** Drops an image file onto the middle of the canvas, as the browser would. */
+export async function dropImage(page: Page) {
+  await drawingCanvas(page).evaluate(async (target) => {
+    const source = document.createElement("canvas");
+    source.width = 120;
+    source.height = 90;
+    const context = source.getContext("2d");
+    if (!context) throw new Error("no 2d context");
+    context.fillStyle = "#cc0000";
+    context.fillRect(0, 0, 120, 90);
+    const blob = await new Promise<Blob | null>((resolve) => source.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("could not encode the test image");
+
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([blob], "square.png", { type: "image/png" }));
+
+    const { left, top, width, height } = target.getBoundingClientRect();
+    for (const type of ["dragenter", "dragover", "drop"]) {
+      target.dispatchEvent(
+        new DragEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: transfer,
+          clientX: left + width / 2,
+          clientY: top + height / 2,
+        }),
+      );
+    }
+  });
 }
 
 /** A minimal but valid PDF with `pages` pages, each a black block plus the text "Page N". */

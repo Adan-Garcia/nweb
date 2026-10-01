@@ -1,14 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  clampPenWidth,
-  DEFAULT_PEN_WIDTH,
-  fitWithinBounds,
-  isPdfEmbeddableUrl,
-  MAX_PEN_WIDTH,
-  MIN_PEN_WIDTH,
-  parsePdfPageSelection,
-} from "./spatial-notes-editor-utils";
+import { fitWithinBounds, parsePdfPageSelection } from "./spatial-notes-editor-utils";
 
 describe("fitWithinBounds", () => {
   it("leaves a size that already fits untouched (never scales up)", () => {
@@ -27,61 +19,6 @@ describe("fitWithinBounds", () => {
   it("returns 1x1 for an empty or negative size", () => {
     expect(fitWithinBounds(0, 100, 10, 10)).toEqual({ width: 1, height: 1 });
     expect(fitWithinBounds(100, -5, 10, 10)).toEqual({ width: 1, height: 1 });
-  });
-});
-
-describe("isPdfEmbeddableUrl", () => {
-  it.each([
-    "https://site.test/notes.pdf",
-    "https://site.test/NOTES.PDF",
-    "/files/a.pdf?download=1",
-    "https://site.test/get?format=pdf",
-    "https://site.test/get?ext=PDF",
-    "https://site.test/get?mime=application/pdf",
-  ])("accepts %s", (url) => {
-    expect(isPdfEmbeddableUrl(url)).toBe(true);
-  });
-
-  it.each([
-    "https://site.test/page.html",
-    "https://site.test/get?format=png",
-    "https://site.test/pdf",
-    "",
-    null,
-    undefined,
-  ])("rejects %s", (url) => {
-    expect(isPdfEmbeddableUrl(url)).toBe(false);
-  });
-
-  it("rejects a URL that cannot be parsed", () => {
-    expect(isPdfEmbeddableUrl("http://[::1")).toBe(false);
-  });
-
-  // A drawing can come from somebody else's shared course, and an embed is rendered as a
-  // frame. Only a web address may be one, however its path ends.
-  it.each([
-    "javascript:alert(document.cookie)//x.pdf",
-    "data:text/html,<script>alert(1)</script>.pdf",
-    "data:application/pdf;base64,JVBERi0=",
-    "file:///etc/passwd.pdf",
-    "blob:https://site.test/00000000-0000-0000-0000-000000000000?format=pdf",
-  ])("rejects %s, which is not a web address", (url) => {
-    expect(isPdfEmbeddableUrl(url)).toBe(false);
-  });
-});
-
-describe("clampPenWidth", () => {
-  it("passes a valid width through", () => {
-    expect(clampPenWidth(2.5)).toBe(2.5);
-  });
-
-  it("clamps to the allowed range", () => {
-    expect(clampPenWidth(0)).toBe(MIN_PEN_WIDTH);
-    expect(clampPenWidth(99)).toBe(MAX_PEN_WIDTH);
-  });
-
-  it("falls back to the default for NaN", () => {
-    expect(clampPenWidth(Number.NaN)).toBe(DEFAULT_PEN_WIDTH);
   });
 });
 

@@ -13,7 +13,6 @@ import { createMediaWorkerClient } from "@/lib/media/media-worker-client";
 export function useNotesSession() {
   const mediaWorker = useMemo(() => createMediaWorkerClient(), []);
 
-  const spatialHostRef = useRef<HTMLDivElement | null>(null);
   const linearSaveTimeoutRef = useRef<number | null>(null);
   const spatialSaveTimeoutRef = useRef<number | null>(null);
   const latestSpatialSnapshotRef = useRef<SpatialSnapshot | null>(null);
@@ -22,6 +21,8 @@ export function useNotesSession() {
   const latestSpatialSceneVersionRef = useRef(0);
   const pendingSpatialSceneVersionRef = useRef<number | null>(null);
   const activeObjectUrlsRef = useRef<string[]>([]);
+  // The open drawing's files already in storage, so a save writes each image once.
+  const persistedFileIdsRef = useRef(new Set<string>());
   const loadRequestRef = useRef(0);
   // Mirrors the open note for work that runs from a queue: by the time a queued operation
   // starts, the note that was open when it was asked for may not be the open one any more.
@@ -30,7 +31,6 @@ export function useNotesSession() {
   const refs = useMemo(
     () => ({
       activeDocumentIdRef,
-      spatialHostRef,
       linearSaveTimeoutRef,
       spatialSaveTimeoutRef,
       latestSpatialSnapshotRef,
@@ -39,11 +39,11 @@ export function useNotesSession() {
       latestSpatialSceneVersionRef,
       pendingSpatialSceneVersionRef,
       activeObjectUrlsRef,
+      persistedFileIdsRef,
       loadRequestRef,
     }),
     [
       activeDocumentIdRef,
-      spatialHostRef,
       linearSaveTimeoutRef,
       spatialSaveTimeoutRef,
       latestSpatialSnapshotRef,
@@ -52,6 +52,7 @@ export function useNotesSession() {
       latestSpatialSceneVersionRef,
       pendingSpatialSceneVersionRef,
       activeObjectUrlsRef,
+      persistedFileIdsRef,
       loadRequestRef,
     ],
   );

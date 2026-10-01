@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { elementBounds, localBounds, shapePoints, toElementSpace } from "./element-bounds";
+import {
+  contentBounds,
+  elementBounds,
+  localBounds,
+  shapePoints,
+  toElementSpace,
+} from "./element-bounds";
 import { layoutById, layoutPages } from "./pages";
 import { createPage, type Shape } from "./scene-model";
 
@@ -83,5 +89,18 @@ describe("element bounds", () => {
     expect(toElementSpace({ x: 0, y: 5 }, { pageId: "p1" }, pages)).toEqual({ x: 408, y: 5 });
     expect(toElementSpace({ x: 0, y: 5 }, {}, pages)).toEqual({ x: 0, y: 5 });
     expect(toElementSpace({ x: 0, y: 5 }, { pageId: "gone" }, pages)).toBeNull();
+  });
+});
+
+describe("contentBounds", () => {
+  it("frames everything drawn, and nothing for an empty note", () => {
+    expect(contentBounds([box, { ...box, id: "b2", x: 100 }], pages)).toEqual({
+      x: -1,
+      y: -1,
+      width: 122,
+      height: 12,
+    });
+    expect(contentBounds([], pages)).toBeNull();
+    expect(contentBounds([{ ...box, pageId: "gone" }], pages)).toBeNull();
   });
 });

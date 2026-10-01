@@ -8,7 +8,7 @@ import { isReadOnlyKey } from "../keys/access";
  * "never created here". The document row and its media do not: a tombstone that kept them
  * would grow IndexedDB forever with content nothing can reach.
  *
- * Media is counted before it is removed. Excalidraw derives an image's id from its
+ * Media is counted before it is removed. The canvas derives an image's id from its
  * contents, so the same picture dropped into two notes really is one row, and it survives
  * here for as long as another note's scene draws it or a pebble lists it.
  */

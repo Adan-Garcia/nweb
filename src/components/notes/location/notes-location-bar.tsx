@@ -84,6 +84,8 @@ export function NotesLocationBar({
         onTitleChange={createNote.setTitle}
         newNoteMode={createNote.mode}
         onModeChange={createNote.setMode}
+        newNoteLayout={createNote.layout}
+        onLayoutChange={createNote.setLayout}
         onCreate={() => {
           void createNote.submit();
         }}

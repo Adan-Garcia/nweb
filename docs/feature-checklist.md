@@ -7,8 +7,8 @@ and covered by tests. The design reasons live in [`backend.md`](./backend.md) an
 
 ## 1. Notes
 
-- [x] **Two kinds of note.** Linear notes in a full-page TipTap editor; spatial notes on an
-      infinite Excalidraw canvas. A note is created as one or the other.
+- [x] **Two kinds of note.** Linear notes in a full-page TipTap editor; spatial notes on a
+      drawing canvas, infinite or paged (Letter or A4). A note is created as one or the other.
 - [x] **Autosave.** Every edit is saved as you type, and flushed before switching notes.
 - [x] **Files on the canvas.** Drop or paste an image; import a PDF and choose which pages to
       draw. Fullscreen canvas and pen support.

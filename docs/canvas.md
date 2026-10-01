@@ -415,47 +415,51 @@ sealed scene every device reads.
 
 ## File layout
 
-Following CLAUDE.md §2.1 and the size limits (150 lines for `.tsx`, 300 for `.ts`):
+Following CLAUDE.md §2.1 and the size limits (150 lines for `.tsx`, 300 for `.ts`). What
+is built is marked; the rest is still to come.
 
 ```
-src/lib/canvas/                 pure, no React
-  scene-model.ts                Zod schema, types, format constant
-  input-filter.ts               which pointer draws
-  stroke-geometry.ts            smoothing, pressure → outline
-  hit-test.ts                   stroke eraser and lasso
-  pixel-erase.ts                cutting strokes into pieces
-  pages.ts                      page sizes, stack layout, page ↔ scene coordinates
-  backgrounds.ts                dots, grid and ruled patterns
-  canvas-clipboard.ts           in-app clipboard
+src/lib/canvas/                 pure, no React (built)
+  scene-model.ts                Zod schema, types, format constant, read and serialize
+  scene-edits.ts                move, recolour, remove, order keys on top, files used
+  fractional-index.ts           order keys between two others
+  geometry.ts, camera.ts        points, rectangles; pan, zoom, pinch, fit, opening view
+  pages.ts, backgrounds.ts      the page stack; dots, grid and ruled marks
   colors.ts                     palette tokens → colours per theme
-  spatial-index.ts              grid buckets
-  camera.ts                     pan, zoom, screen ↔ scene
-  history.ts                    undo and redo over element versions
-  history-storage.ts            sealed per-note history in the device store
-  snapping.ts                   Shift constraints and grid snapping
-  shortcuts.ts                  key → tool map
-  fractional-index.ts           index between two indexes
-  render-scene.ts               draws a scene onto a 2D context
-  export-scene.ts               PNG and PDF
-src/lib/pencil/pencil-bridge.ts web no-op, Tauri events
-src/lib/platform/is-tauri.ts
-src/components/notes/canvas/
-  canvas-surface.tsx            the two <canvas> layers
-  canvas-toolbar.tsx            replaces spatial-notes-toolbar
-  lasso-overlay.tsx
-  page-thumbnails.tsx           thumbnail strip, reorder and delete
-  color-picker.tsx              palette plus custom colour
-  pen-presets.tsx
-  use-canvas-input.ts           pointer events → filter → sampler
-  use-canvas-camera.ts
-  use-canvas-scene.ts           the scene in memory, versions, history
-src-tauri/                      Tauri config, Rust entry point, capabilities
+  stroke-geometry.ts            sample encoding, smoothing, pressure → outline
+  element-bounds.ts, hit-test.ts, spatial-index.ts
+  pixel-erase.ts, snapping.ts, history.ts, canvas-clipboard.ts
+  input-filter.ts, shortcuts.ts, tools.ts
+  gesture-types.ts, gestures.ts one press-to-lift per tool, as plain objects:
+  ink-gestures.ts, erase-gestures.ts, select-gestures.ts
+  media-placement.ts            where dropped images and imported PDF pages go
+  canvas-files.ts               content-hash ids for dropped images
+  render-elements.ts, render-scene.ts   drawing onto any 2D context
+  history-storage.ts, export-scene.ts   (step 3)
+src/components/notes/spatial/   the canvas's React side (built)
+  spatial-notes-editor.tsx      the note: its canvas, or why it cannot be shown
+  canvas-editor.tsx             toolbar, surface and the hooks that tie them together
+  canvas-surface.tsx            the scene and live <canvas> layers
+  canvas-toolbar.tsx, canvas-tool-buttons.tsx, canvas-color-swatches.tsx
+  canvas-theme.ts               design tokens → colours a 2D context can use
+  use-canvas-scene.ts           scene, files, history, selection; gestures as one step
+  use-canvas-camera.ts, use-canvas-wheel.ts
+  use-canvas-pointer.ts         pointer events → input rules → gestures
+  use-canvas-renderer.ts, use-canvas-images.ts
+  use-canvas-tools.ts           tool, and colour and width per kind of mark
+  use-canvas-shortcuts.ts       keys, and zoom-to-fit
+  use-canvas-image-drop.ts, use-canvas-pdf-import.ts
+  use-spatial-autosave.ts       saves the scene, each new image once
+  page-thumbnails.tsx, color-picker.tsx, pen-presets.tsx   (step 3)
+src/lib/pencil/pencil-bridge.ts web no-op, Tauri events (Tauri)
+src/lib/platform/is-tauri.ts    (Tauri)
+src-tauri/                      Tauri config, Rust entry point, capabilities (Tauri)
   plugins/pencil/               Swift (iOS)
 ```
 
-`components/notes/spatial/` keeps its PDF, image-ingest, fullscreen and autosave hooks,
-rewritten against the new scene; `excalidraw-adapter.ts`, `use-excalidraw-pen.ts`,
-`notes/types.ts`'s Excalidraw types and `pages/notes.css` go.
+The canvas went into `spatial/`, the folder the old editor was in, rather than a new
+`canvas/` one: it is the same feature, and the notes pipeline (hydration, autosave, flush)
+already lived beside it.
 
 ## Phases
 
@@ -474,8 +478,9 @@ All on `claude/canvas-design`, one commit or more per step, every step leaving t
     The merge needs one addition here: if one device deletes a page while another writes
     on it, the ink survives the merge (an edit beats a delete) but its page does not.
     `merge-scene.ts` should bring back a page that surviving elements still point at,
-    rather than leave ink the renderer cannot place.
-3.  **The rest of the first release.** Copy and paste, pen presets and the colour picker,
+    rather than leave ink the renderer cannot place. *Done, including that.* Moved to step
+    3: resizing a selection by its corners, and a toolbar that fits a phone in one row.
+3.  **The rest of the first release.** Resizing a selection, copy and paste, pen presets and the colour picker,
     stylus-only and finger settings, zoom-to-fit, the thumbnail strip, export.
 4.  **Hand check on the iPad** with the Pencil Pro (see "Testing"), and fixes from it.
 

@@ -1,13 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-// Excalidraw is a heavy browser-only bundle; the hook only needs these two helpers.
-let sceneVersion = 0;
-vi.mock("@excalidraw/excalidraw", () => ({
-  getSceneVersion: () => sceneVersion,
-  serializeAsJSON: (elements: readonly unknown[], appState: unknown) =>
-    JSON.stringify({ elements, appState }),
-}));
+import { createScene } from "@/lib/canvas/scene-model";
 
 // Each test gets a fresh IndexedDB and fresh lib modules (the DB connection is cached per module).
 async function loadWorkspace() {
@@ -36,8 +30,12 @@ async function loadWorkspace() {
 
 type Workspace = ReturnType<Awaited<ReturnType<typeof loadWorkspace>>["useNotesWorkspace"]>;
 
-// A minimal stand-in for Excalidraw's large AppState; the mocked serializer only echoes it.
-const appState = {} as Parameters<Workspace["handleSpatialChange"]>[1];
+/** What the canvas reports after its `revision`th change: an empty drawing will do. */
+const change = (revision: number) => ({
+  revision,
+  scene: createScene("infinite"),
+  files: new Map(),
+});
 
 /** The open note's title, read through the selection the path bar renders from. */
 function activeFeather(workspace: Workspace) {
@@ -67,10 +65,6 @@ async function savedLinearText(
   const bytes = loaded?.document.linearCompressed;
   return bytes ? new TextDecoder().decode(bytes) : null;
 }
-
-beforeEach(() => {
-  sceneVersion = 0;
-});
 
 describe("useNotesWorkspace: bootstrap", () => {
   it("creates a default note, opens it, and settles after hydrating exactly once", async () => {
@@ -219,10 +213,8 @@ describe("useNotesWorkspace: spatial persistence", () => {
   it("debounces scene changes into a single spatial save", async () => {
     const { result, spies } = await mountReady();
 
-    sceneVersion = 1;
-    act(() => result.current.handleSpatialChange([], appState, {}));
-    sceneVersion = 2;
-    act(() => result.current.handleSpatialChange([], appState, {}));
+    act(() => result.current.handleSpatialChange(change(1)));
+    act(() => result.current.handleSpatialChange(change(2)));
     expect(spies.saveSpatial).not.toHaveBeenCalled();
 
     await waitFor(() => expect(spies.saveSpatial).toHaveBeenCalledTimes(1), { timeout: 3000 });
@@ -236,8 +228,7 @@ describe("useNotesWorkspace: spatial persistence", () => {
   it("does not schedule a save when the scene version is unchanged", async () => {
     const { result, spies } = await mountReady();
 
-    sceneVersion = 0;
-    act(() => result.current.handleSpatialChange([], appState, {}));
+    act(() => result.current.handleSpatialChange(change(0)));
     await new Promise((resolve) => setTimeout(resolve, 700));
 
     expect(spies.saveSpatial).not.toHaveBeenCalled();
@@ -247,8 +238,7 @@ describe("useNotesWorkspace: spatial persistence", () => {
     const { result, documents } = await mountReady();
     const firstId = result.current.activeDocumentId ?? "";
 
-    sceneVersion = 5;
-    act(() => result.current.handleSpatialChange([], appState, {}));
+    act(() => result.current.handleSpatialChange(change(5)));
     await act(async () => {
       await result.current.saveActiveDocumentNow();
     });
@@ -261,8 +251,8 @@ describe("useNotesWorkspace: spatial persistence", () => {
 
     const stored = await documents.loadNotesDocument(firstId);
     expect(stored?.document.sceneCompressed).not.toBeNull();
-    await waitFor(() => expect(result.current.spatialInitialData).not.toBeNull());
-    expect(result.current.spatialInitialData?.elements).toEqual([]);
+    const data = result.current.spatialInitialData;
+    expect(data.status === "ready" && data.scene.elements).toEqual([]);
   });
 });
 
@@ -296,13 +286,13 @@ describe("useNotesWorkspace: spatial notes", () => {
   });
 
   it("opens a note whose scene was never saved with an empty canvas", async () => {
+    // The note the bootstrap opens was made as a linear note, so it has no scene at all.
     const { result } = await mountReady();
 
-    await act(async () => {
-      await result.current.createNoteAt(otherNote, "spatial");
+    expect(result.current.spatialInitialData).toMatchObject({
+      status: "ready",
+      scene: { layout: "infinite", elements: [] },
     });
-
-    expect(result.current.spatialInitialData).toBeNull();
   });
 });
 
@@ -323,7 +313,8 @@ describe("useNotesWorkspace: failures", () => {
     expect(result.current.activeDocumentId).toBe(firstId);
     expect(result.current.linearContent).toContain("Lecture Notes");
     expect(result.current.isHydratingDocument).toBe(false);
-    expect(result.current.spatialInitialData).toBeNull();
+    // Never an empty canvas, which autosave could write over the note that failed to load.
+    expect(result.current.spatialInitialData).toEqual({ status: "unreadable", reason: "invalid" });
   });
 
   it("still switches notes when saving the outgoing linear edits fails", async () => {
@@ -344,8 +335,7 @@ describe("useNotesWorkspace: failures", () => {
     const { result, spies } = await mountReady();
     spies.saveSpatial.mockRejectedValueOnce(new Error("quota exceeded"));
 
-    sceneVersion = 3;
-    act(() => result.current.handleSpatialChange([], appState, {}));
+    act(() => result.current.handleSpatialChange(change(3)));
     await act(async () => {
       await result.current.createNoteAt(otherNote);
     });
@@ -551,8 +541,7 @@ describe("useNotesWorkspace: deleting a note", () => {
     const { result, documents, spies } = await mountReady();
     const doomedId = result.current.activeDocumentId ?? "";
 
-    sceneVersion = 7;
-    act(() => result.current.handleSpatialChange([], appState, {}));
+    act(() => result.current.handleSpatialChange(change(7)));
 
     // Same window and the same truthful empty result, against the 500ms canvas debounce.
     // That timer persists a snapshot it captured up front and re-checks nothing, so only

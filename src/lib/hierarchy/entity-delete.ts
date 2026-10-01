@@ -161,7 +161,7 @@ async function cascadeDelete(scope: {
     }
   }
 
-  // Only the media nothing points at any more. Excalidraw derives a file's id from its
+  // Only the media nothing points at any more. The canvas derives a file's id from its
   // contents, so one picture dropped into two notes is one row: dropping it with either
   // note would leave the survivor rendering without it.
   if (doomedMediaIds.size) {

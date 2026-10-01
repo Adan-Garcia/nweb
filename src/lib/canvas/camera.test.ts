@@ -6,6 +6,7 @@ import {
   fitRect,
   MAX_ZOOM,
   MIN_ZOOM,
+  openingCamera,
   panBy,
   pinch,
   toScene,
@@ -109,5 +110,20 @@ describe("fitRect", () => {
     expect(fitRect({ x: 0, y: 0, width: 100, height: 100 }, { width: 10, height: 10 }).zoom).toBe(
       MIN_ZOOM,
     );
+  });
+});
+
+describe("openingCamera", () => {
+  it("centres an infinite canvas on its origin at 100%", () => {
+    expect(openingCamera(null, { width: 800, height: 600 })).toEqual({ x: -400, y: -300, zoom: 1 });
+  });
+
+  it("fits a paged note's first page across the width, never past 100%", () => {
+    const page = { x: -408, y: 0, width: 816, height: 1056 };
+    const narrow = openingCamera(page, { width: 456, height: 600 });
+    expect(narrow.zoom).toBeCloseTo(0.5);
+    expect(toScreen(narrow, { x: -408, y: 0 })).toEqual({ x: 24, y: 24 });
+
+    expect(openingCamera(page, { width: 2000, height: 900 }).zoom).toBe(1);
   });
 });

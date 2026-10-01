@@ -27,7 +27,7 @@ function lazyPage<Name extends string>(
 }
 
 // Every route except the landing page loads on demand. Notes alone pulls in
-// Excalidraw, TipTap and pdf.js, which the other pages should not pay for.
+// the drawing canvas, TipTap and pdf.js, which the other pages should not pay for.
 const SignupPage = lazyPage(() => import("@/pages/signup"), "SignupPage");
 const UnloggedPage = lazyPage(() => import("@/pages/unlogged"), "UnloggedPage");
 const OnboardingPage = lazyPage(() => import("@/pages/onboarding"), "OnboardingPage");

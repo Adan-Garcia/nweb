@@ -84,7 +84,7 @@ describe("softDeleteNote", () => {
   });
 
   it("keeps an image another note still draws", async () => {
-    // Excalidraw derives a file's id from its contents, so the same picture dropped into
+    // The canvas derives a file's id from its contents, so the same picture dropped into
     // two notes really is one row. Deleting either note must not blank out the other.
     const doomed = await seedNoteWithMedia("Notes A", "shared-media");
     await seedNoteWithMedia("Notes B", "shared-media");

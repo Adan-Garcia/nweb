@@ -52,3 +52,11 @@ export function focusNextFieldOnEnter(event: KeyboardEvent, form: HTMLFormElemen
 
   fields[fields.indexOf(field) + 1]?.focus();
 }
+
+/** Whether a key press is going into a text field, where it types rather than commands. */
+export function isTypingTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+  );
+}

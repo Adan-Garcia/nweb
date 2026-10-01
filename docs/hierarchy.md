@@ -12,7 +12,7 @@ A person using the app is a **flock member**.
 | **Branch** | A course or class | Everything for one class hangs off its branch. |
 | **Nest** | A tag | Marks units, or a kind of work (projects, labs, …). |
 | **Twig** | A task | Homework, exams, essays, projects, readings. |
-| **Feather** | A note | TipTap rich text, an Excalidraw scene, or both. |
+| **Feather** | A note | TipTap rich text, a canvas scene (`docs/canvas.md`), or both. |
 | **Pebble** | A file | PDFs, images and other data brought into a note. |
 
 ```
@@ -43,7 +43,7 @@ Only the feather's own title is stored on the feather. Everything else the UI sh
 path is resolved from the records when it is read (`src/lib/hierarchy/workspace-tree.ts`).
 
 A feather's body is neither HTML nor markdown at rest: what is stored is the compressed
-payload of the TipTap document, the Excalidraw scene, or both.
+payload of the TipTap document, the canvas scene, or both.
 
 ## What the lock covers
 

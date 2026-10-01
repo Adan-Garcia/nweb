@@ -176,6 +176,7 @@ describe("useNotesLocationPicker: creating a note", () => {
     expect(result.current.createNote.title).toBe("Brand new");
 
     act(() => result.current.createNote.setMode("spatial"));
+    act(() => result.current.createNote.setLayout("paged"));
     await act(async () => {
       await result.current.createNote.submit();
     });
@@ -183,6 +184,7 @@ describe("useNotesLocationPicker: creating a note", () => {
     expect(createNoteAt).toHaveBeenCalledWith(
       { branchId: seeded.math.id, nestIds: [seeded.unit1.id], feather: "Brand new" },
       "spatial",
+      "paged",
     );
     expect(result.current.createNote.isOpen).toBe(false);
     expect(result.current.createNote.isCreating).toBe(false);
@@ -200,6 +202,7 @@ describe("useNotesLocationPicker: creating a note", () => {
     expect(createNoteAt).toHaveBeenCalledWith(
       { branchId: seeded.math.id, nestIds: [], feather: "Loose" },
       "linear",
+      "infinite",
     );
   });
 

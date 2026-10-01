@@ -1,4 +1,11 @@
-import { expandRect, type Point, type Rect, rectFromPoints, rotatePoint } from "./geometry";
+import {
+  expandRect,
+  type Point,
+  type Rect,
+  rectFromPoints,
+  rotatePoint,
+  unionRects,
+} from "./geometry";
 import { type PlacedPage } from "./pages";
 import type { PlacedElement, Shape } from "./scene-model";
 import { strokeBounds } from "./stroke-geometry";
@@ -76,4 +83,12 @@ export function elementBounds(
   const rect = localBounds(element);
 
   return { ...rect, x: rect.x + offset.x, y: rect.y + offset.y };
+}
+
+/** Everything drawn, in scene space; null for an empty note. What zoom-to-fit frames. */
+export function contentBounds(
+  elements: readonly PlacedElement[],
+  pagesById: ReadonlyMap<string, PlacedPage>,
+): Rect | null {
+  return unionRects(elements.flatMap((element) => elementBounds(element, pagesById) ?? []));
 }

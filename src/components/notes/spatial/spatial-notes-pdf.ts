@@ -8,9 +8,6 @@ import {
 const PDF_RENDER_MAX_WIDTH = 1800;
 const PDF_RENDER_MAX_HEIGHT = 2400;
 
-export const PDF_INSERT_MAX_WIDTH = 1000;
-export const PDF_INSERT_MAX_HEIGHT = 1400;
-
 export type RenderedPdfPage = {
   dataUrl: string;
   width: number;
@@ -88,4 +85,20 @@ export async function renderPdfPagesToPng(pdfFile: File) {
   } finally {
     await loadingTask.destroy();
   }
+}
+
+/** The toast to show after inserting `pages`, or null when nothing needs saying. */
+export function describePdfInsert(pages: RenderedPdfPage[]): string | null {
+  if (pages.length > 1) {
+    const firstPage = pages[0].pageNumber;
+    const lastPage = pages[pages.length - 1].pageNumber;
+
+    return `Inserted ${pages.length} pages (${firstPage}-${lastPage}).`;
+  }
+
+  if (pages[0].totalPages > 1) {
+    return `Inserted page ${pages[0].pageNumber} of ${pages[0].totalPages}.`;
+  }
+
+  return null;
 }

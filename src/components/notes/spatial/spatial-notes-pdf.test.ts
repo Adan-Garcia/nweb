@@ -8,11 +8,7 @@ vi.mock("pdfjs-dist", () => ({
   getDocument: (options: unknown) => getDocument(options) as unknown,
 }));
 
-import {
-  PDF_INSERT_MAX_HEIGHT,
-  PDF_INSERT_MAX_WIDTH,
-  renderPdfPagesToPng,
-} from "./spatial-notes-pdf";
+import { describePdfInsert, type RenderedPdfPage, renderPdfPagesToPng } from "./spatial-notes-pdf";
 
 // jsdom has no canvas: give it a 2D context and a data URL encoder, and restore them afterwards.
 const originalGetContext = Object.getOwnPropertyDescriptor(
@@ -79,11 +75,6 @@ afterEach(() => {
 });
 
 describe("renderPdfPagesToPng", () => {
-  it("exposes the insert bounds used to size pages on the canvas", () => {
-    expect(PDF_INSERT_MAX_WIDTH).toBe(1000);
-    expect(PDF_INSERT_MAX_HEIGHT).toBe(1400);
-  });
-
   it("renders a one-page PDF without asking which pages", async () => {
     const prompt = vi.spyOn(window, "prompt");
     const { destroy } = fakePdf({ numPages: 1 });
@@ -162,5 +153,29 @@ describe("renderPdfPagesToPng", () => {
     fakePdf({ numPages: 1 });
     await renderPdfPagesToPng(pdfFile());
     expect(workerOptions.workerSrc).toContain("pdf.worker");
+  });
+});
+
+function page(pageNumber: number, totalPages: number): RenderedPdfPage {
+  return {
+    dataUrl: `data:image/png;base64,p${pageNumber}`,
+    width: 500,
+    height: 700,
+    pageNumber,
+    totalPages,
+  };
+}
+
+describe("describePdfInsert", () => {
+  it("summarizes a multi-page insert", () => {
+    expect(describePdfInsert([page(3, 9), page(4, 9), page(5, 9)])).toBe("Inserted 3 pages (3-5).");
+  });
+
+  it("names the single page inserted from a longer document", () => {
+    expect(describePdfInsert([page(4, 9)])).toBe("Inserted page 4 of 9.");
+  });
+
+  it("stays quiet for a one-page document", () => {
+    expect(describePdfInsert([page(1, 1)])).toBeNull();
   });
 });
