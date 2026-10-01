@@ -42,6 +42,7 @@ function recorder() {
     beginPath: call("beginPath"),
     moveTo: call("moveTo"),
     lineTo: call("lineTo"),
+    quadraticCurveTo: call("quadraticCurveTo"),
     closePath: call("closePath"),
     fill: call("fill"),
     stroke: call("stroke"),
@@ -263,6 +264,15 @@ describe("drawing elements", () => {
     expect(calls).toContain("lineTo(2)");
     expect(calls.filter((call) => call === "fill(0)")).toHaveLength(1);
     expect(calls.filter((call) => call === "stroke(0)")).toHaveLength(3);
+  });
+
+  it("traces ink in curves, so a fast bend shows no straight facets", () => {
+    const { ctx, calls } = recorder();
+
+    drawElement(ctx, stroke("ink", "pen", "a0"), { theme, images: new Map(), cache: new Map() });
+
+    expect(calls).toContain("quadraticCurveTo(4)");
+    expect(calls).not.toContain("lineTo(2)");
   });
 
   it("skips a stroke with no outline", () => {

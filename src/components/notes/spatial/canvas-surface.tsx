@@ -6,6 +6,7 @@ import { useCanvasPointer } from "@/components/notes/spatial/use-canvas-pointer"
 import { useCanvasRenderer } from "@/components/notes/spatial/use-canvas-renderer";
 import type { CanvasSceneState } from "@/components/notes/spatial/use-canvas-scene";
 import type { CanvasTools } from "@/components/notes/spatial/use-canvas-tools";
+import { useCanvasTouchGuard } from "@/components/notes/spatial/use-canvas-touch-guard";
 import { useCanvasWheel } from "@/components/notes/spatial/use-canvas-wheel";
 import type { InputSettings } from "@/lib/canvas/input-filter";
 import { layoutById, layoutPages, orderedPages } from "@/lib/canvas/pages";
@@ -71,6 +72,7 @@ export function CanvasSurface({
     setHidden,
   });
   useCanvasWheel(liveCanvasRef, camera);
+  useCanvasTouchGuard(liveCanvasRef);
 
   return (
     <div

@@ -19,6 +19,7 @@ function canvas() {
     beginPath: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
     closePath: vi.fn(),
     fill: vi.fn(),
     stroke: vi.fn(),

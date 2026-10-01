@@ -17,6 +17,7 @@ export type DrawingContext = Pick<
   | "beginPath"
   | "moveTo"
   | "lineTo"
+  | "quadraticCurveTo"
   | "closePath"
   | "fill"
   | "stroke"
@@ -56,6 +57,31 @@ export type OutlineCache = Map<
   string,
   { version: number; samples: readonly number[]; outline: Array<[number, number]>; bounds: Rect }
 >;
+
+/**
+ * Traces a closed outline through the midpoints of its edges, with each point as the
+ * control of a curve between them. Joining the points with straight lines shows facets
+ * wherever the outline bends faster than it was sampled.
+ */
+function traceSmoothOutline(
+  ctx: DrawingContext,
+  outline: ReadonlyArray<[number, number]>,
+  origin: { x: number; y: number },
+) {
+  const mid = (a: [number, number], b: [number, number]) => [
+    origin.x + (a[0] + b[0]) / 2,
+    origin.y + (a[1] + b[1]) / 2,
+  ];
+  const [startX, startY] = mid(outline[outline.length - 1], outline[0]);
+
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  outline.forEach((point, i) => {
+    const [x, y] = mid(point, outline[(i + 1) % outline.length]);
+    ctx.quadraticCurveTo(origin.x + point[0], origin.y + point[1], x, y);
+  });
+  ctx.closePath();
+}
 
 function outlineOf(stroke: Stroke, cache: OutlineCache, smoothing: number) {
   const cached = cache.get(stroke.id);
@@ -100,12 +126,7 @@ function drawStroke(
   ctx.save();
   ctx.globalAlpha = stroke.tool === "highlighter" ? 0.35 : 1;
   ctx.fillStyle = resolveColor(stroke.color, theme.dark);
-  ctx.beginPath();
-  ctx.moveTo(stroke.x + outline[0][0], stroke.y + outline[0][1]);
-  for (const [x, y] of outline.slice(1)) {
-    ctx.lineTo(stroke.x + x, stroke.y + y);
-  }
-  ctx.closePath();
+  traceSmoothOutline(ctx, outline, stroke);
   ctx.fill();
   ctx.restore();
 }

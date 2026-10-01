@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   decodeSamples,
+  densify,
   encodeSamples,
   type InputSample,
   smoothPositions,
@@ -83,6 +84,39 @@ describe("smoothing", () => {
 
     const pressures = smoothPressure(samples).map((s) => s.pressure);
     [0.5, 0.4, 0.5].forEach((expected, i) => expect(pressures[i]).toBeCloseTo(expected));
+  });
+});
+
+describe("densify", () => {
+  const sparse = [
+    { x: 0, y: 0, pressure: 0.2, tiltX: 0, tiltY: 0, time: 0 },
+    { x: 20, y: 0, pressure: 0.6, tiltX: 0, tiltY: 0, time: 16 },
+    { x: 20, y: 20, pressure: 0.6, tiltX: 0, tiltY: 0, time: 32 },
+  ];
+
+  it("keeps every sample and fills the gaps so no step is longer than two units", () => {
+    const dense = densify(sparse);
+
+    expect(dense).toEqual(expect.arrayContaining(sparse));
+    dense.slice(1).forEach((sample, i) => {
+      expect(Math.hypot(sample.x - dense[i].x, sample.y - dense[i].y)).toBeLessThanOrEqual(2.5);
+    });
+  });
+
+  it("rounds a corner rather than cutting straight across it, and blends the pressure", () => {
+    const dense = densify(sparse);
+    const between = dense.slice(1, dense.indexOf(sparse[1]));
+
+    // Heading for the turn, the curve swings out past the straight line between samples.
+    expect(between.some((sample) => sample.y < 0)).toBe(true);
+    const pressures = between.map((sample) => sample.pressure);
+    expect(pressures).toEqual([...pressures].sort((a, b) => a - b));
+    expect(Math.min(...pressures)).toBeGreaterThan(0.2);
+  });
+
+  it("leaves a dot or a stroke with nothing to fill alone", () => {
+    expect(densify(sparse.slice(0, 1))).toEqual(sparse.slice(0, 1));
+    expect(densify(line(3).map((sample) => ({ ...sample, x: sample.x / 4 })))).toHaveLength(3);
   });
 });
 

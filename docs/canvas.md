@@ -245,9 +245,12 @@ PointerEvent ─▶ filter ─▶ sampler ─▶ smoother ─▶ outline ─▶ 
 *   **Smoother** (`lib/canvas/stroke-geometry.ts`, pure). A one-euro filter on position,
     and a short moving average on pressure, both with the strength exposed as a setting.
     The raw samples are what is stored; smoothing is applied again at render time, so the
-    setting can change without rewriting notes.
+    setting can change without rewriting notes. The smoothed path is then filled in along a
+    Catmull-Rom curve to at most two units a step, because Safari on an iPad delivers one
+    sample per frame and a fast curve between them would otherwise be straight lines.
 *   **Outline.** Pressure → width along the path, with tapered ends, producing a closed
-    polygon filled in one call. This is `perfect-freehand`'s `getStroke`, called from
+    polygon filled in one call, traced through the midpoints of its edges with quadratic
+    curves so it shows no facets. This is `perfect-freehand`'s `getStroke`, called from
     `stroke-geometry.ts` only, so the rest of the canvas never imports it. Its own
     smoothing and streamline options stay off: the smoother above has already run, and
     two smoothers in a row lag the pen.
@@ -329,8 +332,9 @@ iPad-specific details that are small but required on the canvas element:
 *   `touch-action: none`, or Safari scrolls and zooms the page instead of drawing.
 *   `-webkit-user-select: none` and `-webkit-touch-callout: none`, or a long press shows
     the magnifier and selects text.
-*   `preventDefault` on `pointerdown` from a pen, so Scribble does not try to turn the
-    stroke into typed text over an input.
+*   `preventDefault` on `touchstart` (`use-canvas-touch-guard.ts`), so Scribble does not
+    read quick strokes in a row as handwriting and cancel them, and a double tap does not
+    zoom. Cancelling `pointerdown` is not enough for either.
 
 None of this can be checked in jsdom. It is checked by hand on an iPad (see "Testing").
 

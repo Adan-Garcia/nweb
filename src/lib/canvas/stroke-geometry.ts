@@ -122,6 +122,51 @@ export function smoothPressure(samples: readonly StrokeSample[]): StrokeSample[]
   });
 }
 
+/** The longest straight step left between two samples once a stroke is densified. */
+const MAX_STEP = 2;
+
+/**
+ * Fills in the path between samples along a Catmull-Rom curve, so a stroke sampled at a
+ * screen's refresh rate (Safari on an iPad, with no coalesced events) still bends smoothly
+ * instead of turning a fast curve into a few straight facets. Pressure is interpolated
+ * along it; the samples themselves are kept as they are.
+ */
+export function densify(samples: readonly StrokeSample[]): StrokeSample[] {
+  if (samples.length < 2) {
+    return [...samples];
+  }
+
+  const dense: StrokeSample[] = [samples[0]];
+  for (let i = 0; i + 1 < samples.length; i += 1) {
+    const p0 = samples[Math.max(0, i - 1)];
+    const p1 = samples[i];
+    const p2 = samples[i + 1];
+    const p3 = samples[Math.min(samples.length - 1, i + 2)];
+    const steps = Math.ceil(Math.hypot(p2.x - p1.x, p2.y - p1.y) / MAX_STEP);
+
+    for (let step = 1; step < steps; step += 1) {
+      const t = step / steps;
+      const curve = (a: number, b: number, c: number, d: number) =>
+        0.5 *
+        (2 * b +
+          (c - a) * t +
+          (2 * a - 5 * b + 4 * c - d) * t * t +
+          (3 * b - a - 3 * c + d) * t * t * t);
+
+      dense.push({
+        ...p1,
+        x: curve(p0.x, p1.x, p2.x, p3.x),
+        y: curve(p0.y, p1.y, p2.y, p3.y),
+        pressure: p1.pressure + (p2.pressure - p1.pressure) * t,
+        time: p1.time + (p2.time - p1.time) * t,
+      });
+    }
+    dense.push(p2);
+  }
+
+  return dense;
+}
+
 /**
  * The filled outline of a stroke, relative to its origin: a closed polygon to fill in one
  * call. perfect-freehand's own smoothing of the path is off (`streamline: 0`); ours has
@@ -131,7 +176,9 @@ export function strokeOutline(
   stroke: Pick<Stroke, "samples" | "width" | "tool">,
   smoothing: number = DEFAULT_SMOOTHING,
 ): Array<[number, number]> {
-  const samples = smoothPressure(smoothPositions(decodeSamples(stroke.samples), smoothing));
+  const samples = densify(
+    smoothPressure(smoothPositions(decodeSamples(stroke.samples), smoothing)),
+  );
   const isPen = stroke.tool === "pen";
 
   return getStroke(
