@@ -242,6 +242,15 @@ export async function rewriteStoredContent({
       pair,
       cursor,
       (row) => database.put("feeds", row),
+    )) +
+    // A drawing's undo steps hold its strokes, so they move with the rest of the content.
+    (await rewriteNames(
+      "canvas-history",
+      keyed(await database.getAll("canvas-history")),
+      "steps",
+      pair,
+      cursor,
+      (row) => database.put("canvas-history", row),
     ));
 
   return { documents, media, names };

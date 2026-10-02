@@ -78,7 +78,7 @@ touching only the part of the graph under the caller's grants.
 
 The client refuses that pen before the server has to. `lib/keys/access.ts` walks the graph
 the way the server does — from writer grants, everything beneath is writable — so a note
-shared to read opens read-only (TipTap not editable, Excalidraw in view mode), and every
+shared to read opens read-only (TipTap not editable, the canvas without its tools), and every
 storage module refuses to change what sits under a reader's key: a note's content, title
 and placement; a task (edit, board move, delete); a file; a course's or tag's name and
 colour; and filing anything new inside it, which throws `ReadOnlyError` and is reported in
@@ -102,9 +102,10 @@ two are merged against the base instead of one replacing the other:
     people editing different — even adjacent — paragraphs both keep their edits. Where both
     changed the same paragraph it is merged again word by word, and kept only if its markup
     is exactly what one side wrote; otherwise the later edit wins that paragraph.
-*   **A canvas** is merged by element, using Excalidraw's per-element `version`: whichever
+*   **A canvas** is merged by element, using the canvas's per-element `version`: whichever
     side touched a shape wins it, an edit beats a delete, and stacking follows the
-    fractional `index`.
+    fractional `index`. A page one side deleted while the other wrote on it comes back, so
+    the new ink has somewhere to be drawn.
 *   **Every other row** is merged field by field, the one sealed display field opened first.
 
 Where both sides changed the *same* words, shape or field, the later edit wins that piece and

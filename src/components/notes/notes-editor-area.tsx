@@ -10,21 +10,19 @@ type EditorWorkspace = Pick<
   | "isSpatialEditorReloading"
   | "activeDocumentId"
   | "spatialEditorReloadKey"
-  | "spatialHostRef"
   | "spatialInitialData"
   | "handleSpatialChange"
-  | "handleSpatialPaste"
+  | "optimizeImage"
 >;
 
 type NotesEditorAreaProps = {
   workspace: EditorWorkspace;
-  isDark: boolean;
   /** Shared with this account to read, not to change. */
   isReadOnly?: boolean;
 };
 
-/** The active note's editor: rich text, or the Excalidraw canvas. */
-export function NotesEditorArea({ workspace, isDark, isReadOnly = false }: NotesEditorAreaProps) {
+/** The active note's editor: rich text, or the drawing canvas. */
+export function NotesEditorArea({ workspace, isReadOnly = false }: NotesEditorAreaProps) {
   const notice = isReadOnly ? (
     <p role="status" className="m-0 mb-2 text-sm text-muted-foreground">
       Shared with you to read. Only people it was shared with to edit can change it.
@@ -57,11 +55,10 @@ export function NotesEditorArea({ workspace, isDark, isReadOnly = false }: Notes
       {notice}
       <SpatialNotesEditor
         key={`${workspace.activeDocumentId ?? "notes-empty"}-${workspace.spatialEditorReloadKey}`}
-        isDark={isDark}
-        hostRef={workspace.spatialHostRef}
+        documentId={workspace.activeDocumentId}
         initialData={workspace.spatialInitialData}
         onChange={workspace.handleSpatialChange}
-        onPaste={workspace.handleSpatialPaste}
+        optimizeImage={workspace.optimizeImage}
         isReadOnly={isReadOnly}
       />
     </>

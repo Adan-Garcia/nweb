@@ -147,7 +147,7 @@ describe("notes document storage", () => {
       files: [shared],
     });
 
-    // The first note loses it. Excalidraw ids an image by its contents, so both notes
+    // The first note loses it. The canvas ids an image by its contents, so both notes
     // were drawing one row, and dropping it here would blank the second.
     await saveSpatialDocumentPayload({
       documentId: "doc-one",

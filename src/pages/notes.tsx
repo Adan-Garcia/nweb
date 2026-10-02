@@ -9,14 +9,9 @@ import { NotesFileViewer } from "@/components/notes/tree/notes-file-viewer";
 import { useNoteAccess } from "@/components/notes/use-note-access";
 import { useNoteDeepLink } from "@/components/notes/use-note-deep-link";
 import { useNotesWorkspace } from "@/components/notes/use-notes-workspace";
-import { useAppearance } from "@/hooks/use-appearance";
 import { cn } from "@/lib/utils";
 
-import "@excalidraw/excalidraw/index.css";
-import "./notes.css";
-
 export function NotesPage() {
-  const { isDark } = useAppearance();
   const workspace = useNotesWorkspace();
   const picker = useNotesLocationPicker(workspace);
   const { navigationMode, chooseNavigation } = useNotesNavigation();
@@ -51,8 +46,8 @@ export function NotesPage() {
 
       {/*
           The tree is a column beside the editor on a wide screen and stacks above it on a
-          narrow one. The editor keeps `min-w-0` either way: Excalidraw's canvas will not
-          shrink below its content otherwise, and a grid column would stretch to fit it.
+          narrow one. The editor keeps `min-w-0` either way: a canvas will not shrink below
+          the size it was last drawn at otherwise, and a grid column would stretch to fit it.
         */}
       <div
         className={cn(
@@ -85,7 +80,7 @@ export function NotesPage() {
         ) : null}
 
         <div className="min-w-0">
-          <NotesEditorArea workspace={workspace} isDark={isDark} isReadOnly={isReadOnly} />
+          <NotesEditorArea workspace={workspace} isReadOnly={isReadOnly} />
         </div>
       </div>
     </PageContainer>

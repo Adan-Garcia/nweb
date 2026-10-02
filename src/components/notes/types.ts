@@ -1,5 +1,5 @@
-import type { ExcalidrawInitialDataState, ExcalidrawProps } from "@excalidraw/excalidraw/types";
-
+import type { CanvasFiles } from "@/lib/canvas/canvas-files";
+import type { Scene } from "@/lib/canvas/scene-model";
 import type {
   NotesDirectoryEntry,
   NotesDocumentMode,
@@ -8,16 +8,17 @@ import type {
 
 export type NotesMode = NotesDocumentMode;
 
-export type SceneElements = Parameters<NonNullable<ExcalidrawProps["onChange"]>>[0];
-export type SceneAppState = Parameters<NonNullable<ExcalidrawProps["onChange"]>>[1];
-export type SceneFiles = Parameters<NonNullable<ExcalidrawProps["onChange"]>>[2];
-
+/** What the spatial editor last reported: its scene, the files it draws, and a counter. */
 export type SpatialSnapshot = {
-  elements: SceneElements;
-  appState: SceneAppState;
-  files: SceneFiles;
+  scene: Scene;
+  files: CanvasFiles;
+  /** Goes up by one per change; autosave compares it to know what it has written. */
+  revision: number;
 };
 
-export type NotesSpatialInitialData = ExcalidrawInitialDataState | null;
+/** What a spatial note opens with: its drawing, or why it cannot be shown. */
+export type NotesSpatialInitialData =
+  | { status: "ready"; scene: Scene; files: CanvasFiles }
+  | { status: "unreadable"; reason: "invalid" | "newer-format" };
 
 export type { NotesDirectoryEntry, NotesDocumentMode, NotesHierarchyLocation };

@@ -11,6 +11,11 @@
 interface ImportMetaEnv {
   /** Where the accounts server lives. Absent means this build has no server, which is fine. */
   readonly VITE_API_URL?: string;
+  /**
+   * "1" signs a dev server straight in with a throwaway local account (`npm run dev:open`).
+   * Read only behind `import.meta.env.DEV`, so a production build never contains it.
+   */
+  readonly VITE_DEV_SESSION?: string;
 }
 
 interface ImportMeta {

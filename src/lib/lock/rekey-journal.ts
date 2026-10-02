@@ -30,6 +30,7 @@ export const REKEY_STORES = [
   "twigs",
   "pebbles",
   "feeds",
+  "canvas-history",
 ] as const;
 
 export type RekeyStore = (typeof REKEY_STORES)[number];

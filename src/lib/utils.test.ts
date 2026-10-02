@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { cn, focusNextFieldOnEnter } from "./utils";
+import { cn, focusNextFieldOnEnter, isTypingTarget } from "./utils";
 
 describe("cn", () => {
   it("keeps the type scale's sizes beside a text colour", () => {
@@ -78,5 +78,21 @@ describe("focusNextFieldOnEnter", () => {
 
     expect(submit).toHaveBeenCalledTimes(2);
     form.remove();
+  });
+});
+
+describe("isTypingTarget", () => {
+  it("knows text fields and editable content from everything else", () => {
+    const editable = document.createElement("div");
+    editable.contentEditable = "true";
+    // jsdom does not compute isContentEditable from the attribute.
+    Object.defineProperty(editable, "isContentEditable", { value: true });
+
+    expect(isTypingTarget(document.createElement("input"))).toBe(true);
+    expect(isTypingTarget(document.createElement("textarea"))).toBe(true);
+    expect(isTypingTarget(document.createElement("select"))).toBe(true);
+    expect(isTypingTarget(editable)).toBe(true);
+    expect(isTypingTarget(document.createElement("button"))).toBe(false);
+    expect(isTypingTarget(null)).toBe(false);
   });
 });

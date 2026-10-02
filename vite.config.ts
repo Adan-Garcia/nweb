@@ -6,6 +6,12 @@ import { defineConfig } from "vitest/config";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    // `npm run dev:tunnel` puts the dev server on a Cloudflare quick-tunnel address so an
+    // iPad can open it over HTTPS (WebCrypto refuses plain http anywhere but localhost).
+    // Vite rejects hosts it does not know, so the tunnel's domain is let in; dev only.
+    allowedHosts: [".trycloudflare.com"],
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),

@@ -61,12 +61,14 @@ describe("softDeleteNote", () => {
     expect(stored?.deletedAt).toEqual(expect.any(Number));
   });
 
-  it("drops the document and its media, so a tombstone keeps no content", async () => {
+  it("drops the document, its media and its undo history, so a tombstone keeps no content", async () => {
     const entry = await seedNoteWithMedia("Notes A");
+    await (await getNotesDb()).put("canvas-history", { id: entry.id, updatedAt: 1, steps: "{}" });
 
     await softDeleteNote(entry.id);
 
     const database = await getNotesDb();
+    expect(await database.get("canvas-history", entry.id)).toBeUndefined();
     expect(await database.get("notes-documents", entry.id)).toBeUndefined();
     expect(await database.get("notes-media", "media-Notes A")).toBeUndefined();
   });
@@ -84,7 +86,7 @@ describe("softDeleteNote", () => {
   });
 
   it("keeps an image another note still draws", async () => {
-    // Excalidraw derives a file's id from its contents, so the same picture dropped into
+    // The canvas derives a file's id from its contents, so the same picture dropped into
     // two notes really is one row. Deleting either note must not blank out the other.
     const doomed = await seedNoteWithMedia("Notes A", "shared-media");
     await seedNoteWithMedia("Notes B", "shared-media");

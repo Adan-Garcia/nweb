@@ -26,6 +26,8 @@ describe("preferencesSchema", () => {
         { id: "recent-notes", visible: true },
       ],
       reminderPrompt: "offer",
+      penSmoothing: 0.5,
+      penPresets: [],
       updatedAt: 0,
       deletedAt: null,
       keyId: undefined,
@@ -80,6 +82,32 @@ describe("preferencesSchema", () => {
     expect(preferencesSchema.parse({ dashboardCards: [{ id: 1 }] }).dashboardCards).toEqual(
       DEFAULT_PREFERENCES.dashboardCards,
     );
+  });
+});
+
+describe("pen settings", () => {
+  const preset = { id: "p1", tool: "pen", color: "#ab12cd", width: 3, sensitivity: 0.6 };
+
+  it("keeps the presets that read and drops the rest, without losing the smoothing", () => {
+    const parsed = preferencesSchema.parse({
+      penSmoothing: 0.2,
+      penPresets: [preset, { ...preset, id: "p2", color: "chartreuse" }, { id: "p3" }],
+    });
+
+    expect(parsed.penSmoothing).toBe(0.2);
+    expect(parsed.penPresets).toEqual([preset]);
+  });
+
+  it("falls back on the default smoothing and no presets when they are not what it expects", () => {
+    const parsed = preferencesSchema.parse({ penSmoothing: 3, penPresets: "many" });
+
+    expect(parsed).toMatchObject({ penSmoothing: 0.5, penPresets: [] });
+  });
+
+  it("keeps no more than six presets", () => {
+    const many = Array.from({ length: 9 }, (_, i) => ({ ...preset, id: `p${i}` }));
+
+    expect(preferencesSchema.parse({ penPresets: many }).penPresets).toHaveLength(6);
   });
 });
 

@@ -3,19 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Excalidraw is a canvas app; this page test stays in linear mode, so a minimal stand-in is enough.
-vi.mock("@excalidraw/excalidraw", () => ({
-  getSceneVersion: () => 0,
-  serializeAsJSON: () => "{}",
-  convertToExcalidrawElements: () => [],
-  Excalidraw: () => null,
-  MainMenu: Object.assign(() => null, {
-    Item: () => null,
-    Separator: () => null,
-    DefaultItems: {},
-  }),
-}));
-
 import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
 import { createNotesDirectoryEntry } from "@/lib/notes/notes-directory-storage";
 

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -16,6 +16,8 @@ describe("NotesCreateNoteDialog", () => {
       onTitleChange: vi.fn(),
       newNoteMode: "linear" as const,
       onModeChange: vi.fn(),
+      newNoteLayout: "infinite" as const,
+      onLayoutChange: vi.fn(),
       onCreate: vi.fn(),
       isCreatingNote: false,
       isStorageReady: true,
@@ -35,6 +37,21 @@ describe("NotesCreateNoteDialog", () => {
   it("renders nothing while closed", () => {
     setup({ isOpen: false });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("offers the kind of canvas only for a spatial note", async () => {
+    const user = userEvent.setup();
+    setup();
+    expect(screen.queryByRole("button", { name: "Infinite canvas" })).toBeNull();
+    cleanup();
+
+    const props = setup({ newNoteMode: "spatial" });
+    expect(screen.getByRole("button", { name: "Infinite canvas" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(screen.getByRole("button", { name: "Pages (Letter or A4)" }));
+    expect(props.onLayoutChange).toHaveBeenCalledWith("paged");
   });
 
   it("shows which note type is selected and lets the user change it", async () => {

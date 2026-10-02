@@ -188,11 +188,17 @@ describe("NotesLocationBar", () => {
     expect(screen.getByLabelText("Note Name")).toHaveValue("Brand new");
 
     await user.click(screen.getByRole("button", { name: "Spatial Note" }));
+    expect(screen.getByRole("button", { name: "Infinite canvas" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(screen.getByRole("button", { name: "Pages (Letter or A4)" }));
     await user.click(screen.getByRole("button", { name: "Create and Open Note" }));
 
     expect(createNoteAt).toHaveBeenCalledWith(
       { branchId: seeded.branchId, nestIds: [seeded.nestId], feather: "Brand new" },
       "spatial",
+      "paged",
     );
   });
 

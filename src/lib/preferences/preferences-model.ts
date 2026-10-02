@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { DEFAULT_SMOOTHING, readPenPresets, smoothingSchema } from "../canvas/pen-settings";
+
 /**
  * How someone has arranged the app for themselves: its look, and the order of the things
  * they reach for. One row per workspace, synced like the rest of it, so a laptop and a
@@ -92,6 +94,10 @@ export const preferencesSchema = z.object({
       ),
     ),
   reminderPrompt: z.enum(REMINDER_PROMPTS).catch("offer"),
+  /** How much ink is smoothed, everywhere it is drawn (`docs/canvas.md`, "Settings"). */
+  penSmoothing: smoothingSchema.catch(DEFAULT_SMOOTHING),
+  /** Saved pens and highlighters, oldest first. */
+  penPresets: z.unknown().transform(readPenPresets),
   updatedAt: z.number().int().nonnegative().catch(0),
   deletedAt: z.number().nullable().catch(null),
   /** Always empty: the row is never sealed at rest. Declared as any synced row may carry it. */

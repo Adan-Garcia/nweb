@@ -1,4 +1,4 @@
-# Cuervo Planner (`guerraclient`)
+# Cuervo Planner (`cuervoclient`)
 
 [![CI](https://github.com/Adan-Garcia/nweb/actions/workflows/ci.yml/badge.svg)](https://github.com/Adan-Garcia/nweb/actions/workflows/ci.yml)
 
@@ -9,14 +9,14 @@ A local-first homework planner and note-taking app for students: a calendar, a t
 ## Features
 
 - **Planning:** a month and week calendar and a Todo / Started / Done board, both drag-and-drop, and a dashboard of what is due, overdue and recently edited.
-- **Notes:** linear notes in TipTap, spatial notes on an Excalidraw canvas with PDF import and image drop, browsed by path or as a tree.
+- **Notes:** linear notes in TipTap, spatial notes on a pressure-sensitive drawing canvas (infinite, or Letter/A4 pages) with PDF import and image drop, browsed by path or as a tree.
 - **Privacy:** a passphrase lock, encrypted backups, and optional end-to-end encrypted sync and sharing.
 - **Everywhere:** installable, works offline, a ⌘K command palette, and a phone layout with a tab bar.
 - **Yours:** five themes, eight accent colours, density and text size, and a sidebar and dashboard you can reorder — synced with your account.
 
 ## Stack
 
-React 19, TypeScript 6 (strict), Vite 8, Tailwind CSS v4, shadcn/ui (`base-nova`), React Router 7, React Hook Form + Zod 4, Zustand (UI state), cmdk and sonner, TipTap (linear notes), Excalidraw (spatial notes), pdf.js (PDF import), `idb` (IndexedDB), and a Web Worker for image optimization and text compression. The optional server is Hono on Postgres. Unit and component tests use Vitest, React Testing Library, MSW and `fake-indexeddb`; browser-level tests use Playwright.
+React 19, TypeScript 6 (strict), Vite 8, Tailwind CSS v4, shadcn/ui (`base-nova`), React Router 7, React Hook Form + Zod 4, Zustand (UI state), cmdk and sonner, TipTap (linear notes), a canvas of its own with `perfect-freehand` (spatial notes), pdf.js (PDF import), `idb` (IndexedDB), and a Web Worker for image optimization and text compression. The optional server is Hono on Postgres. Unit and component tests use Vitest, React Testing Library, MSW and `fake-indexeddb`; browser-level tests use Playwright.
 
 ## Getting started
 
@@ -87,5 +87,5 @@ The engineering standards for this repository (architecture layers, naming, test
 
 Two things worth knowing before touching dependencies:
 
-- Never run `npm audit fix --force`. It downgrades `@excalidraw/excalidraw` and breaks the app; the remaining advisories are handled by the `overrides` block in `package.json`.
-- Keep `@excalidraw/excalidraw` on `^0.18` and `pdfjs-dist` on v6.
+- Never run `npm audit fix --force`. It bumps `pdfjs-dist` a major.
+- Keep `pdfjs-dist` on v6, and import its legacy build.

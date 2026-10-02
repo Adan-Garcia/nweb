@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { SceneLayout } from "@/lib/canvas/scene-model";
 
 type NotesCreateNoteDialogProps = {
   isOpen: boolean;
@@ -20,6 +21,8 @@ type NotesCreateNoteDialogProps = {
   onTitleChange: (title: string) => void;
   newNoteMode: NotesDocumentMode;
   onModeChange: (mode: NotesDocumentMode) => void;
+  newNoteLayout: SceneLayout;
+  onLayoutChange: (layout: SceneLayout) => void;
   onCreate: () => void;
   isCreatingNote: boolean;
   isStorageReady: boolean;
@@ -34,11 +37,24 @@ export function NotesCreateNoteDialog({
   onTitleChange,
   newNoteMode,
   onModeChange,
+  newNoteLayout,
+  onLayoutChange,
   onCreate,
   isCreatingNote,
   isStorageReady,
   isHydratingDocument,
 }: NotesCreateNoteDialogProps) {
+  const layoutChoice = (layout: SceneLayout, label: string) => (
+    <Button
+      variant={newNoteLayout === layout ? "secondary" : "ghost"}
+      size="sm"
+      aria-pressed={newNoteLayout === layout}
+      onClick={() => onLayoutChange(layout)}
+    >
+      {label}
+    </Button>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -96,6 +112,12 @@ export function NotesCreateNoteDialog({
                 Spatial Note
               </Button>
             </div>
+            {newNoteMode === "spatial" ? (
+              <div className="mt-2 grid grid-cols-2 gap-2" role="group" aria-label="Canvas">
+                {layoutChoice("infinite", "Infinite canvas")}
+                {layoutChoice("paged", "Pages (Letter or A4)")}
+              </div>
+            ) : null}
           </div>
         </div>
 

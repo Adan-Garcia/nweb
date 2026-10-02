@@ -234,7 +234,7 @@ export async function saveSpatialDocumentPayload({
 
   /**
    * A file that has left this scene only loses its bytes if nothing else points at them.
-   * Excalidraw derives an image's id from its contents, so the same picture dropped into
+   * The canvas derives an image's id from its contents, so the same picture dropped into
    * two notes really is one row: deleting it because one scene stopped drawing it would
    * leave the other note rendering a hole. The same count guards every other delete path.
    *

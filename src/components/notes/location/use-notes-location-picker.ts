@@ -11,6 +11,7 @@ import {
   type WorkspaceSelection,
 } from "@/components/notes/location/location-hierarchy";
 import type { NotesDirectoryEntry, NotesDocumentMode, NotesMode } from "@/components/notes/types";
+import type { SceneLayout } from "@/lib/canvas/scene-model";
 import { createBranch, createFlight, createNest, createWing } from "@/lib/hierarchy/entity-storage";
 import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 import { ReadOnlyError } from "@/lib/keys/access";
@@ -28,7 +29,11 @@ type UseNotesLocationPickerOptions = {
   directoryEntries: NotesDirectoryEntry[];
   activeDocumentId: string | null;
   activeSelection: WorkspaceSelection;
-  createNoteAt: (placement: NoteDraftPlacement, preferredMode?: NotesDocumentMode) => Promise<void>;
+  createNoteAt: (
+    placement: NoteDraftPlacement,
+    preferredMode?: NotesDocumentMode,
+    layout?: SceneLayout,
+  ) => Promise<void>;
   openDocumentById: (documentId: string) => Promise<void>;
 };
 
@@ -50,6 +55,7 @@ export function useNotesLocationPicker({
   const [syncedSelection, setSyncedSelection] = useState(activeSelection);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newNoteMode, setNewNoteMode] = useState<NotesDocumentMode>(mode);
+  const [newNoteLayout, setNewNoteLayout] = useState<SceneLayout>("infinite");
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   const [segmentModalState, setSegmentModalState] = useState<SegmentModalState | null>(null);
@@ -90,6 +96,7 @@ export function useNotesLocationPicker({
   const openCreateModal = (title: string) => {
     setNewNoteTitle(title);
     setNewNoteMode(mode);
+    setNewNoteLayout("infinite");
     setIsCreateModalOpen(true);
   };
 
@@ -111,6 +118,7 @@ export function useNotesLocationPicker({
           feather,
         },
         newNoteMode,
+        newNoteLayout,
       );
       setIsCreateModalOpen(false);
     } catch (error) {
@@ -196,6 +204,8 @@ export function useNotesLocationPicker({
       setIsOpen: setIsCreateModalOpen,
       mode: newNoteMode,
       setMode: setNewNoteMode,
+      layout: newNoteLayout,
+      setLayout: setNewNoteLayout,
       title: newNoteTitle,
       setTitle: setNewNoteTitle,
       isCreating: isCreatingNote,

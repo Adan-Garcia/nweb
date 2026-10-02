@@ -1,15 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createPngSceneFile, newSceneFileId } from "./spatial/excalidraw-adapter";
+import type { CanvasFile } from "@/lib/canvas/canvas-files";
+import { createScene, type ImageElement, type Scene } from "@/lib/canvas/scene-model";
 
-// Excalidraw is a heavy browser-only bundle; the hook only needs these two helpers.
-let sceneVersion = 0;
-vi.mock("@excalidraw/excalidraw", () => ({
-  getSceneVersion: () => sceneVersion,
-  serializeAsJSON: (elements: readonly unknown[], appState: unknown) =>
-    JSON.stringify({ elements, appState }),
-}));
+import type { SpatialSnapshot } from "./types";
 
 // jsdom's Blob is cloned into a plain object by fake-indexeddb, so the real Blob -> data URL
 // conversion (covered in blob-utils.test.ts) is replaced here.
@@ -26,16 +21,38 @@ async function loadWorkspace() {
   const documents = await import("@/lib/notes/notes-document-storage");
   const { useNotesWorkspace } = await import("./use-notes-workspace");
 
-  return { useNotesWorkspace, saveSpatial: vi.spyOn(documents, "saveSpatialDocumentPayload") };
+  return {
+    useNotesWorkspace,
+    documents,
+    saveSpatial: vi.spyOn(documents, "saveSpatialDocumentPayload"),
+  };
 }
 
-type Workspace = ReturnType<Awaited<ReturnType<typeof loadWorkspace>>["useNotesWorkspace"]>;
-type SpatialElements = Parameters<Workspace["handleSpatialChange"]>[0];
-type SpatialAppState = Parameters<Workspace["handleSpatialChange"]>[1];
+function image(fileId: string, id = fileId): ImageElement {
+  return { id, version: 1, index: "a0", type: "image", fileId, x: 0, y: 0, width: 10, height: 10 };
+}
 
-// Minimal stand-ins for Excalidraw's large element and app-state types; only `fileId` is read.
-const appState = {} as SpatialAppState;
-const imageElement = (fileId: string) => ({ type: "image", fileId }) as SpatialElements[number];
+function file(id: string, withBlob: boolean): CanvasFile {
+  return {
+    id,
+    mimeType: "image/png",
+    created: 100,
+    url: `data:image/png;base64,${id}`,
+    ...(withBlob ? { blob: new Blob(["png"], { type: "image/png" }) } : {}),
+  };
+}
+
+function snapshot(
+  revision: number,
+  elements: Scene["elements"],
+  files: CanvasFile[],
+): SpatialSnapshot {
+  return {
+    revision,
+    scene: { ...createScene("infinite"), elements },
+    files: new Map(files.map((entry) => [entry.id, entry])),
+  };
+}
 
 // A second note in the branch the bootstrap creates, so switching away really reloads.
 const otherNote = { branchId: null, nestIds: [], feather: "Lab 1" };
@@ -48,42 +65,36 @@ async function mountReady() {
   return { ...env, ...hook };
 }
 
-beforeEach(() => {
-  sceneVersion = 0;
-});
-
 describe("useNotesWorkspace: images on the canvas", () => {
-  it("stores the images a scene references, optimized, and skips the rest", async () => {
+  it("stores the new images a scene references, once, and keeps the rest referenced", async () => {
     const { result, saveSpatial } = await mountReady();
-    const used = newSceneFileId();
-    const unused = newSceneFileId();
 
-    sceneVersion = 1;
     act(() =>
-      result.current.handleSpatialChange([imageElement(used)], appState, {
-        [used]: createPngSceneFile(used, "data:image/png;base64,AAAA", 100),
-        [unused]: createPngSceneFile(unused, "data:image/png;base64,BBBB", 200),
-      }),
+      result.current.handleSpatialChange(
+        snapshot(
+          1,
+          [image("new"), image("loaded")],
+          [file("new", true), file("unused", true), file("loaded", false)],
+        ),
+      ),
     );
-
     await waitFor(() => expect(saveSpatial).toHaveBeenCalledOnce(), { timeout: 3000 });
     const saved = saveSpatial.mock.calls[0][0];
-    expect(saved.files.map((file) => file.id)).toEqual([used]);
+    expect(saved.files.map((entry) => entry.id)).toEqual(["new"]);
     expect(saved.files[0]).toMatchObject({ mimeType: "image/png", created: 100 });
-    expect(saved.referencedFileIds).toEqual([used]);
+    expect(saved.referencedFileIds).toEqual(["new", "loaded"]);
+
+    // The next save of the same scene does not write the picture again.
+    act(() => result.current.handleSpatialChange(snapshot(2, [image("new")], [file("new", true)])));
+    await waitFor(() => expect(saveSpatial).toHaveBeenCalledTimes(2), { timeout: 3000 });
+    expect(saveSpatial.mock.calls[1][0].files).toEqual([]);
   });
 
   it("brings the images back when the note is opened again", async () => {
     const { result } = await mountReady();
     const firstId = result.current.activeDocumentId ?? "";
-    const id = newSceneFileId();
 
-    sceneVersion = 2;
-    act(() =>
-      result.current.handleSpatialChange([imageElement(id)], appState, {
-        [id]: createPngSceneFile(id, "data:image/png;base64,AAAA", 100),
-      }),
-    );
+    act(() => result.current.handleSpatialChange(snapshot(1, [image("pic")], [file("pic", true)])));
     await act(async () => {
       await result.current.saveActiveDocumentNow();
     });
@@ -94,12 +105,71 @@ describe("useNotesWorkspace: images on the canvas", () => {
       await result.current.openDocumentById(firstId);
     });
 
-    await waitFor(() => expect(result.current.spatialInitialData).not.toBeNull());
-    expect(Object.keys(result.current.spatialInitialData?.files ?? {})).toEqual([id]);
-    expect(result.current.spatialInitialData?.files?.[id]).toMatchObject({
-      id,
-      mimeType: "image/png",
-      dataURL: "data:image/png;base64,restored",
+    await waitFor(() => {
+      const data = result.current.spatialInitialData;
+      expect(data.status === "ready" && [...data.files.keys()]).toEqual(["pic"]);
     });
+    const data = result.current.spatialInitialData;
+    expect(data.status === "ready" && data.files.get("pic")).toMatchObject({
+      mimeType: "image/png",
+      url: "data:image/png;base64,restored",
+    });
+  });
+});
+
+describe("useNotesWorkspace: new drawing notes", () => {
+  it("starts a paged note with its first page, without announcing a save", async () => {
+    const { result, saveSpatial } = await mountReady();
+
+    await act(async () => {
+      await result.current.createNoteAt({ ...otherNote, feather: "Notebook" }, "spatial", "paged");
+    });
+
+    await waitFor(() => {
+      const data = result.current.spatialInitialData;
+      expect(data.status === "ready" && data.scene.layout).toBe("paged");
+    });
+    const data = result.current.spatialInitialData;
+    expect(data.status === "ready" && data.scene.elements.map((element) => element.type)).toEqual([
+      "page",
+    ]);
+    expect(saveSpatial).toHaveBeenCalledOnce();
+    expect(result.current.lastSavedAt).toBeNull();
+  });
+
+  it("starts an infinite canvas when no kind is asked for", async () => {
+    const { result } = await mountReady();
+
+    await act(async () => {
+      await result.current.createNoteAt({ ...otherNote, feather: "Sketch" }, "spatial");
+    });
+
+    const data = result.current.spatialInitialData;
+    expect(data.status === "ready" && data.scene.layout).toBe("infinite");
+  });
+});
+
+describe("useNotesWorkspace: drawings this build cannot read", () => {
+  it.each([
+    ["Excalidraw's old format", JSON.stringify({ type: "excalidraw", elements: [] }), "invalid"],
+    ["a newer format", JSON.stringify({ format: 99, elements: [] }), "newer-format"],
+  ])("opens %s as unreadable rather than as an empty canvas", async (_label, stored, reason) => {
+    const { result, documents } = await mountReady();
+    const firstId = result.current.activeDocumentId ?? "";
+    await act(async () => {
+      await result.current.createNoteAt(otherNote, "spatial");
+    });
+    await documents.saveSpatialDocumentPayload({
+      documentId: firstId,
+      compressionAlgorithm: "none",
+      compressed: new TextEncoder().encode(stored),
+      files: [],
+    });
+
+    await act(async () => {
+      await result.current.openDocumentById(firstId);
+    });
+
+    expect(result.current.spatialInitialData).toEqual({ status: "unreadable", reason });
   });
 });

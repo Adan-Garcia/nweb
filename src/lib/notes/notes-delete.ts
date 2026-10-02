@@ -2,20 +2,21 @@ import { getNotesDb } from "../db/notes-db";
 import { isReadOnlyKey } from "../keys/access";
 
 /**
- * Tombstones a note and drops its bytes, in one transaction.
+ * Tombstones a note and drops its bytes and this device's undo history for it, in one
+ * transaction.
  *
  * The directory entry stays as a marker so a future sync can tell "deleted here" from
  * "never created here". The document row and its media do not: a tombstone that kept them
  * would grow IndexedDB forever with content nothing can reach.
  *
- * Media is counted before it is removed. Excalidraw derives an image's id from its
+ * Media is counted before it is removed. The canvas derives an image's id from its
  * contents, so the same picture dropped into two notes really is one row, and it survives
  * here for as long as another note's scene draws it or a pebble lists it.
  */
 export async function softDeleteNote(documentId: string): Promise<boolean> {
   const database = await getNotesDb();
   const transaction = database.transaction(
-    ["notes-directory", "notes-documents", "notes-media", "pebbles"],
+    ["notes-directory", "notes-documents", "notes-media", "pebbles", "canvas-history"],
     "readwrite",
   );
 
@@ -37,6 +38,8 @@ export async function softDeleteNote(documentId: string): Promise<boolean> {
   const doomedMediaIds = (documentRecord?.sceneFiles ?? []).map((sceneFile) => sceneFile.id);
 
   await documentStore.delete(documentId);
+  // Its undo steps hold its strokes, and there is nothing left to undo them on.
+  await transaction.objectStore("canvas-history").delete(documentId);
 
   if (doomedMediaIds.length) {
     const stillReferenced = new Set<string>();

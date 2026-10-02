@@ -1,4 +1,6 @@
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+// The legacy build: the modern one calls Map.getOrInsertComputed, which browsers shipped
+// only recently, and without it every page render throws. The legacy build polyfills it.
+import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 import {
   fitWithinBounds,
@@ -7,9 +9,6 @@ import {
 
 const PDF_RENDER_MAX_WIDTH = 1800;
 const PDF_RENDER_MAX_HEIGHT = 2400;
-
-export const PDF_INSERT_MAX_WIDTH = 1000;
-export const PDF_INSERT_MAX_HEIGHT = 1400;
 
 export type RenderedPdfPage = {
   dataUrl: string;
@@ -20,7 +19,7 @@ export type RenderedPdfPage = {
 };
 
 export async function renderPdfPagesToPng(pdfFile: File) {
-  const pdfjs = await import("pdfjs-dist");
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
   const loadingTask = pdfjs.getDocument({
@@ -88,4 +87,20 @@ export async function renderPdfPagesToPng(pdfFile: File) {
   } finally {
     await loadingTask.destroy();
   }
+}
+
+/** The toast to show after inserting `pages`, or null when nothing needs saying. */
+export function describePdfInsert(pages: RenderedPdfPage[]): string | null {
+  if (pages.length > 1) {
+    const firstPage = pages[0].pageNumber;
+    const lastPage = pages[pages.length - 1].pageNumber;
+
+    return `Inserted ${pages.length} pages (${firstPage}-${lastPage}).`;
+  }
+
+  if (pages[0].totalPages > 1) {
+    return `Inserted page ${pages[0].pageNumber} of ${pages[0].totalPages}.`;
+  }
+
+  return null;
 }

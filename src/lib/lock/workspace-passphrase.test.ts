@@ -125,7 +125,8 @@ describe("progress", () => {
         (await database.count("nests")) +
         (await database.count("twigs")) +
         (await database.count("pebbles")) +
-        (await database.count("feeds")),
+        (await database.count("feeds")) +
+        (await database.count("canvas-history")),
     );
   });
 });

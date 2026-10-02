@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { blobToDataUrl, revokeObjectUrls } from "./blob-utils";
+import { blobToDataUrl, dataUrlToBlob, revokeObjectUrls } from "./blob-utils";
 
 describe("blobToDataUrl", () => {
   it("encodes a blob as a data URL with its mime type", async () => {
@@ -36,5 +36,19 @@ describe("revokeObjectUrls", () => {
     URL.revokeObjectURL = revoke;
     revokeObjectUrls([]);
     expect(revoke).not.toHaveBeenCalled();
+  });
+});
+
+describe("dataUrlToBlob", () => {
+  it("decodes a base64 data URL back into a blob of its type", async () => {
+    const blob = dataUrlToBlob("data:text/plain;base64,aGVsbG8=");
+
+    expect(blob?.type).toBe("text/plain");
+    expect(await blob?.text()).toBe("hello");
+  });
+
+  it("returns null for anything that is not base64 data", () => {
+    expect(dataUrlToBlob("blob:http://localhost/abc")).toBeNull();
+    expect(dataUrlToBlob("data:text/plain;base64,***")).toBeNull();
   });
 });

@@ -8,7 +8,6 @@ import {
   type WorkspaceSelection,
 } from "@/components/notes/location/location-hierarchy";
 import type { NoteDraftPlacement } from "@/components/notes/location/use-notes-location-picker";
-import { useNotesImageIngest } from "@/components/notes/spatial/use-notes-image-ingest";
 import { useSpatialAutosave } from "@/components/notes/spatial/use-spatial-autosave";
 import type { NotesDirectoryEntry, NotesDocumentMode, NotesMode } from "@/components/notes/types";
 import { useDocumentSwitchQueue } from "@/components/notes/use-document-switch-queue";
@@ -19,6 +18,7 @@ import { useNotesFlush } from "@/components/notes/use-notes-flush";
 import { useNotesHydration } from "@/components/notes/use-notes-hydration";
 import { useNotesSession } from "@/components/notes/use-notes-session";
 import { useWorkspaceSnapshot } from "@/hooks/use-workspace-snapshot";
+import type { SceneLayout } from "@/lib/canvas/scene-model";
 import { ensureDefaultWorkspace } from "@/lib/hierarchy/workspace-storage";
 import type { WorkspaceSnapshot } from "@/lib/hierarchy/workspace-tree";
 import {
@@ -63,11 +63,11 @@ export function useNotesWorkspace() {
   );
 
   const runInDocumentSwitchQueue = useDocumentSwitchQueue();
-  const { optimizedAssetCount, handleSpatialPaste } = useNotesImageIngest({
-    mediaWorker,
-    spatialHostRef: refs.spatialHostRef,
-    mode,
-  });
+  /** Images dropped on a canvas are made smaller in the worker before they are kept. */
+  const optimizeImage = useCallback(
+    async (file: File): Promise<Blob> => await mediaWorker.optimizeImageFile(file),
+    [mediaWorker],
+  );
 
   const refreshDirectoryEntries = useCallback(async () => {
     const entries = await listNotesDirectoryEntries();
@@ -109,7 +109,7 @@ export function useNotesWorkspace() {
     markSaved,
   });
 
-  const { persistSpatialSnapshot, handleSpatialChange } = useSpatialAutosave({
+  const { persistSpatialSnapshot, handleSpatialChange, writeNewScene } = useSpatialAutosave({
     refs,
     mediaWorker,
     isStorageReady,
@@ -174,10 +174,15 @@ export function useNotesWorkspace() {
 
   /**
    * Opens the note with this title in this branch, or creates it. A placement with no
-   * branch means nothing has been chosen yet, so the default workspace supplies one.
+   * branch means nothing has been chosen yet, so the default workspace supplies one. A new
+   * drawing note starts as the kind of canvas asked for (`layout`), infinite by default.
    */
   const createNoteAt = useCallback(
-    async (placement: NoteDraftPlacement, preferredMode?: NotesDocumentMode) => {
+    async (
+      placement: NoteDraftPlacement,
+      preferredMode?: NotesDocumentMode,
+      layout: SceneLayout = "infinite",
+    ) => {
       const targetMode = preferredMode ?? mode;
       const branchId = placement.branchId ?? (await ensureDefaultWorkspace()).path.branch.id;
       const existing = await findNotesDirectoryEntry({ branchId, feather: placement.feather });
@@ -193,6 +198,9 @@ export function useNotesWorkspace() {
             nestIds: placement.nestIds,
             createdMode: targetMode,
           }));
+        if (!existing && entry.createdMode === "spatial") {
+          await writeNewScene(entry.id, layout);
+        }
 
         const [nextEntries, nextSnapshot] = await Promise.all([
           refreshDirectoryEntries(),
@@ -215,6 +223,7 @@ export function useNotesWorkspace() {
       refreshDirectoryEntries,
       refreshSnapshot,
       runInDocumentSwitchQueue,
+      writeNewScene,
     ],
   );
 
@@ -274,11 +283,9 @@ export function useNotesWorkspace() {
     setLinearContent,
     isStorageReady,
     lastSavedAt,
-    optimizedAssetCount,
     spatialInitialData,
     isSpatialEditorReloading,
     spatialEditorReloadKey,
-    spatialHostRef: refs.spatialHostRef,
     createNoteAt,
     openDocumentById,
     renameDocument,
@@ -286,6 +293,6 @@ export function useNotesWorkspace() {
     refreshDirectoryEntries,
     saveActiveDocumentNow,
     handleSpatialChange,
-    handleSpatialPaste,
+    optimizeImage,
   };
 }

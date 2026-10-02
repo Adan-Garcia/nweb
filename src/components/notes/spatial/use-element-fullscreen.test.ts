@@ -71,18 +71,50 @@ describe("useElementFullscreen", () => {
     expect(result.current.isFullscreen).toBe(false);
   });
 
-  it("does nothing without an element, and swallows a rejected request", async () => {
+  it("does nothing without an element", async () => {
     const empty = renderHook(() => useElementFullscreen({ current: null }));
     await act(async () => {
       await empty.result.current.toggleFullscreen();
     });
 
+    expect(empty.result.current.isFullscreen).toBe(false);
+  });
+
+  it("covers the window instead when the browser refuses, until toggled back", async () => {
     const { element, requestFullscreen } = fakeElement();
     requestFullscreen.mockRejectedValueOnce(new Error("denied"));
-    const denied = renderHook(() => useElementFullscreen({ current: element }));
+    const { result } = renderHook(() => useElementFullscreen({ current: element }));
+
     await act(async () => {
-      await expect(denied.result.current.toggleFullscreen()).resolves.toBeUndefined();
+      await result.current.toggleFullscreen();
     });
+    expect(result.current).toMatchObject({ isFullscreen: true, isCovering: true });
+
+    await act(async () => {
+      await result.current.toggleFullscreen();
+    });
+    expect(result.current).toMatchObject({ isFullscreen: false, isCovering: false });
+    expect(requestFullscreen).toHaveBeenCalledOnce();
+  });
+
+  it("covers the window where there is no fullscreen API, and Escape leaves it", async () => {
+    const element = document.createElement("section");
+    Object.defineProperty(element, "requestFullscreen", { configurable: true, value: undefined });
+    const { result } = renderHook(() => useElementFullscreen({ current: element }));
+
+    await act(async () => {
+      await result.current.toggleFullscreen();
+    });
+    expect(result.current.isCovering).toBe(true);
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    });
+    expect(result.current.isCovering).toBe(true);
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(result.current.isCovering).toBe(false);
   });
 
   it("stops listening when unmounted", () => {
